@@ -187,6 +187,14 @@ function getSpreadsheetManager() {
 }
 
 /**
+ * Método estático para obtener la instancia singleton (compatibilidad)
+ * @returns {SpreadsheetManager} Instancia del SpreadsheetManager
+ */
+SpreadsheetManager.getInstance = function() {
+  return new SpreadsheetManager();
+};
+
+/**
  * Función de conveniencia para obtener una instancia de spreadsheet
  * @param {string} spreadsheetId - ID del spreadsheet
  * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet} Instancia del spreadsheet

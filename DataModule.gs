@@ -22,11 +22,20 @@ const findCol = (headers, names) => headers.findIndex(h => names.some(name => h.
  */
 function cargarHojaLideres(spreadsheet) {
   try {
+    console.log('[DataModule] Debug - Iniciando cargarHojaLideres');
     const sheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
-    if (!sheet) return [];
+    if (!sheet) {
+      console.log('[DataModule] Debug - Hoja no encontrada:', CONFIG.TABS.LIDERES);
+      return [];
+    }
 
+    console.log('[DataModule] Debug - Hoja encontrada, obteniendo datos...');
     const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
+    console.log(`[DataModule] Debug - Datos obtenidos: ${data.length} filas`);
+    if (data.length < 2) {
+      console.log('[DataModule] Debug - Datos insuficientes');
+      return [];
+    }
 
     const headers = data[0].map(h => h.toString().trim());
     const lideres = [];
@@ -271,8 +280,8 @@ function cargarHojaIngresos(spreadsheet) {
  */
 function cargarLideresOptimizado(spreadsheetId, sheetName, requiredColumns = []) {
   try {
-    const sm = SpreadsheetManager.getInstance(spreadsheetId);
-    const sheet = sm.getSheet(sheetName);
+    const sm = SpreadsheetManager.getInstance();
+    const sheet = sm.getSheet(spreadsheetId, sheetName);
     if (!sheet || sheet.getLastRow() < 2) return [];
 
     const headers = sm.getSheetData(sheetName, 1, 1, 1)[0].map(h => h.toString().trim());
@@ -324,8 +333,8 @@ function cargarLideresOptimizado(spreadsheetId, sheetName, requiredColumns = [])
  */
 function cargarCelulasOptimizado(spreadsheetId, sheetName) {
   try {
-    const sm = SpreadsheetManager.getInstance(spreadsheetId);
-    const sheet = sm.getSheet(sheetName);
+    const sm = SpreadsheetManager.getInstance();
+    const sheet = sm.getSheet(spreadsheetId, sheetName);
     if (!sheet || sheet.getLastRow() < 2) return [];
 
     const headers = sm.getSheetData(sheetName, 1, 1, 1)[0].map(h => h.toString().trim());
@@ -392,8 +401,8 @@ function cargarCelulasOptimizado(spreadsheetId, sheetName) {
  */
 function cargarIngresosOptimizado(spreadsheetId, sheetName) {
   try {
-    const sm = SpreadsheetManager.getInstance(spreadsheetId);
-    const sheet = sm.getSheet(sheetName);
+    const sm = SpreadsheetManager.getInstance();
+    const sheet = sm.getSheet(spreadsheetId, sheetName);
     if (!sheet || sheet.getLastRow() < 2) return [];
 
     const headers = sm.getSheetData(sheetName, 1, 1, 1)[0].map(h => h.toString().trim());

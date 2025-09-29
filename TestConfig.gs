@@ -97,6 +97,42 @@ function testGetListaDeLideres() {
 }
 
 /**
+ * Función de prueba para cargarDirectorioCompleto
+ */
+function testCargarDirectorioCompleto() {
+  try {
+    console.log('🧪 Iniciando test de cargarDirectorioCompleto...');
+    
+    const resultado = cargarDirectorioCompleto();
+    
+    if (!resultado) {
+      throw new Error('cargarDirectorioCompleto retornó undefined');
+    }
+    
+    console.log('✅ cargarDirectorioCompleto funcionando correctamente');
+    console.log('📊 Resultado:', {
+      lideres: resultado.lideres ? resultado.lideres.length : 0,
+      celulas: resultado.celulas ? resultado.celulas.length : 0,
+      ingresos: resultado.ingresos ? resultado.ingresos.length : 0,
+      error: resultado.error || 'Ninguno'
+    });
+    
+    return {
+      success: true,
+      message: 'cargarDirectorioCompleto funcionando correctamente',
+      resultado: resultado
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test de cargarDirectorioCompleto:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
  * Función de prueba completa
  */
 function ejecutarTestsCompletos() {
@@ -104,10 +140,12 @@ function ejecutarTestsCompletos() {
   
   const testConfig = testConfig();
   const testLideres = testGetListaDeLideres();
+  const testDirectorio = testCargarDirectorioCompleto();
   
   const resultados = {
     config: testConfig,
     lideres: testLideres,
+    directorio: testDirectorio,
     timestamp: new Date().toISOString()
   };
   

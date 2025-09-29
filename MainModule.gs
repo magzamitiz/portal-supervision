@@ -99,6 +99,9 @@ function inicializarAplicacion() {
       throw new Error('CONFIG no está definido');
     }
 
+    // Obtener el scope global correcto para Google Apps Script
+    const scope = typeof globalThis !== 'undefined' ? globalThis : this;
+    
     // Verificar módulos críticos
     const modulosCriticos = [
       'SpreadsheetManager',
@@ -109,7 +112,7 @@ function inicializarAplicacion() {
     ];
 
     for (const modulo of modulosCriticos) {
-      if (typeof window[modulo] === 'undefined') {
+      if (typeof scope[modulo] === 'undefined') {
         console.warn(`[MainModule] Módulo crítico ${modulo} no está disponible`);
       }
     }

@@ -110,23 +110,36 @@ function calcularMetricasRealesLD(idLD, estructuraCompleta, dataCompleta) {
  * @returns {Object} Objeto con líderes, células, ingresos y timestamp
  */
 function cargarDirectorioCompleto(forceReload = false) {
+  console.log('[CoreModule] Debug - cargarDirectorioCompleto iniciado, forceReload:', forceReload);
+  
   if (forceReload) {
+    console.log('[CoreModule] Debug - Limpiando caché...');
     clearCache();
   } else {
+    console.log('[CoreModule] Debug - Verificando caché...');
     const cachedData = getCacheData();
     if (cachedData) {
       console.log('[CoreModule] Directorio completo obtenido de caché.');
       return cachedData;
     }
+    console.log('[CoreModule] Debug - No hay datos en caché, cargando desde Sheets...');
   }
 
   console.log('[CoreModule] Cargando datos de DIRECTORIO desde Google Sheets...');
   try {
     checkTimeout();
     const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    const lideres = cargarHojaLideres(spreadsheet);
-    const celulas = cargarHojaCelulas(spreadsheet);
-    const ingresos = cargarHojaIngresos(spreadsheet);
+    console.log('[CoreModule] Debug - Spreadsheet abierto correctamente');
+    
+    // Usar las funciones que sabemos que funcionan
+    const lideres = cargarLideresCompletos(spreadsheet);
+    console.log(`[CoreModule] Debug - Líderes cargados: ${lideres ? lideres.length : 0}`);
+    
+    const celulas = cargarCelulasCompletas(spreadsheet, CONFIG.TABS.CELULAS);
+    console.log(`[CoreModule] Debug - Células cargadas: ${celulas ? celulas.length : 0}`);
+    
+    const ingresos = cargarIngresosCompletos(spreadsheet, CONFIG.TABS.INGRESOS);
+    console.log(`[CoreModule] Debug - Ingresos cargados: ${ingresos ? ingresos.length : 0}`);
 
     const actividadMap = calcularActividadLideres(celulas);
     const lideresConActividad = integrarActividadLideres(lideres, actividadMap);
@@ -500,17 +513,31 @@ function getDatosLDBasico(idLD) {
  * @returns {Object} Objeto con los datos completos del LD
  */
 function getDatosLDCompleto(idLD) {
+  console.log('[CoreModule] Debug - getDatosLDCompleto iniciado para LD:', idLD);
   checkTimeout();
   console.log('[CoreModule] Cargando modo completo para LD:', idLD);
   
+  console.log('[CoreModule] Debug - Llamando a cargarDirectorioCompleto...');
   const dataCompleta = cargarDirectorioCompleto();
+  console.log('[CoreModule] Debug - cargarDirectorioCompleto retornó:', dataCompleta ? 'datos' : 'null/undefined');
   if (!dataCompleta || !dataCompleta.lideres || dataCompleta.success === false) {
     return { success: false, error: 'Datos del directorio no válidos o error en carga' };
   }
   
   const { lideres, ingresos, celulas } = dataCompleta;
+  
+  // Debug: verificar datos cargados
+  console.log(`[CoreModule] Debug - Total líderes cargados: ${lideres ? lideres.length : 0}`);
+  console.log(`[CoreModule] Debug - Buscando LD: ${idLD}`);
+  if (lideres && lideres.length > 0) {
+    console.log(`[CoreModule] Debug - Primeros 3 IDs de líderes:`, lideres.slice(0, 3).map(l => l.ID_Lider));
+  }
+  
   const ld = lideres.find(l => l?.ID_Lider === idLD && l?.Rol === 'LD');
-  if (!ld) return { success: false, error: `LD ${idLD} no encontrado` };
+  if (!ld) {
+    console.log(`[CoreModule] Debug - LD ${idLD} no encontrado. Líderes disponibles:`, lideres.map(l => `${l.ID_Lider}(${l.Rol})`));
+    return { success: false, error: `LD ${idLD} no encontrado` };
+  }
 
   const almasPorLCF = new Map();
   for (const ingreso of ingresos) {
