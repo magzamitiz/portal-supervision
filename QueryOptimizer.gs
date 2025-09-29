@@ -129,7 +129,7 @@ function getOptimizedRanges(spreadsheetId, sheetName, ranges, useCache = true) {
  * @returns {Array} Datos del lote
  */
 function processBatch(spreadsheetId, sheetName, ranges) {
-  const sm = SpreadsheetManager.getInstance();
+  const sm = getSpreadsheetManagerInstance();
   const sheet = sm.getSheet(spreadsheetId, sheetName);
   
   // Convertir rangos a notación A1
@@ -182,7 +182,7 @@ function splitIntoBatches(array, batchSize) {
  */
 function getLeadersOptimized(spreadsheetId, sheetName, leaderIds = null) {
   try {
-    const sm = SpreadsheetManager.getInstance();
+    const sm = getSpreadsheetManagerInstance();
     const sheet = sm.getSheet(spreadsheetId, sheetName);
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
@@ -220,7 +220,7 @@ function getLeadersOptimized(spreadsheetId, sheetName, leaderIds = null) {
  */
 function getLeadersByIds(spreadsheetId, sheetName, leaderIds) {
   try {
-    const sm = SpreadsheetManager.getInstance();
+    const sm = getSpreadsheetManagerInstance();
     const sheet = sm.getSheet(spreadsheetId, sheetName);
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
@@ -261,7 +261,7 @@ function getLeadersByIds(spreadsheetId, sheetName, leaderIds) {
  */
 function getCellsOptimized(spreadsheetId, sheetName, lcfId = null) {
   try {
-    const sm = SpreadsheetManager.getInstance();
+    const sm = getSpreadsheetManagerInstance();
     const sheet = sm.getSheet(spreadsheetId, sheetName);
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
@@ -299,7 +299,7 @@ function getCellsOptimized(spreadsheetId, sheetName, lcfId = null) {
  */
 function getCellsByLCF(spreadsheetId, sheetName, lcfId) {
   try {
-    const sm = SpreadsheetManager.getInstance();
+    const sm = getSpreadsheetManagerInstance();
     const sheet = sm.getSheet(spreadsheetId, sheetName);
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
@@ -340,7 +340,7 @@ function getCellsByLCF(spreadsheetId, sheetName, lcfId) {
  */
 function getIncomeOptimized(spreadsheetId, sheetName, lcfId = null) {
   try {
-    const sm = SpreadsheetManager.getInstance();
+    const sm = getSpreadsheetManagerInstance();
     const sheet = sm.getSheet(spreadsheetId, sheetName);
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
@@ -378,7 +378,7 @@ function getIncomeOptimized(spreadsheetId, sheetName, lcfId = null) {
  */
 function getIncomeByLCF(spreadsheetId, sheetName, lcfId) {
   try {
-    const sm = SpreadsheetManager.getInstance();
+    const sm = getSpreadsheetManagerInstance();
     const sheet = sm.getSheet(spreadsheetId, sheetName);
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
@@ -437,7 +437,7 @@ function getQueryCacheStats() {
  * Obtiene el SpreadsheetManager como singleton
  * @returns {SpreadsheetManager} Instancia del SpreadsheetManager
  */
-function SpreadsheetManager.getInstance() {
+function getSpreadsheetManagerInstance() {
   if (!SpreadsheetManager.instance) {
     SpreadsheetManager.instance = new SpreadsheetManager();
   }
