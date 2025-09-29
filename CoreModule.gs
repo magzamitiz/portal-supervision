@@ -430,7 +430,9 @@ function cargarVisitasBendicionSelectivo(idsAlmas) {
  */
 function getDatosLD(idLD, modoCompleto = false) {
   try {
-    checkTimeout();
+    // Reiniciar timeout para operaciones largas
+    resetTimeout();
+    
     if (!idLD) {
       console.log('[CoreModule] getDatosLD llamado sin ID');
       return { success: false, error: 'No se proporcionó ID del LD' };
@@ -580,7 +582,37 @@ function getDatosLDCompleto(idLD) {
       };
     });
 
-  return { success: true, ld: ld, lcfBajoLD: lcfBajoLD };
+  // Calcular métricas totales
+  const totalCelulas = lcfBajoLD.reduce((sum, lcf) => sum + lcf.Celulas, 0);
+  const totalMiembros = lcfBajoLD.reduce((sum, lcf) => sum + lcf.Miembros, 0);
+  const totalIngresos = lcfBajoLD.reduce((sum, lcf) => sum + lcf.Ingresos, 0);
+  const totalIngresosAsignados = lcfBajoLD.reduce((sum, lcf) => sum + lcf.Ingresos_Asignados, 0);
+  const totalIngresosEnCelula = lcfBajoLD.reduce((sum, lcf) => sum + lcf.Ingresos_En_Celula, 0);
+
+  // Devolver estructura compatible con Dashboard
+  return {
+    success: true,
+    resumen: {
+      ld: ld,
+      Total_LCF: lcfBajoLD.length,
+      Total_Celulas: totalCelulas,
+      Total_Miembros: totalMiembros,
+      Total_Ingresos: totalIngresos,
+      Ingresos_Asignados: totalIngresosAsignados,
+      Ingresos_En_Celula: totalIngresosEnCelula,
+      Tasa_Asignacion: totalIngresos > 0 ? ((totalIngresosAsignados / totalIngresos) * 100).toFixed(1) : 0,
+      Tasa_Integracion: totalIngresos > 0 ? ((totalIngresosEnCelula / totalIngresos) * 100).toFixed(1) : 0,
+      metricas: {
+        total_almas: totalIngresos,
+        almas_en_celula: totalIngresosEnCelula,
+        almas_sin_celula: totalIngresos - totalIngresosEnCelula,
+        tasa_integracion: totalIngresos > 0 ? ((totalIngresosEnCelula / totalIngresos) * 100).toFixed(1) : 0
+      }
+    },
+    lcf_directos: lcfBajoLD,
+    equipo: lcfBajoLD, // Por compatibilidad
+    modo: 'completo'
+  };
 }
 
 // ==================== OPERACIONES ADMINISTRATIVAS OPTIMIZADAS ====================

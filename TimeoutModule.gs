@@ -5,8 +5,17 @@
 
 // ==================== CONFIGURACIÓN DEL MÓDULO ====================
 
-const SCRIPT_START_TIME = Date.now();
-const MAX_EXECUTION_TIME = 25000; // 25 segundos (dejar margen de 5s)
+var SCRIPT_START_TIME = Date.now(); // Cambiado a var para poder reiniciar
+const MAX_EXECUTION_TIME = 270000; // 4.5 minutos (270 segundos) - límite de GAS es 6 minutos
+
+/**
+ * Reinicia el contador de tiempo de ejecución
+ * Útil para operaciones largas que necesitan resetear el timeout
+ */
+function resetTimeout() {
+  SCRIPT_START_TIME = Date.now();
+  console.log('[TimeoutModule] Timeout reiniciado');
+}
 
 // ==================== FUNCIONES DE TIMEOUT ====================
 
