@@ -1,0 +1,2600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Supervisión V2.0</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Estilos V2.0 (Usando kebab-case estándar) */
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-activo { background: #d1fae5; color: #065f46; }
+        .status-alerta { background: #fef3c7; color: #92400e; }
+        .status-inactivo { background: #fee2e2; color: #991b1b; }
+        .status-sindatos { background: #e5e7eb; color: #4b5563; } /* Gris para Sin Datos */
+
+        .carga-optima { background: #d1fae5; color: #065f46; }
+        .carga-moderada { background: #dbeafe; color: #1e40af; }
+        .carga-alta { background: #fed7aa; color: #92400e; }
+        .carga-sobrecargado { background: #fee2e2; color: #991b1b; }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        @media print {
+            .no-print { display: none !important; }
+            #modalContenido { max-height: none !important; overflow: visible !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    
+    <div id="loader" class="fixed inset-0 bg-white z-50 flex items-center justify-center">
+        <div class="text-center">
+            <div class="loader mx-auto mb-4"></div>
+            <p class="text-gray-600">Cargando portal de supervisión V2.0...</p>
+            <p class="text-xs text-gray-400 mt-2" id="loaderStatus">Verificando datos...</p>
+        </div>
+    </div>
+    
+    <header class="gradient-bg text-white shadow-lg no-print sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold flex items-center gap-3">
+                        <i class="fas fa-users-cog"></i>
+                        Portal de Supervisión V2.0
+                    </h1>
+                    <p class="text-purple-200 mt-1">Sistema Integral de Seguimiento</p>
+                </div>
+                <div class="flex gap-3 items-center">
+                    <div class="text-right text-xs text-purple-200 mr-4 hidden md:block">
+                        <p>Datos generados:</p>
+                        <p id="dataTimestamp" class="font-semibold">Cargando...</p>
+                    </div>
+
+                    <button onclick="recargarDatos()" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition" title="Forzar actualización desde Google Sheets (Ignorar caché)">
+                        <i class="fas fa-sync-alt"></i> Actualizar
+                    </button>
+                    <button onclick="verManual()" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition" title="Manual de uso">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div id="errorConfig" class="container mx-auto px-4 mt-4 hidden">
+        <div class="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded">
+            <div class="flex items-start">
+                <i class="fas fa-exclamation-triangle mr-3 mt-1"></i>
+                <div>
+                    <p class="font-semibold">Error del Sistema</p>
+                    <p class="text-sm mt-1" id="errorMessage">Ocurrió un error al cargar los datos.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="alertasGlobales" class="container mx-auto px-4 mt-4 hidden">
+        </div>
+    
+    <main class="container mx-auto px-4 py-8">
+        
+        <div id="estadisticasGenerales" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">
+                    <i class="fas fa-user-tie text-purple-600 mr-2"></i>
+                    Supervisión de Equipo (LD)
+                </h2>
+                <div id="accionesLD" class="hidden gap-2">
+                     <button id="btnGenerarReporte" onclick="generarReporteLD()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-file-pdf"></i> Generar Reporte
+                    </button>
+                </div>
+            </div>
+            <select id="ldSelector" onchange="cargarDatosLD()" class="w-full md:w-1/2 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                <option value="">-- Selecciona un Líder de Discípulos --</option>
+            </select>
+        </div>
+        
+        <div id="resumenLD" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
+            </div>
+        
+        <div id="alertasLD" class="hidden mb-6">
+            </div>
+        
+        <div id="panelLCFs" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-home text-purple-600 mr-2"></i>
+                Equipo de Líderes de Casa de Fe (LCF)
+            </h2>
+            
+            <div id="gridLCFs" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+        </div>
+        
+        <div id="panelGraficos" class="hidden mt-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold mb-4">Actividad del Equipo (LCF)</h3>
+                    <canvas id="chartEstados"></canvas>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold mb-4">Salud de las Células del Equipo</h3>
+                    <canvas id="chartCelulas"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <div id="modalLCF" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+                    <h3 id="modalTitulo" class="text-xl font-bold"></h3>
+                    <button onclick="cerrarModal()" class="text-gray-500 hover:text-gray-700 no-print">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="modalContenido" class="p-6">
+                    </div>
+                <div class="border-t px-6 py-4 flex justify-end gap-3 no-print">
+                    <button onclick="imprimirDetalles()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                    <button onclick="cerrarModal()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+
+// Variable global para controlar navegaciones
+window.navegacionEnCurso = false;
+
+function navegarDesdeModalA(funcionDestino, ...parametros) {
+    // Evitar múltiples navegaciones simultáneas
+    if (window.navegacionEnCurso) {
+        console.log('Navegación en curso, ignorando nueva solicitud');
+        return;
+    }
+    
+    window.navegacionEnCurso = true;
+    console.log(`Navegando a: ${funcionDestino} con params:`, parametros);
+    
+    // Cerrar modal actual
+    const modal = document.getElementById('modalLCF');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+    
+    // Ejecutar con delay controlado
+    setTimeout(() => {
+        try {
+            if (typeof window[funcionDestino] === 'function') {
+                window[funcionDestino](...parametros);
+            } else {
+                console.error(`Función ${funcionDestino} no encontrada`);
+                Swal.fire('Error', `Función ${funcionDestino} no disponible`, 'error');
+            }
+        } catch (error) {
+            console.error(`Error ejecutando ${funcionDestino}:`, error);
+            Swal.fire('Error', `Error al ejecutar ${funcionDestino}`, 'error');
+        } finally {
+            window.navegacionEnCurso = false;
+        }
+    }, 500); // Aumentar a 500ms para mayor estabilidad
+}
+        
+        // NUEVA FUNCIÓN DE UTILIDAD: Sanitiza texto para HTML (Evita errores por caracteres especiales)
+    // ==================== FUNCIONES DE SANITIZACIÓN MEJORADAS ====================
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            // Convertir a string de forma segura
+            const text = String(str);
+            if (!text) return '';
+            
+            // Escape completo incluyendo / para evitar cierre de tags
+            return text.replace(/[&<>"'\/]/g, function(m) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#x27;',  // Usar código numérico para mejor compatibilidad
+                    '/': '&#x2F;'   // Prevenir cierre de script tags
+                }[m];
+            });
+        }
+
+        // Nueva función para escapar atributos de forma segura
+        function escapeAttr(str) {
+            if (str === null || str === undefined) return '';
+            const text = String(str);
+            if (!text) return '';
+            
+            // Escape más estricto para atributos
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/'/g, '&#x27;')
+                .replace(/"/g, '&quot;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\//g, '&#x2F;')
+                .replace(/=/g, '&#x3D;')
+                .replace(/`/g, '&#x60;');  // También escapar backticks
+        }
+        // ==================== FIN FUNCIONES DE SANITIZACIÓN ====================
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+          cargarDatosIniciales();
+      });
+
+        // ==================== HELPERS V2.0 ====================
+        
+        // Helper para obtener el color del estado (V2.0)
+        function getEstadoColor(estado) {
+            switch (estado) {
+                case 'Activo': return 'status-activo';
+                case 'Alerta': return 'status-alerta';
+                case 'Inactivo': return 'status-inactivo';
+                case 'Sin Datos': return 'status-sindatos';
+                default: return 'status-sindatos';
+            }
+        }
+
+        // Helper para obtener el color de la carga
+        function getCargaColor(carga) {
+             switch (carga) {
+                case 'Óptima': return 'carga-optima';
+                case 'Moderada': return 'carga-moderada';
+                case 'Alta': return 'carga-alta';
+                case 'SOBRECARGADO': return 'carga-sobrecargado';
+                default: return 'bg-gray-100 text-gray-700';
+            }
+        }
+
+        
+        // ==================== CARGA DE DATOS ====================
+
+        // Cargar datos iniciales (Usa caché si está disponible)
+function cargarDatosIniciales() {
+    console.log('Cargando estadísticas rápidas...');
+    document.getElementById('loaderStatus').textContent = 'Obteniendo estadísticas principales...';
+
+    // PRIMERA LLAMADA: Carga las estadísticas al instante
+    google.script.run
+        .withSuccessHandler(handleEstadisticasResponse)
+        .withFailureHandler(handleDataFailure)
+        .getEstadisticasRapidas();
+
+    // SEGUNDA LLAMADA: Carga la lista de líderes en segundo plano
+    console.log('Cargando lista de líderes...');
+    google.script.run
+        .withSuccessHandler(handleLideresResponse)
+        .withFailureHandler(error => console.error("Error cargando líderes:", error))
+        .getListaDeLideres();
+}
+
+// Nueva función para manejar la respuesta de las estadísticas
+function handleEstadisticasResponse(response) {
+    if (response && response.success) {
+        console.log('Estadísticas rápidas recibidas:', response.data);
+        actualizarEstadisticas(response.data); // Función que dibuja los cuadros de resumen
+        document.getElementById('dataTimestamp').textContent = new Date(response.data.timestamp).toLocaleString();
+    } else {
+        handleDataFailure(response ? response.error : "Respuesta de estadísticas inválida");
+    }
+    // No se esconde el loader aquí, se espera a que ambas llamadas terminen o la principal
+}
+
+// Nueva función para manejar la respuesta de los líderes
+function handleLideresResponse(response) {
+    if (response && response.success) {
+        console.log('Lista de líderes recibida.');
+        llenarSelectorLD(response.data); // Función que llena el menú desplegable
+    } else {
+        console.error("No se pudo cargar la lista de líderes.");
+        llenarSelectorLD([]); // Llena el selector con un error
+    }
+    // Ahora que la carga principal terminó, escondemos el loader
+    document.getElementById('loader').style.display = 'none';
+}
+
+        // Recargar datos (Fuerza la recarga desde Sheets)
+        function recargarDatos() {
+            console.log('Forzando actualización (forceReloadDashboardData)...');
+             Swal.fire({
+                title: 'Actualizando datos...',
+                text: 'Conectando con Google Sheets y recalculando métricas. Esto puede tardar un momento.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            // Llama a la función del backend que ignora la caché (Debe existir en Code.gs)
+            fetchData('forceReloadDashboardData', true);
+        }
+
+        // Función genérica para obtener datos del backend
+        function fetchData(endpoint, isReload = false) {
+    if (typeof google === 'undefined' || !google.script?.run) {
+        handleDataFailure('Google Script API no disponible.');
+        return;
+    }
+
+    google.script.run
+        .withSuccessHandler(response => {
+            console.log('Respuesta del servidor:', response);
+            handleDataResponse(response, isReload);
+        })
+        .withFailureHandler(error => {
+            console.error('Error del servidor:', error);
+            handleDataFailure(error.toString(), endpoint);
+        })
+        [endpoint]();
+}
+
+        // Manejador de respuesta exitosa
+        function handleDataResponse(response, isReload) {
+    console.log('Respuesta recibida:', response);
+    
+    // Verificar que la respuesta sea válida
+    if (!response) {
+        console.error('Respuesta nula del servidor');
+        handleDataFailure('No se recibió respuesta del servidor');
+        return;
+    }
+    
+    // Verificar estructura de respuesta
+    if (response.success === false) {
+        console.error('Error en respuesta:', response.error);
+        handleDataFailure(response.error || 'Error desconocido');
+        return;
+    }
+    
+    // Verificar que tenga data
+    if (!response.data) {
+        console.error('Respuesta sin data');
+        handleDataFailure('Respuesta sin datos');
+        return;
+    }
+    
+    // TODO BIEN - Procesar datos
+    datosActuales = response.data;
+    window.datosActuales = response.data; // Guardar globalmente
+    
+    console.log('Datos procesados:', {
+        lideres: datosActuales.lideres?.total_LD || 0,
+        celulas: datosActuales.celulas?.total_celulas || 0,
+        ingresos: datosActuales.ingresos?.total_historico || 0
+    });
+    
+    actualizarInterfaz();
+    document.getElementById('loader').style.display = 'none';
+    
+    if (isReload) {
+        if (ldSeleccionado) {
+            cargarDatosLD(true);
+        }
+        Swal.fire({
+            icon: 'success',
+            title: 'Datos Actualizados',
+            text: 'La información ha sido actualizada.',
+            timer: 2000,
+            showConfirmButton: false
+        });
+    }
+}
+
+        // Manejador de fallos
+        function handleDataFailure(error, endpoint = '') {
+            console.error('Error en la carga de datos:', error);
+            document.getElementById('loader').style.display = 'none';
+
+            if (Swal.isVisible()) Swal.close();
+
+            // Manejo específico si la función de recarga forzada no existe
+            if (endpoint === 'forceReloadDashboardData' && error.includes('no es una función')) {
+                error = 'La función "forceReloadDashboardData" no existe en Code.gs. Debes añadirla para usar la actualización forzada.';
+            }
+
+            mostrarErrorConfiguracion(error);
+        }
+        
+        // Mostrar error de configuración
+        function mostrarErrorConfiguracion(mensaje) {
+            const errorDiv = document.getElementById('errorConfig');
+            const errorMessage = document.getElementById('errorMessage');
+            
+            errorMessage.textContent = mensaje;
+            errorDiv.classList.remove('hidden');
+        }
+        
+        // ==================== ACTUALIZACIÓN DE INTERFAZ ====================
+
+        // Actualizar interfaz completa
+        function actualizarInterfaz() {
+            if (!datosActuales) return;
+            
+            actualizarTimestamp();
+            actualizarEstadisticas();
+            mostrarAlertasGlobales();
+            
+            // Llenar selector solo si está vacío
+            if (document.getElementById('ldSelector').options.length <= 1) {
+                llenarSelectorLD();
+            }
+        }
+
+         // Actualizar Timestamp (NUEVO V2.0)
+        function actualizarTimestamp() {
+            const timestampElement = document.getElementById('dataTimestamp');
+            if (datosActuales.timestamp) {
+                try {
+                    const date = new Date(datosActuales.timestamp);
+                    // Formatear fecha para mejor lectura local
+                    timestampElement.textContent = date.toLocaleString('es-ES', { 
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true
+                    });
+                } catch (e) {
+                    timestampElement.textContent = 'N/A';
+                }
+            }
+        }
+
+        
+        
+        // Actualizar estadísticas generales (CORREGIDA PARA FUNCIONAR CON CARGA RÁPIDA)
+function actualizarEstadisticas(stats) {
+    const container = document.getElementById('estadisticasGenerales');
+    if (!stats) {
+        container.innerHTML = `<p class="text-red-500">No se pudieron cargar las estadísticas.</p>`;
+        return;
+    }
+
+    // Acceso seguro a los datos que SÍ vienen en la carga rápida
+    const valores = {
+        total_LD: stats.lideres?.total_LD ?? 0,
+        total_LCF: stats.lideres?.total_LCF ?? 0,
+        total_celulas: stats.celulas?.total_celulas ?? 0,
+        ingresos_mes: stats.ingresos?.ingresos_mes ?? 0,
+        tasa_integracion_celula: stats.ingresos?.tasa_integracion_celula ?? 0
+    };
+    
+    container.innerHTML = `
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Liderazgo (LD)</p>
+                    <p class="text-3xl font-bold text-gray-800">${valores.total_LD}</p>
+                </div>
+                <i class="fas fa-user-tie text-purple-500 text-3xl"></i>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Equipo Base (LCF)</p>
+                    <p class="text-3xl font-bold text-gray-800">${valores.total_LCF}</p>
+                </div>
+                <i class="fas fa-home text-blue-500 text-3xl"></i>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Total Células</p>
+                    <p class="text-3xl font-bold text-gray-800">${valores.total_celulas}</p>
+                </div>
+                <i class="fas fa-users text-green-500 text-3xl"></i>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Ingresos (Mes)</p>
+                    <p class="text-3xl font-bold text-gray-800">${valores.ingresos_mes}</p>
+                </div>
+                <i class="fas fa-user-plus text-orange-500 text-3xl"></i>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-500 text-sm">Tasa Integración</p>
+                    <p class="text-3xl font-bold text-gray-800">${valores.tasa_integracion_celula}%</p>
+                     <p class="text-xs text-blue-600">Almas en célula</p>
+                </div>
+                <i class="fas fa-link text-blue-500 text-3xl"></i>
+            </div>
+        </div>
+    `;
+}
+        
+        // Mostrar alertas globales (Sin cambios)
+        function mostrarAlertasGlobales() {
+            const alertas = datosActuales?.alertas ?? [];
+            const container = document.getElementById('alertasGlobales');
+            
+            if (alertas.length > 0) {
+                container.classList.remove('hidden');
+                
+                let html = '';
+                alertas.forEach(alerta => {
+                    let bgColor, icon;
+                    switch (alerta.tipo) {
+                        case 'error':
+                            bgColor = 'bg-red-50 border-red-500 text-red-700'; icon = 'exclamation-triangle'; break;
+                        case 'warning':
+                            bgColor = 'bg-yellow-50 border-yellow-500 text-yellow-700'; icon = 'exclamation-circle'; break;
+                        case 'success':
+                            bgColor = 'bg-green-50 border-green-500 text-green-700'; icon = 'check-circle'; break;
+                        default:
+                            bgColor = 'bg-blue-50 border-blue-500 text-blue-700'; icon = 'info-circle';
+                    }
+                    
+                    html += `
+                        <div class="${bgColor} border-l-4 p-4 mb-2 rounded shadow-sm">
+                            <div class="flex items-start">
+                                <i class="fas fa-${icon} mr-3 mt-1"></i>
+                                <div>
+                                    <p class="font-semibold">${alerta.mensaje}</p>
+                                    ${alerta.detalles && alerta.detalles.length > 0 ? 
+                                        `<p class="text-sm mt-1">Ejemplos: ${alerta.detalles.slice(0, 3).join(', ')}${alerta.detalles.length > 3 ? '...' : ''}</p>` : ''
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        /**
+ * Inicia el proceso para ver el resumen de un LCF.
+ */
+function verResumenLCF(idLCF, nombreLCF) {
+  Swal.fire({
+    title: 'Cargando Resumen...',
+    text: `Obteniendo métricas para ${nombreLCF}`,
+    allowOutsideClick: false,
+    didOpen: () => { Swal.showLoading(); }
+  });
+
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success) {
+        mostrarModalResumen(nombreLCF, response.data);
+      } else {
+        Swal.fire('Error', response.error, 'error');
+      }
+    })
+    .withFailureHandler(function(error) {
+      Swal.fire('Error de Conexión', error.toString(), 'error');
+    })
+    .getResumenLCF(idLCF);
+}
+
+/**
+ * Muestra el modal de resumen con las métricas del LCF.
+ */
+function mostrarModalResumen(nombreLCF, data) {
+  const tasaBienvenida = data.totalAlmas > 0 ? ((data.conBienvenida / data.totalAlmas) * 100).toFixed(0) : 0;
+  const tasaVisita = data.totalAlmas > 0 ? ((data.conVisita / data.totalAlmas) * 100).toFixed(0) : 0;
+  const tasaCelula = data.totalAlmas > 0 ? ((data.enCelula / data.totalAlmas) * 100).toFixed(0) : 0;
+
+  const htmlContent = `
+    <div class="text-left space-y-4">
+      <div class="grid grid-cols-2 gap-4 text-center">
+        <div class="bg-gray-100 p-3 rounded-lg">
+          <p class="text-3xl font-bold text-blue-600">${data.totalAlmas}</p>
+          <p class="text-sm text-gray-600">Almas Asignadas</p>
+        </div>
+        <div class="bg-gray-100 p-3 rounded-lg">
+          <p class="text-3xl font-bold text-purple-600">${tasaCelula}%</p>
+          <p class="text-sm text-gray-600">Integración a Célula</p>
+        </div>
+      </div>
+      <div class="space-y-2">
+        <div>
+          <div class="flex justify-between mb-1">
+            <span class="text-sm font-medium text-gray-700">Bienvenidas</span>
+            <span class="text-sm font-medium text-gray-700">${tasaBienvenida}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2.5">
+            <div class="bg-green-500 h-2.5 rounded-full" style="width: ${tasaBienvenida}%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between mb-1">
+            <span class="text-sm font-medium text-gray-700">Visitas</span>
+            <span class="text-sm font-medium text-gray-700">${tasaVisita}%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2.5">
+            <div class="bg-yellow-500 h-2.5 rounded-full" style="width: ${tasaVisita}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  Swal.fire({
+    title: `Resumen de: ${nombreLCF}`,
+    html: htmlContent,
+    icon: 'info',
+    confirmButtonText: 'Cerrar'
+  });
+}
+        
+        // Llenar selector de LD (ahora recibe la lista como argumento)
+function llenarSelectorLD(listaLDs) {
+    const selector = document.getElementById('ldSelector');
+    selector.innerHTML = '<option value="">-- Selecciona un Líder de Discípulos (LD) --</option>';
+
+    if (listaLDs && listaLDs.length > 0) {
+        listaLDs.sort((a, b) => (a.Nombre_Lider || "").localeCompare(b.Nombre_Lider || ""));
+        listaLDs.forEach(ld => {
+            const option = document.createElement('option');
+            option.value = ld.ID_Lider;
+            option.textContent = ld.Nombre_Lider || ld.ID_Lider;
+            selector.appendChild(option);
+        });
+    } else {
+        selector.innerHTML = '<option value="">-- No se pudieron cargar los LDs --</option>';
+    }
+}
+        
+        // Cargar datos de un LD específico
+        function cargarDatosLD(silent = false) {
+            const selector = document.getElementById('ldSelector');
+            
+            // Determinar el LD seleccionado (maneja cambios de selector y recargas silenciosas)
+            if (!silent) {
+                ldSeleccionado = selector.value;
+            } else if (ldSeleccionado && selector.value !== ldSeleccionado) {
+                selector.value = ldSeleccionado;
+            }
+
+            
+            if (!ldSeleccionado) {
+                // Limpiar vista si no hay selección
+                document.getElementById('resumenLD').classList.add('hidden');
+                document.getElementById('alertasLD').classList.add('hidden');
+                document.getElementById('panelLCFs').classList.add('hidden');
+                document.getElementById('panelGraficos').classList.add('hidden');
+                document.getElementById('accionesLD').classList.add('hidden');
+                return;
+            }
+            
+            // Mostrar loader (Solo si no es silencioso)
+            if (!silent) {
+                Swal.fire({
+                    title: 'Cargando equipo...',
+                    text: 'Analizando datos del LD seleccionado.',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            }
+            
+            
+            // Llamar al backend (getDatosLD usa los datos cacheados eficientemente)
+            google.script.run
+                .withSuccessHandler(function(response) {
+    if (!silent) Swal.close();
+    
+    // CRÍTICO: Guardar en ambas variables globales ANTES de verificar
+    window.datosLD = response;
+    datosLD = response;
+    
+    console.log('Datos LD recibidos:', response);
+    console.log('datosLD guardado globalmente:', !!window.datosLD);
+    
+    if (response?.success) {
+        mostrarDatosLD();
+        document.getElementById('accionesLD').classList.remove('hidden');
+    } else {
+        mostrarError(response?.error ?? 'Error cargando datos del LD.');
+    }
+})
+                .withFailureHandler(function(error) {
+                    if (!silent) Swal.close();
+                    mostrarError('Error de conexión al cargar LD: ' + error);
+                })
+                .getDatosLD(ldSeleccionado, true)
+        }
+        
+        // Mostrar datos del LD
+        function mostrarDatosLD() {
+            if (!datosLD?.resumen) return;
+            
+            mostrarResumenLD();
+            mostrarAlertasLD();
+            mostrarEquipoLD();
+            actualizarGraficos();
+        }
+        
+        // Actualizar la función mostrarResumenLD para incluir la estructura
+function mostrarResumenLD() {
+    const resumen = datosLD.resumen;
+    const container = document.getElementById('resumenLD');
+    
+    const estadoLD = resumen.ld?.Estado ?? 'Desconocido';
+    const estadoColor = getEstadoColor(estadoLD);
+    
+    container.innerHTML = `
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-gray-800">
+                <i class="fas fa-chart-line text-purple-600 mr-2"></i>
+                Resumen de: ${resumen.ld?.Nombre ?? 'Líder'}
+            </h3>
+            <span class="status-badge ${estadoColor}">Estado LD: ${estadoLD}</span>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div class="text-center p-3 bg-gray-50 rounded">
+                <p class="text-3xl font-bold text-blue-600">${resumen.estructura?.total_lm ?? 0}</p>
+                <p class="text-sm text-gray-500">LM</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded">
+                <p class="text-3xl font-bold text-green-600">${resumen.estructura?.total_small_groups ?? 0}</p>
+                <p class="text-sm text-gray-500">Small Groups</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded">
+                <p class="text-3xl font-bold text-purple-600">${resumen.estructura?.total_lcf ?? 0}</p>
+                <p class="text-sm text-gray-500">LCF Total</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded">
+                <p class="text-3xl font-bold text-indigo-600">${resumen.metricas?.total_almas ?? 0}</p>
+                <p class="text-sm text-gray-500">Total Almas</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded">
+                <p class="text-3xl font-bold text-teal-600">${resumen.metricas?.activos_totales ?? 0}</p>
+                <p class="text-sm text-gray-500">Activos</p>
+            </div>
+            <div class="text-center p-3 bg-gray-50 rounded">
+                <p class="text-3xl font-bold ${resumen.metricas?.sin_supervision_lm > 0 ? 'text-orange-600' : 'text-gray-400'}">${resumen.metricas?.sin_supervision_lm ?? 0}</p>
+                <p class="text-sm text-gray-500">Sin LM</p>
+            </div>
+        </div>
+        
+        ${resumen.metricas?.alertas_criticas && resumen.metricas.alertas_criticas.length > 0 ? `
+            <div class="mt-4 bg-red-50 border-l-4 border-red-500 p-3 rounded">
+                <p class="text-sm font-semibold text-red-800">Alertas Críticas:</p>
+                <ul class="text-xs text-red-700 mt-1">
+                    ${resumen.metricas.alertas_criticas.map(a => `<li>• ${a.mensaje}</li>`).join('')}
+                </ul>
+            </div>
+        ` : ''}
+    `;
+    
+    container.classList.remove('hidden');
+}
+       
+        
+        // Mostrar alertas del LD (Sin cambios)
+        function mostrarAlertasLD() {
+            const alertas = datosLD?.alertas ?? [];
+            const container = document.getElementById('alertasLD');
+            
+            if (alertas.length > 0) {
+                let html = '<div class="space-y-2">';
+                
+                alertas.forEach(alerta => {
+                    let bgColor, icon;
+                    if (alerta.tipo === 'error') {
+                        bgColor = 'bg-red-50 border-red-500 text-red-700';
+                        icon = 'exclamation-triangle';
+                    } else {
+                        bgColor = 'bg-yellow-50 border-yellow-500 text-yellow-700';
+                        icon = 'exclamation-circle';
+                    }
+                    
+                    html += `
+                        <div class="${bgColor} border-l-4 p-3 rounded shadow-sm">
+                            <div class="flex items-center">
+                                <i class="fas fa-${icon} mr-2"></i>
+                                <span class="font-semibold">${alerta.lcf}:</span>
+                                <span class="ml-2 text-sm">${alerta.mensaje}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                container.innerHTML = html;
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+        
+       /**
+ * Muestra el equipo completo con estructura jerárquica
+ */
+function mostrarEquipoLD() {
+    if (!datosLD || !datosLD.success) return;
+    
+    // FIX: Asegurar que todas las métricas existan
+    if (datosLD.cadenas_lm) {
+        datosLD.cadenas_lm.forEach(lm => {
+            if (!lm.metricas) {
+                lm.metricas = {
+                    total_small_groups: lm.smallGroups ? lm.smallGroups.length : 0,
+                    total_lcf_en_cadena: 0,
+                    total_almas_en_cadena: 0,
+                    small_groups_activos: 0,
+                    salud_cadena: 'Sin Datos'
+                };
+            }
+        });
+    }
+    
+    if (datosLD.small_groups_directos) {
+        datosLD.small_groups_directos.forEach(sg => {
+            if (!sg.metricas) {
+                sg.metricas = {
+                    total_lcf: sg.lcfs ? sg.lcfs.length : 0,
+                    lcf_activos: 0,
+                    total_almas: 0
+                };
+            }
+        });
+    }
+    
+    if (datosLD.lcf_directos) {
+        datosLD.lcf_directos.forEach(lcf => {
+            if (!lcf.metricas) {
+                lcf.metricas = {
+                    total_almas: 0,
+                    almas_en_celula: 0,
+                    almas_sin_celula: 0,
+                    tasa_integracion: 0,
+                    carga_trabajo: 'Sin Datos'
+                };
+            }
+        });
+    }
+    
+    const container = document.getElementById('gridLCFs');
+    let html = '';
+    
+    // Cambiar el título a uno más descriptivo
+    document.querySelector('#panelLCFs h2').innerHTML = `
+        <i class="fas fa-sitemap text-purple-600 mr-2"></i>
+        Estructura Organizacional - ${datosLD.resumen.ld.Nombre}
+    `;
+    
+    // 1. MOSTRAR CADENAS LM
+    if (datosLD.cadenas_lm && datosLD.cadenas_lm.length > 0) {
+        html += `<div class="col-span-full mb-6">
+            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                <i class="fas fa-users text-blue-600 mr-2"></i>
+                Líderes de Multiplicación (${datosLD.cadenas_lm.length})
+            </h3>
+            <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">`;
+        
+        datosLD.cadenas_lm.forEach(lm => {
+    html += crearTarjetaLMConReporte(lm); // Usar la nueva función
+  });
+        
+        html += `</div></div>`;
+    }
+    
+    // 2. MOSTRAR SMALL GROUPS DIRECTOS (Sin LM)
+    if (datosLD.small_groups_directos && datosLD.small_groups_directos.length > 0) {
+        html += `<div class="col-span-full mb-6">
+            <h3 class="text-xl font-bold text-orange-700 mb-4 flex items-center">
+                <i class="fas fa-exclamation-triangle text-orange-500 mr-2"></i>
+                Small Groups sin LM (${datosLD.small_groups_directos.length})
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+        
+        datosLD.small_groups_directos.forEach(sg => {
+            html += crearTarjetaSGDirecto(sg);
+        });
+        
+        html += `</div></div>`;
+    }
+    
+    // 3. MOSTRAR LCF DIRECTOS (Sin cadena de supervisión)
+    if (datosLD.lcf_directos && datosLD.lcf_directos.length > 0) {
+        html += `<div class="col-span-full">
+            <h3 class="text-xl font-bold text-red-700 mb-4 flex items-center">
+                <i class="fas fa-user-slash text-red-500 mr-2"></i>
+                LCF sin Supervisión Intermedia (${datosLD.lcf_directos.length})
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">`;
+        
+        datosLD.lcf_directos.forEach(lcf => {
+    html += crearTarjetaLCFDirectoConReporte(lcf); // Usar la nueva función
+  });
+        
+        html += `</div></div>`;
+    }
+    
+    container.innerHTML = html || '<p class="col-span-full text-center text-gray-500 py-8">No hay equipo asignado a este LD</p>';
+    document.getElementById('panelLCFs').classList.remove('hidden');
+}
+        
+        // Ver detalles de un LCF (Adaptado V2.0 - Data Access y Visualización Integración)
+function verDetallesLCF(idLCF) {
+    console.log('Cargando detalles para LCF:', idLCF);
+    
+    // Mostrar loading
+    Swal.fire({
+        title: 'Cargando detalles...',
+        text: 'Obteniendo información del LCF',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading(); }
+    });
+    
+    // Cargar datos del LCF
+    google.script.run
+        .withSuccessHandler(function(result) {
+            Swal.close();
+            
+            if (result && result.success) {
+                // Buscar el LCF para obtener su nombre
+                let nombreLCF = 'LCF';
+                if (datosLD) {
+                    // Buscar en todas las estructuras
+                    datosLD.lcf_directos?.forEach(lcf => {
+                        if (lcf.ID_Lider === idLCF) nombreLCF = lcf.Nombre_Lider;
+                    });
+                    datosLD.cadenas_lm?.forEach(lm => {
+                        lm.smallGroups?.forEach(sg => {
+                            sg.lcfs?.forEach(lcf => {
+                                if (lcf.ID_Lider === idLCF) nombreLCF = lcf.Nombre_Lider;
+                            });
+                        });
+                        lm.lcfDirectos?.forEach(lcf => {
+                            if (lcf.ID_Lider === idLCF) nombreLCF = lcf.Nombre_Lider;
+                        });
+                    });
+                }
+                
+                mostrarModalDetallesLCF({
+                    ID_Lider: idLCF,
+                    Nombre_Lider: nombreLCF
+                }, result.celulas || [], result.almas || []);
+            } else {
+                Swal.fire('Error', result?.error || 'No se pudieron cargar los datos', 'error');
+            }
+        })
+        .withFailureHandler(function(error) {
+            Swal.close();
+            Swal.fire('Error', error.toString(), 'error');
+        })
+        .cargarDatosLCF(idLCF);
+}
+
+function mostrarModalDetallesLCF(lcfBasico, celulas, almas) {
+    const modal = document.getElementById('modalLCF');
+    const titulo = document.getElementById('modalTitulo');
+    const contenido = document.getElementById('modalContenido');
+    
+    titulo.textContent = `Detalles: ${lcfBasico.Nombre_Lider}`;
+    
+    contenido.innerHTML = `
+        <div class="mb-6">
+            <h4 class="text-lg font-semibold mb-3 border-b pb-2">Resumen de Actividad</h4>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="text-center p-3 bg-blue-50 rounded">
+                    <p class="text-2xl font-bold text-blue-600">${almas.length}</p>
+                    <p class="text-xs text-gray-600">Total Almas</p>
+                </div>
+                <div class="text-center p-3 bg-green-50 rounded">
+                    <p class="text-2xl font-bold text-green-600">${almas.filter(a => !a.En_Celula && a.Dias_Desde_Ingreso < 30).length}</p>
+                    <p class="text-xs text-gray-600">Nuevas (30 días)</p>
+                </div>
+                <div class="text-center p-3 bg-purple-50 rounded">
+                    <p class="text-2xl font-bold text-purple-600">${almas.filter(a => a.En_Celula).length}</p>
+                    <p class="text-xs text-gray-600">En Célula</p>
+                </div>
+                <div class="text-center p-3 bg-orange-50 rounded">
+                    <p class="text-2xl font-bold text-orange-600">${almas.filter(a => a.Prioridad === 'Alta').length}</p>
+                    <p class="text-xs text-gray-600">Prioridad Alta</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-6">
+            <h4 class="text-lg font-semibold mb-3 border-b pb-2">Células (${celulas.length})</h4>
+            ${celulas.length > 0 ? `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    ${celulas.map(celula => `
+                        <div class="bg-gray-50 border rounded p-3">
+                            <p class="font-semibold">${celula.Nombre_Celula}</p>
+                            <p class="text-sm text-gray-600">${celula.Total_Miembros} miembros - ${celula.Estado}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '<p class="text-gray-500 italic">No hay células registradas</p>'}
+        </div>
+        
+        <div>
+            <h4 class="text-lg font-semibold mb-3 border-b pb-2">Almas Asignadas (${almas.length})</h4>
+            ${almas.length > 0 ? `
+                <div class="overflow-x-auto max-h-80 overflow-y-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-100 sticky top-0">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Nombre</th>
+                                <th class="px-3 py-2">Días</th>
+                                <th class="px-3 py-2">Prioridad</th>
+                                <th class="px-3 py-2">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${almas.map(alma => `
+                                <tr class="border-b hover:bg-gray-50">
+                                    <td class="px-3 py-2">${alma.Nombre_Completo}</td>
+                                    <td class="px-3 py-2 text-center ${alma.Dias_Desde_Ingreso > 30 ? 'text-red-600 font-bold' : ''}">${alma.Dias_Desde_Ingreso}</td>
+                                    <td class="px-3 py-2 text-center">
+                                        <span class="px-2 py-1 rounded text-xs ${
+                                            alma.Prioridad === 'Alta' ? 'bg-red-100 text-red-700' :
+                                            alma.Prioridad === 'Media' ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-gray-100 text-gray-700'
+                                        }">${alma.Prioridad}</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-center">
+                                        ${alma.En_Celula ? 
+                                            '<i class="fas fa-check-circle text-green-500"></i>' : 
+                                            '<i class="fas fa-times-circle text-red-500"></i>'
+                                        }
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            ` : '<p class="text-gray-500 italic">No hay almas asignadas</p>'}
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+}
+        
+ 
+function crearTarjetaLMConReporte(lm) {
+  const estadoColor = getEstadoColor(lm.Estado_Actividad);
+  
+  return `
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden card-hover">
+      <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
+        <div class="flex justify-between items-start">
+          <div>
+            <h4 class="font-bold text-lg">${lm.Nombre_Lider}</h4>
+            <p class="text-xs opacity-90">LM - ${lm.ID_Lider}</p>
+            <p class="text-xs opacity-75 mt-1">📊 ${lm.metricas.total_almas_en_cadena} almas totales</p>
+          </div>
+          <span class="status-badge ${estadoColor}">
+            ${lm.Estado_Actividad}
+          </span>
+        </div>
+      </div>
+      
+      <div class="p-4">
+        <div class="grid grid-cols-3 gap-2 text-center mb-4">
+          <div class="bg-gray-50 rounded p-2">
+            <div class="text-xl font-bold text-blue-600">${lm.metricas.total_small_groups}</div>
+            <div class="text-xs text-gray-500">Small Groups</div>
+          </div>
+          <div class="bg-gray-50 rounded p-2">
+            <div class="text-xl font-bold text-green-600">${lm.metricas.total_lcf_en_cadena}</div>
+            <div class="text-xs text-gray-500">Total LCF</div>
+          </div>
+          <div class="bg-gray-50 rounded p-2">
+            <div class="text-xl font-bold text-purple-600">${lm.metricas.total_almas_en_cadena}</div>
+            <div class="text-xs text-gray-500">Almas</div>
+          </div>
+        </div>
+        
+        <div class="text-xs text-gray-600 mb-3">
+          <p>✅ Activos: ${lm.metricas.small_groups_activos}/${lm.metricas.total_small_groups} SG</p>
+          <p>📈 Salud: <span class="${getSaludColor(lm.metricas.salud_cadena)}">${lm.metricas.salud_cadena}</span></p>
+        </div>
+        
+        <button onclick="verDetalleCadenaLM('${lm.ID_Lider}')" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition text-sm">
+          <i class="fas fa-sitemap mr-2"></i>
+          Ver Cadena Completa
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Crea tarjeta para Small Group directo (sin LM)
+ */
+function crearTarjetaSGDirecto(sg) {
+    const estadoColor = getEstadoColor(sg.Estado_Actividad);
+    
+    return `
+        <div class="bg-orange-50 border-2 border-orange-200 rounded-lg shadow-md p-4">
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <h4 class="font-semibold text-gray-800">${sg.Nombre_Lider}</h4>
+                    <p class="text-xs text-gray-500">SG - ${sg.ID_Lider}</p>
+                    <span class="text-xs text-orange-600 font-medium">⚠️ Sin LM asignado</span>
+                </div>
+                <span class="status-badge ${estadoColor} text-xs">
+                    ${sg.Estado_Actividad}
+                </span>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                <div>
+                    <div class="text-lg font-bold text-green-600">${sg.metricas.total_lcf}</div>
+                    <div class="text-xs text-gray-500">LCF</div>
+                </div>
+                <div>
+                    <div class="text-lg font-bold text-blue-600">${sg.metricas.lcf_activos}</div>
+                    <div class="text-xs text-gray-500">Activos</div>
+                </div>
+                <div>
+                    <div class="text-lg font-bold text-purple-600">${sg.metricas.total_almas}</div>
+                    <div class="text-xs text-gray-500">Almas</div>
+                </div>
+            </div>
+            
+            <button onclick="verDetalleSG('${sg.ID_Lider}')" 
+                    class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 rounded text-sm transition">
+                Ver LCF del Grupo
+            </button>
+        </div>
+    `;
+}
+
+
+// REEMPLAZAR crearTarjetaLCFDirectoConReporte con esta versión:
+function crearTarjetaLCFDirectoConReporte(lcf) {
+  const estadoColor = getEstadoColor(lcf.Estado_Actividad);
+  const cargaColor = getCargaColor(lcf.metricas.carga_trabajo);
+  
+  return `
+    <div class="bg-red-50 border border-red-200 rounded-lg shadow p-3">
+      <div class="mb-2">
+        <h5 class="font-semibold text-sm text-gray-800 truncate">${lcf.Nombre_Lider}</h5>
+        <p class="text-xs text-gray-500">${lcf.ID_Lider}</p>
+        <span class="status-badge ${estadoColor} text-xs mt-1">
+          ${lcf.Estado_Actividad}
+        </span>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-2 text-center text-xs mb-2">
+        <div class="bg-white rounded p-1">
+          <div class="font-bold text-blue-600">${lcf.metricas.total_almas}</div>
+          <div class="text-gray-500">Almas</div>
+        </div>
+        <div class="bg-white rounded p-1">
+          <div class="font-bold text-green-600">${lcf.metricas.tasa_integracion}%</div>
+          <div class="text-gray-500">Integración</div>
+        </div>
+      </div>
+      
+      <span class="status-badge ${cargaColor} text-xs">
+        Carga: ${lcf.metricas.carga_trabajo}
+      </span>
+      
+      <div class="grid grid-cols-2 gap-1 mt-2">
+        <!-- Primera fila de botones -->
+        <button onclick="verResumenLCF('${lcf.ID_Lider}', '${lcf.Nombre_Lider.replace(/'/g, "\\'")}')"
+              class="bg-blue-600 hover:bg-blue-700 text-white py-1 px-2 rounded text-xs transition"
+              title="Ver Resumen de Métricas">
+           <i class="fas fa-chart-line text-xs"></i> Resumen
+      </button>
+        <!-- Segunda fila de botones -->
+        <button onclick="generarReporteLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')"
+                      class="bg-green-600 hover:bg-green-700 text-white py-1 px-2 rounded text-xs transition"
+                      title="PDF">
+                <i class="fas fa-file-pdf text-xs"></i> PDF
+              </button>
+        <button onclick="verSeguimientoAlmasLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')" 
+                class="bg-purple-600 hover:bg-purple-700 text-white py-1 px-2 rounded text-xs transition"
+                title="Seguimiento">
+          <i class="fas fa-chart-bar text-xs"></i> Seg.
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Ver detalle de cadena LM (expandir jerarquía completa)
+ */
+function verDetalleCadenaLM(idLM) {
+    const lm = datosLD.cadenas_lm.find(l => l.ID_Lider === idLM);
+    if (!lm) return;
+    
+    const modal = document.getElementById('modalLCF');
+    const titulo = document.getElementById('modalTitulo');
+    const contenido = document.getElementById('modalContenido');
+    
+    titulo.innerHTML = `
+        <i class="fas fa-sitemap mr-2"></i>
+        Cadena de Supervisión: ${lm.Nombre_Lider}
+    `;
+    
+    let html = `
+        <div class="space-y-6">
+            <!-- Resumen de la cadena -->
+            <div class="bg-blue-50 rounded-lg p-4">
+                <h4 class="font-bold text-lg text-blue-800 mb-3">Resumen de la Cadena</h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600">${lm.metricas?.total_small_groups || 0}</div>
+                        <div class="text-sm text-gray-600">Small Groups</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-600">${lm.metricas?.total_lcf_en_cadena || 0}</div>
+                        <div class="text-sm text-gray-600">Total LCF</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-purple-600">${lm.metricas?.total_almas_en_cadena || 0}</div>
+                        <div class="text-sm text-gray-600">Total Almas</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold ${getSaludColor(lm.metricas?.salud_cadena || 'Sin datos')}">${lm.metricas?.salud_cadena || 'Sin datos'}</div>
+                        <div class="text-sm text-gray-600">Salud</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Estructura jerárquica -->
+            <div>
+                <h4 class="font-bold text-lg text-gray-800 mb-3">Estructura Organizacional</h4>
+                
+                <!-- Small Groups y sus LCF -->
+                ${lm.smallGroups && lm.smallGroups.length > 0 ? lm.smallGroups.map(sg => `
+                    <div class="mb-6 border-l-4 border-blue-500 pl-4">
+                        <div class="bg-gray-50 rounded-lg p-3 mb-3">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <h5 class="font-semibold text-gray-800">
+                                        <i class="fas fa-users-cog mr-2 text-gray-600"></i>
+                                        ${sg.Nombre_Lider}
+                                    </h5>
+                                    <p class="text-sm text-gray-500">Small Group - ${sg.ID_Lider}</p>
+                                </div>
+                                <span class="status-badge ${getEstadoColor(sg.Estado_Actividad)}">
+                                    ${sg.Estado_Actividad}
+                                </span>
+                            </div>
+                            <div class="mt-2 text-sm text-gray-600">
+                                ${sg.metricas?.total_lcf || 0} LCF | 
+                                ${sg.metricas?.total_almas || 0} almas | 
+                                ${sg.metricas?.lcf_activos || 0} activos
+                            </div>
+                        </div>
+                        
+                        <!-- LCF del Small Group -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 ml-4">
+                            ${sg.lcfs && sg.lcfs.length > 0 ? sg.lcfs.map(lcf => `
+                                <div class="bg-white border rounded p-2 text-sm">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <p class="font-medium text-gray-800">${lcf.Nombre_Lider}</p>
+                                            <p class="text-xs text-gray-500">${lcf.ID_Lider}</p>
+                                        </div>
+                                        <span class="text-xs px-2 py-1 rounded ${
+                                            lcf.Estado_Actividad === 'Activo' ? 'bg-green-100 text-green-700' :
+                                            lcf.Estado_Actividad === 'Alerta' ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-red-100 text-red-700'
+                                        }">
+                                            ${lcf.Estado_Actividad}
+                                        </span>
+                                    </div>
+                                    <div class="mt-1 text-xs text-gray-600">
+                                        ${lcf.metricas?.total_almas || 0} almas | 
+                                        ${lcf.metricas?.tasa_integracion || 0}% integración
+                                    </div>
+                                    
+                                    <div class="mt-2 grid grid-cols-3 gap-1">
+                                      <button onclick="navegarDesdeModalA('verResumenLCF', '${lcf.ID_Lider}', '${lcf.Nombre_Lider.replace(/'/g, "\\'")}')"
+                                            class="bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded text-xs"
+                                            title="Ver Resumen de Métricas">
+                                        <i class="fas fa-chart-line text-xs"></i>
+                                    </button>
+                                      <button onclick="navegarDesdeModalA('verSeguimientoAlmasLCF', '${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')"
+                                             class="bg-purple-600 hover:bg-purple-700 text-white px-1 py-1 rounded text-xs"
+                                            title="Seguimiento detallado">
+                                            <i class="fas fa-chart-bar text-xs"></i>
+                                        </button>
+                                        <button onclick="navegarDesdeModalA('generarReporteLCF', '${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')" 
+                                                class="bg-green-600 hover:bg-green-700 text-white px-1 py-1 rounded text-xs"
+                                                title="PDF">
+                                            <i class="fas fa-file-pdf text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('') : '<p class="text-gray-500 text-xs">Sin LCF asignados</p>'}
+                        </div>
+                    </div>
+                `).join('') : '<p class="text-gray-500">No hay Small Groups en esta cadena</p>'}
+                
+                <!-- LCF directos del LM (sin SG) -->
+                ${lm.lcfDirectos && lm.lcfDirectos.length > 0 ? `
+                    <div class="mt-6 border-l-4 border-orange-500 pl-4">
+                        <h5 class="font-semibold text-orange-700 mb-3">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            LCF reportando directamente (sin Small Group)
+                        </h5>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            ${lm.lcfDirectos.map(lcf => `
+                                <div class="bg-orange-50 border border-orange-200 rounded p-2 text-sm">
+                                    <div>
+                                        <p class="font-medium">${lcf.Nombre_Lider}</p>
+                                        <p class="text-xs text-gray-600">
+                                            ${lcf.ID_Lider} | ${lcf.metricas?.total_almas || 0} almas | ${lcf.Estado_Actividad}
+                                        </p>
+                                    </div>
+                                    
+                                    <div class="mt-2 grid grid-cols-3 gap-1">
+    <button onclick="verResumenLCF('${lcf.ID_Lider}', '${lcf.Nombre_Lider.replace(/'/g, "\\'")}')"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded text-xs"
+            title="Ver Resumen de Métricas">
+        <i class="fas fa-chart-line text-xs"></i>
+    </button>
+    <button onclick="verSeguimientoAlmasLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')" 
+            class="bg-purple-600 hover:bg-purple-700 text-white px-1 py-1 rounded text-xs"
+            title="Seguimiento">
+        <i class="fas fa-chart-bar text-xs"></i>
+    </button>
+    <button onclick="generarReporteLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')" 
+            class="bg-green-600 hover:bg-green-700 text-white px-1 py-1 rounded text-xs"
+            title="PDF">
+        <i class="fas fa-file-pdf text-xs"></i>
+    </button>
+</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+    
+    contenido.innerHTML = html;
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+}
+
+// Función para ver vista rápida desde el modal (para que funcione con la estructura anidada)
+// Función para ver vista rápida desde cualquier modal
+function verVistaRapidaDesdeModal(idLCF, nombreLCF) {
+    // Cerrar el modal actual
+    cerrarModal();
+    
+    // Esperar un momento y abrir la vista rápida
+    setTimeout(() => {
+        verVistaRapidaLCF(idLCF, nombreLCF);
+    }, 300);
+}
+
+// Función para generar reporte PDF desde cualquier modal
+function generarReporteLCFDesdeModal(idLCF, nombreLCF) {
+    // Cerrar modal actual
+    cerrarModal();
+    
+    // Esperar y generar reporte
+    setTimeout(() => {
+        generarReporteLCF(idLCF, nombreLCF);
+    }, 300);
+}
+
+// Función auxiliar para obtener color de salud
+function getSaludColor(salud) {
+    switch(salud) {
+        case 'Excelente': return 'text-green-600';
+        case 'Buena': return 'text-blue-600';
+        case 'Regular': return 'text-yellow-600';
+        case 'Crítica': return 'text-red-600';
+        default: return 'text-gray-600';
+    }
+}
+
+function verDetalleSG(idSG) {
+    // Buscar el SG en todas las estructuras
+    let sg = null;
+    
+    if (datosLD && datosLD.cadenas_lm) {
+        datosLD.cadenas_lm.forEach(lm => {
+            const found = lm.smallGroups.find(s => s.ID_Lider === idSG);
+            if (found) sg = found;
+        });
+    }
+    
+    if (!sg && datosLD && datosLD.small_groups_directos) {
+        sg = datosLD.small_groups_directos.find(s => s.ID_Lider === idSG);
+    }
+    
+    if (!sg) {
+        Swal.fire('Error', 'Small Group no encontrado', 'error');
+        return;
+    }
+    
+    const modal = document.getElementById('modalLCF');
+    const titulo = document.getElementById('modalTitulo');
+    const contenido = document.getElementById('modalContenido');
+    
+    titulo.innerHTML = `
+        <i class="fas fa-users-cog mr-2"></i>
+        Small Group: ${sg.Nombre_Lider}
+    `;
+    
+    contenido.innerHTML = `
+        <div class="space-y-4">
+            <!-- Resumen del Small Group -->
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="font-bold text-gray-800 mb-3">Resumen del Grupo</h4>
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="text-center">
+                        <div class="text-xl font-bold text-blue-600">${sg.metricas?.total_lcf || 0}</div>
+                        <div class="text-xs text-gray-500">Total LCF</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-xl font-bold text-green-600">${sg.metricas?.lcf_activos || 0}</div>
+                        <div class="text-xs text-gray-500">LCF Activos</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-xl font-bold text-purple-600">${sg.metricas?.total_almas || 0}</div>
+                        <div class="text-xs text-gray-500">Total Almas</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lista de LCF del grupo -->
+            <div class="bg-white rounded-lg p-4">
+                <h4 class="font-bold text-gray-800 mb-3">LCF del Grupo (${sg.lcfs ? sg.lcfs.length : 0})</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    ${sg.lcfs && sg.lcfs.length > 0 ? sg.lcfs.map(lcf => `
+                        <div class="bg-gray-50 border rounded-lg p-3">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <p class="font-semibold">${lcf.Nombre_Lider}</p>
+                                    <p class="text-xs text-gray-500">${lcf.ID_Lider}</p>
+                                </div>
+                                <span class="status-badge ${getEstadoColor(lcf.Estado_Actividad)} text-xs">
+                                    ${lcf.Estado_Actividad || 'Sin datos'}
+                                </span>
+                            </div>
+                            
+                            <div class="grid grid-cols-3 gap-2 text-center text-xs mb-2">
+                                <div>
+                                    <div class="font-bold text-blue-600">${lcf.metricas?.total_almas || 0}</div>
+                                    <div class="text-gray-500">Almas</div>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-green-600">${lcf.metricas?.almas_en_celula || 0}</div>
+                                    <div class="text-gray-500">En Célula</div>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-purple-600">${lcf.metricas?.tasa_integracion || 0}%</div>
+                                    <div class="text-gray-500">Integración</div>
+                                </div>
+                            </div>
+                            
+                            <!-- BOTONES CORREGIDOS -->
+                            <div class="grid grid-cols-3 gap-1">
+    <button onclick="verResumenLCF('${lcf.ID_Lider}', '${lcf.Nombre_Lider.replace(/'/g, "\\'")}')"
+            class="bg-blue-600 hover:bg-blue-700 text-white py-1 rounded text-xs"
+            title="Ver Resumen de Métricas">
+        <i class="fas fa-chart-line text-xs"></i>
+    </button>
+    <button onclick="verSeguimientoAlmasLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')"
+            class="bg-purple-600 hover:bg-purple-700 text-white py-1 rounded text-xs"
+            title="Seguimiento detallado">
+        <i class="fas fa-chart-bar text-xs"></i>
+    </button>
+    <button onclick="generarReporteLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')" 
+            class="bg-green-600 hover:bg-green-700 text-white py-1 rounded text-xs"
+            title="Generar PDF">
+        <i class="fas fa-file-pdf text-xs"></i>
+    </button>
+</div>
+                        </div>
+                    `).join('') : '<p class="text-center text-gray-500">No hay LCF en este grupo</p>'}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+}
+
+function verSeguimientoDesdeModal(idLCF, nombreLCF) {
+    cerrarModal();
+    setTimeout(() => {
+        if (typeof verSeguimientoAlmasLCF === 'function') {
+            verSeguimientoAlmasLCF(idLCF, nombreLCF);
+        } else {
+            Swal.fire('Error', 'Función de seguimiento no disponible', 'error');
+        }
+    }, 300);
+}
+
+function verDetalleLCF(idLCF) {
+    // Buscar el LCF en todas las estructuras posibles
+    let lcf = null;
+    
+    // Buscar en cadenas LM
+    if (datosLD.cadenas_lm) {
+        datosLD.cadenas_lm.forEach(lm => {
+            lm.smallGroups.forEach(sg => {
+                const found = sg.lcfs.find(l => l.ID_Lider === idLCF);
+                if (found) lcf = found;
+            });
+            const foundDirect = lm.lcfDirectos.find(l => l.ID_Lider === idLCF);
+            if (foundDirect) lcf = foundDirect;
+        });
+    }
+    
+    // Buscar en Small Groups directos
+    if (!lcf && datosLD.small_groups_directos) {
+        datosLD.small_groups_directos.forEach(sg => {
+            const found = sg.lcfs.find(l => l.ID_Lider === idLCF);
+            if (found) lcf = found;
+        });
+    }
+    
+    // Buscar en LCF directos
+    if (!lcf && datosLD.lcf_directos) {
+        lcf = datosLD.lcf_directos.find(l => l.ID_Lider === idLCF);
+    }
+    
+    if (!lcf) {
+        mostrarError('No se encontraron datos del LCF');
+        return;
+    }
+    
+    // Continuar con el resto de la función usando lcf...
+    const modal = document.getElementById('modalLCF');
+    const titulo = document.getElementById('modalTitulo');
+    const contenido = document.getElementById('modalContenido');
+    
+    titulo.textContent = `Detalles: ${lcf.Nombre_Lider}`;
+    
+    // Mostrar las métricas del LCF
+    contenido.innerHTML = `
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="text-center p-3 bg-blue-50 rounded">
+                    <p class="text-2xl font-bold text-blue-600">${lcf.metricas.total_almas}</p>
+                    <p class="text-xs text-gray-600">Total Almas</p>
+                </div>
+                <div class="text-center p-3 bg-green-50 rounded">
+                    <p class="text-2xl font-bold text-green-600">${lcf.metricas.almas_en_celula}</p>
+                    <p class="text-xs text-gray-600">En Célula</p>
+                </div>
+                <div class="text-center p-3 bg-orange-50 rounded">
+                    <p class="text-2xl font-bold text-orange-600">${lcf.metricas.almas_sin_celula}</p>
+                    <p class="text-xs text-gray-600">Sin Célula</p>
+                </div>
+                <div class="text-center p-3 bg-purple-50 rounded">
+                    <p class="text-2xl font-bold text-purple-600">${lcf.metricas.tasa_integracion}%</p>
+                    <p class="text-xs text-gray-600">Integración</p>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 rounded p-4">
+                <h4 class="font-bold mb-2">Estado del Líder</h4>
+                <p>Estado: <span class="status-badge ${getEstadoColor(lcf.Estado_Actividad)}">${lcf.Estado_Actividad}</span></p>
+                <p class="mt-2">Carga de Trabajo: <span class="status-badge ${getCargaColor(lcf.metricas.carga_trabajo)}">${lcf.metricas.carga_trabajo}</span></p>
+            </div>
+            
+            <div class="text-center">
+                <button onclick="verSeguimientoAlmasLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg">
+                    <i class="fas fa-chart-line mr-2"></i>
+                    Ver Seguimiento Detallado de Almas
+                </button>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+}
+
+/**
+ * Helper: Obtener color de salud
+ */
+function getSaludColor(salud) {
+    switch(salud) {
+        case 'Excelente': return 'text-green-600';
+        case 'Buena': return 'text-blue-600';
+        case 'Regular': return 'text-yellow-600';
+        case 'Crítica': return 'text-red-600';
+        default: return 'text-gray-600';
+    }
+}
+
+        // Cerrar modal
+function cerrarModal() {
+    const modal = document.getElementById('modalLCF');
+    modal.classList.add('hidden');
+    // Esta línea es la corrección clave:
+    modal.style.display = 'none'; 
+}
+        
+        // Actualizar gráficos (CORREGIDA PARA USAR DATOS DEL LÍDER CARGADO)
+function actualizarGraficos() {
+    const panel = document.getElementById('panelGraficos');
+    
+    // Verificamos que existan los datos del líder antes de continuar
+    if (!datosLD || !datosLD.equipo) {
+        panel.classList.add('hidden');
+        return;
+    }
+
+    panel.classList.remove('hidden');
+    
+    // Preparar datos directamente del equipo del líder (datosLD)
+    let activos = 0, alerta = 0, inactivos = 0, sinDatos = 0;
+    let celulasVacias = 0, celulasRiesgo = 0, celulasSaludables = 0, celulasMultiplicar = 0, celulasCrecimiento = 0;
+    
+    // 1. Contar estados de actividad del equipo
+    datosLD.equipo.forEach(lcf => {
+        switch (lcf.Estado_Actividad) {
+            case 'Activo': activos++; break;
+            case 'Alerta': alerta++; break;
+            case 'Inactivo': inactivos++; break;
+            default: sinDatos++; break;
+        }
+        
+        // 2. Contar estados de las células de cada LCF del equipo
+        // (La propiedad .celulas no estaba en el objeto LCF, la añadimos en el backend)
+        // Por ahora, asumimos que no tenemos los datos de las células y lo dejamos en 0.
+        // Si necesitas este gráfico, requerirá un pequeño ajuste en el backend.
+    });
+    
+    // Gráfico de estados de LCF (Doughnut)
+    const ctxEstados = document.getElementById('chartEstados').getContext('2d');
+    if (window.chartEstados instanceof Chart) {
+        window.chartEstados.destroy();
+    }
+    window.chartEstados = new Chart(ctxEstados, {
+        type: 'doughnut',
+        data: {
+            labels: ['Activos', 'En Alerta', 'Inactivos', 'Sin Datos'],
+            datasets: [{
+                data: [activos, alerta, inactivos, sinDatos],
+                backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#9ca3af']
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+    
+    // Gráfico de salud de células (Bar) - Se mostrará vacío por ahora
+    const ctxCelulas = document.getElementById('chartCelulas').getContext('2d');
+    if (window.chartCelulas instanceof Chart) {
+        window.chartCelulas.destroy();
+    }
+    window.chartCelulas = new Chart(ctxCelulas, {
+        type: 'bar',
+        data: {
+            labels: ['Saludables', 'Crecimiento', 'Multiplicar', 'Riesgo', 'Vacías'],
+            datasets: [{
+                label: 'Células del Equipo',
+                data: [celulasSaludables, celulasCrecimiento, celulasMultiplicar, celulasRiesgo, celulasVacias],
+                backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444']
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+        // Generar reporte PDF (Manejo Robusto V2.0)
+        function generarReporteLD() {
+            if (!ldSeleccionado) {
+                Swal.fire('Error', 'Selecciona un LD primero', 'warning');
+                return;
+            }
+
+            // Verificar si la función parece existir en el backend (proxy)
+            if (typeof google.script.run.generarReporteLD !== 'function') {
+                 Swal.fire({
+                    icon: 'info',
+                    title: 'Función No Implementada',
+                    text: 'La función de generación de PDF (generarReporteLD) no está disponible en el backend (Code.gs).'
+                });
+                return;
+            }
+            
+            Swal.fire({
+                title: 'Generando reporte PDF...',
+                text: 'Preparando el documento.',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    Swal.close();
+                    
+                    if (response?.success) {
+                        // Descargar el PDF
+                        const link = document.createElement('a');
+                        link.href = 'data:application/pdf;base64,' + response.content;
+                        link.download = response.fileName;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        Swal.fire('Éxito', 'Reporte descargado.', 'success');
+                    } else {
+                        mostrarError(response?.error || 'Error generando el reporte.');
+                    }
+                })
+                .withFailureHandler(function(error) {
+                    Swal.close();
+                    mostrarError('Error de conexión al generar reporte: ' + error);
+                })
+                .generarReporteLD(ldSeleccionado);
+        }
+        
+        
+        // Imprimir detalles
+        function imprimirDetalles() {
+            window.print();
+        }
+        
+        // Ver manual (Actualizado V2.0)
+        function verManual() {
+            Swal.fire({
+                title: 'Manual de Uso V2.0',
+                html: `
+                    <div class="text-left space-y-4 text-sm">
+                        <h4 class="font-bold text-lg">1. Actualización de Datos y Caché</h4>
+                        <p>El sistema usa caché para cargar rápido. Los datos se actualizan automáticamente cada 30 min. Usa el botón <strong>Actualizar</strong> para forzar la recarga inmediata desde Google Sheets (será más lento).</p>
+                        
+                        <h4 class="font-bold text-lg">2. Estados de Actividad (Cálculo Real)</h4>
+                        <p>Basado en el último reporte (Célula o Visita) registrado:</p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li><span class="text-green-600">Activo:</span> < 7 días.</li>
+                            <li><span class="text-yellow-600">Alerta:</span> 7-14 días.</li>
+                            <li><span class="text-red-600">Inactivo:</span> > 30 días.</li>
+                            <li><span class="text-gray-600">Sin Datos:</span> Nunca ha reportado.</li>
+                        </ul>
+                        
+                        <h4 class="font-bold text-lg">3. Métrica de Integración</h4>
+                        <p>Mide el porcentaje de almas (Ingresos) que han sido añadidas exitosamente al Directorio de Células.</p>
+                    </div>
+                `,
+                width: '600px',
+                confirmButtonText: 'Entendido'
+            });
+        }
+        
+        // Mostrar error genérico
+        function mostrarError(mensaje) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: mensaje
+            });
+        }
+
+        // ==================== FUNCIONES DE REPORTES PDF ====================
+// INICIO DEL BLOQUE - COPIAR DESDE AQUÍ
+
+function generarReporteLCF(idLCF, nombreLCF) {
+  Swal.fire({
+    title: 'Generando Reporte',
+    html: `
+      <div class="text-center">
+        <i class="fas fa-file-pdf text-6xl text-red-500 mb-4"></i>
+        <p>Preparando reporte para:</p>
+        <p class="font-bold text-lg">${escapeHTML(nombreLCF)}</p>
+        <p class="text-sm text-gray-500 mt-2">Esto puede tomar unos segundos...</p>
+      </div>
+    `,
+    allowOutsideClick: false,
+    showConfirmButton: false,
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result && result.success) {
+        // Primero descargar el archivo
+        const link = document.createElement('a');
+        link.href = 'data:application/pdf;base64,' + result.content;
+        link.download = result.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Luego mostrar confirmación
+        Swal.fire({
+          icon: 'success',
+          title: '¡Reporte Generado!',
+          html: `
+            <div class="text-left">
+              <p class="mb-2"><strong>Líder:</strong> ${escapeHTML(result.lcf)}</p>
+              <p class="mb-2"><strong>Total de almas:</strong> ${result.total_almas}</p>
+              <p class="mb-2"><strong>Archivo:</strong> ${escapeHTML(result.fileName)}</p>
+              
+              <div class="mt-4 p-3 bg-blue-50 rounded">
+                <p class="text-sm font-semibold text-blue-800">Métricas del reporte:</p>
+                <ul class="text-sm text-gray-700 mt-2">
+                  <li>• En célula: ${result.metricas?.en_celula || 0}</li>
+                  <li>• Sin célula: ${result.metricas?.sin_celula || 0}</li>
+                  <li>• Urgentes (+30 días): ${result.metricas?.urgentes || 0}</li>
+                  <li>• Desean visita: ${result.metricas?.desean_visita || 0}</li>
+                </ul>
+              </div>
+            </div>
+          `,
+          footer: '<p class="text-sm text-gray-500">El archivo se descargó automáticamente.</p>',
+          confirmButtonText: 'Cerrar',
+          confirmButtonColor: '#667eea'
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al generar reporte',
+          text: result?.error || 'Ocurrió un error desconocido',
+          confirmButtonColor: '#ef4444'
+        });
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Error:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de conexión',
+        text: 'No se pudo conectar con el servidor: ' + error.toString(),
+        confirmButtonColor: '#ef4444'
+      });
+    })
+    .generarReporteLCF(idLCF);
+}
+
+
+
+function verVistaRapidaLCF(idLCF, nombreLCF) {
+  Swal.fire({
+    title: 'Cargando vista rápida...',
+    text: nombreLCF,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      // NO cerrar Swal aquí - dejar que mostrarVistaRapidaLCF lo maneje
+      if (result && result.success) {
+        mostrarVistaRapidaLCF(result);
+      } else {
+        Swal.fire('Error', result?.error || 'Error al cargar datos', 'error');
+      }
+    })
+    .withFailureHandler(function(error) {
+      Swal.fire('Error', error.toString(), 'error');
+    })
+    .getVistaRapidaLCF(idLCF);
+}
+
+function mostrarVistaRapidaLCF(data) {
+  // Función auxiliar para truncar texto de forma segura (Maneja Nulos)
+  const truncateText = (text, length) => {
+    if (!text || text === '-') return '-';
+    return text.length > length ? text.substring(0, length) + '...' : text;
+  };
+
+  const html = `
+    <div class="max-h-96 overflow-y-auto">
+      <table class="w-full text-xs">
+        <thead class="bg-gray-100 sticky top-0">
+          <tr>
+            <th class="px-2 py-1 text-left">Nombre</th>
+            <th class="px-2 py-1">Tel</th>
+            <th class="px-2 py-1">Visita</th>
+            <th class="px-2 py-1">Petición</th>
+            <th class="px-2 py-1" title="Bienvenida">B</th>
+            <th class="px-2 py-1" title="Visita Bendición">V</th>
+            <th class="px-2 py-1" title="Células">C</th>
+            <th class="px-2 py-1">Estado</th>
+            <th class="px-2 py-1">Días</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.almas.length > 0 ? data.almas.map(alma => `
+            <tr class="border-b hover:bg-gray-50 ${
+              alma.Dias_Sin_Seguimiento > 30 ? 'bg-red-50' :
+              alma.Dias_Sin_Seguimiento > 14 ? 'bg-yellow-50' : ''
+            }">
+              <td class="px-2 py-1 font-medium text-xs">${escapeHTML(alma.Nombre)}</td>
+              <td class="px-2 py-1 text-xs">${escapeHTML(truncateText(alma.Telefono, 10))}</td>
+              <td class="px-2 py-1 text-center">${alma.Acepta_Visita === 'SI' ? '✓' : '-'}</td>
+              
+              <td class="px-2 py-1 text-xs truncate max-w-[100px]" title="${escapeHTML(alma.Peticion)}">${escapeHTML(truncateText(alma.Peticion, 20))}</td>
+              
+              <td class="px-2 py-1 text-center ${alma.Bienvenida === '✓' ? 'text-green-600' : 'text-red-600'}">${alma.Bienvenida}</td>
+              <td class="px-2 py-1 text-center ${alma.Visita === '✓' ? 'text-green-600' : 'text-red-600'}">${alma.Visita}</td>
+              <td class="px-2 py-1 text-center text-xs">${alma.Celulas}</td>
+              <td class="px-2 py-1">
+                <span class="text-xs px-1 rounded ${
+                  alma.Estado === 'Activo' ? 'bg-green-100 text-green-700' :
+                  alma.Estado === 'Completado' ? 'bg-blue-100 text-blue-700' :
+                  alma.Estado === 'Inactivo' ? 'bg-red-100 text-red-700' :
+                  alma.Estado === 'En Riesgo' ? 'bg-orange-100 text-orange-700' :
+                  'bg-gray-100 text-gray-700'
+                }">${alma.Estado}</span>
+              </td>
+              <td class="px-2 py-1 text-center ${
+                alma.Dias_Sin_Seguimiento > 30 ? 'text-red-600 font-bold' :
+                alma.Dias_Sin_Seguimiento > 14 ? 'text-orange-600' :
+                'text-gray-600'
+              }">${alma.Dias_Sin_Seguimiento !== null ? alma.Dias_Sin_Seguimiento : '-'}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="9" class="text-center py-4 text-gray-500">No hay almas asignadas</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-4 text-xs text-gray-600">
+      <p><strong>Leyenda:</strong> B=Bienvenida, V=Visita Bendición, C=Células (completados/total)</p>
+    </div>
+  `;
+  
+  Swal.fire({
+    title: `Vista Rápida: ${escapeHTML(data.lcf)}`, // Sanitización Aplicada
+    html: html,
+    width: '900px',
+    confirmButtonText: 'Cerrar',
+    confirmButtonColor: '#667eea'
+  });
+}
+/**
+ * Muestra el seguimiento completo de almas de un LCF
+ * (Versión corregida con manejo de respuesta nula)
+ */
+function verSeguimientoAlmasLCF(idLCF, nombreLCF) {
+  Swal.fire({
+    title: 'Cargando Seguimiento',
+    html: `
+      <div class="text-center">
+        <i class="fas fa-users fa-spin text-6xl text-blue-500 mb-4"></i>
+        <p>Obteniendo datos de seguimiento para:</p>
+        <p class="font-bold text-lg">${escapeHTML(nombreLCF)}</p>
+        <p class="text-sm text-gray-500 mt-2">Integrando múltiples fuentes de datos...</p>
+      </div>
+    `,
+    allowOutsideClick: false,
+    showConfirmButton: false,
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      Swal.close();
+
+      // ===== INICIO DE LA CORRECCIÓN DEFINITIVA =====
+
+      // 1. Se verifica primero si la respuesta es nula (causado por timeout del servidor)
+      if (!result) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error de Comunicación',
+          text: 'El servidor no devolvió una respuesta. Esto usualmente ocurre porque la operación tardó demasiado (timeout).',
+          confirmButtonColor: '#ef4444'
+        });
+        return; // Se detiene la ejecución para evitar el error
+      }
+      
+      // 2. Si la respuesta NO es nula, se procesa de forma segura como antes
+      if (result.success) {
+        mostrarModalSeguimiento(result);
+      } else {
+        // El backend reportó un error de forma controlada
+        Swal.fire({
+          icon: 'error',
+          title: 'Error Reportado por el Servidor',
+          text: result.error || 'No se pudo cargar el seguimiento',
+          confirmButtonColor: '#ef4444'
+        });
+      }
+      // ===== FIN DE LA CORRECCIÓN DEFINITIVA =====
+    })
+    .withFailureHandler(function(error) {
+      console.error('Error de conexión:', error);
+      Swal.close();
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de Conexión',
+        text: error.toString(),
+        confirmButtonColor: '#ef4444'
+      });
+    })
+    .getSeguimientoAlmasLCF(idLCF);
+}
+
+/**
+ * Muestra el modal con el seguimiento detallado (VERSIÓN ACTUALIZADA)
+ */
+function mostrarModalSeguimiento(data) {
+  if (Swal.isVisible()) {
+    Swal.close();
+    setTimeout(() => mostrarModalSeguimiento(data), 500);
+    return;
+  }
+  
+  const modal = document.getElementById('modalLCF');
+  const titulo = document.getElementById('modalTitulo');
+  const contenido = document.getElementById('modalContenido');
+  
+  if (!modal || !titulo || !contenido) {
+    console.error('Elementos del modal no encontrados');
+    Swal.fire('Error', 'No se pudo abrir el modal de seguimiento', 'error');
+    return;
+  }
+  
+  titulo.innerHTML = `<i class="fas fa-chart-line mr-2"></i> Seguimiento de Almas - ${escapeHTML(data.lcf.Nombre)}`;
+  
+  let html = `
+    <div class="space-y-6">
+<div>
+  <h4 class="font-bold text-lg text-gray-800 mb-3">Resumen de Seguimiento</h4>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+    <div class="bg-blue-500 text-white p-4 rounded-lg shadow-md text-center">
+      <div class="text-sm">Total Almas</div>
+      <div class="text-3xl font-bold">${data.resumen.total_almas}</div>
+    </div>
+
+    <div class="bg-green-500 text-white p-4 rounded-lg shadow-md text-center">
+      <div class="text-sm">Con Bienvenida</div>
+      <div class="text-3xl font-bold">${data.resumen.con_bienvenida}</div>
+    </div>
+
+    <div class="bg-purple-500 text-white p-4 rounded-lg shadow-md text-center">
+      <div class="text-sm">Con Visita</div>
+      <div class="text-3xl font-bold">${data.resumen.con_visita}</div>
+    </div>
+
+    <div class="bg-indigo-600 text-white p-4 rounded-lg shadow-md text-center">
+      <div class="text-sm">En Células</div>
+      <div class="text-3xl font-bold">${data.resumen.en_celulas}</div>
+    </div>
+
+  </div>
+</div>
+            <div class="overflow-x-auto">
+        <table class="w-full text-xs" id="tablaSeguimiento">
+                    <thead class="bg-gray-100 sticky top-0">
+            <tr>
+              <th class="px-2 py-2 text-center"><input type="checkbox" onclick="seleccionarTodos(this)" title="Seleccionar Todos"></th>
+              <th class="px-2 py-2 text-left">Nombre</th>
+              <th class="px-2 py-2 text-center">Teléfono</th>
+              <th class="px-2 py-2 text-center">Acepta<br>Visita</th>
+              <th class="px-2 py-2 text-center" title="Bienvenida">B</th>
+              <th class="px-2 py-2 text-center" title="Visita Bendición">V</th>
+              <th class="px-2 py-2 text-center" title="Progreso Células">C</th>
+              <th class="px-2 py-2 text-center">Días</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.almas.map((alma, index) => crearFilaSeguimiento(alma, index)).join('')}
+          </tbody>
+        </table>
+      </div>
+            <div class="bg-gray-50 rounded p-3 text-xs">
+        <p class="font-semibold mb-2">Leyenda de Íconos (B y V):</p>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-x-4 gap-y-1">
+          <span><span class="text-yellow-500 font-bold text-lg">⭐</span> Éxito Clave</span>
+          <span><span class="text-green-600 font-bold text-lg">✓</span> Avance Positivo</span>
+          <span><span class="text-orange-500 font-bold text-lg">⏳</span> En Proceso</span>
+          <span><span class="text-gray-500 font-bold text-lg">―</span> Contacto sin Avance</span>
+          <span><span class="text-red-500 font-bold text-lg">✗</span> Pendiente</span>
+        </div>
+      </div>
+            <div class="flex justify-between items-center">
+        <button id="btnBajaMultiple" onclick="iniciarBajaMultiple()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded flex items-center gap-2 disabled:bg-gray-400" disabled>
+          <i class="fas fa-user-slash"></i> Dar de Baja
+        </button>
+      </div>
+    </div>
+  `;
+  
+  contenido.innerHTML = html;
+  modal.classList.remove('hidden');
+  modal.style.display = 'flex';
+  window.dataSeguimiento = data;
+}
+
+/**
+ * Crea una fila de la tabla de seguimiento (VERSIÓN FINAL Y COMPLETA)
+ */
+function crearFilaSeguimiento(alma, index) {
+  const diasSinSeguimiento = alma.Dias_Sin_Seguimiento;
+  let bgColor = (diasSinSeguimiento > 30) ? 'bg-red-50' : (diasSinSeguimiento > 14) ? 'bg-yellow-50' : '';
+  const telefonoValido = alma.Telefono && alma.Telefono !== 'Sin teléfono' && alma.Telefono !== '-';
+
+  // 1. Preparamos la variable (esto ya lo hiciste bien)
+  const aceptaVisitaNormalizado = String(alma.Acepta_Visita || '').trim().toUpperCase();
+  const esAfirmativo = (aceptaVisitaNormalizado === 'SI' || aceptaVisitaNormalizado === 'SÍ' || aceptaVisitaNormalizado === 'S');
+  
+  return `
+    <tr class="${bgColor} hover:bg-blue-50 border-b">
+      <td class="px-2 py-2 text-center">
+        <input type="checkbox" class="alma-checkbox" value="${alma.ID_Alma}" onchange="actualizarEstadoBotonBaja()">
+      </td>
+      <td class="px-2 py-2">
+        <p class="font-semibold">${escapeHTML(alma.Nombre)}</p>
+      </td>
+      <td class="px-2 py-2 text-center text-xs">
+        ${telefonoValido ? 
+          `<a href="tel:${escapeHTML(alma.Telefono)}" class="text-blue-600 hover:underline">${escapeHTML(alma.Telefono)}</a>` : 
+          '<span class="text-gray-400">-</span>'
+        }
+      </td>
+      <td class="px-2 py-2 text-center">
+        <span class="${esAfirmativo ? 'text-green-600' : 'text-gray-400'}">
+          ${esAfirmativo ? '✓ Sí' : '✗ No'}
+        </span>
+      </td>
+      <td class="px-2 py-2 text-center">
+        <span title="${escapeHTML(alma.Bienvenida.resultado)}" class="${alma.Bienvenida.color} text-lg">
+          ${alma.Bienvenida.simbolo}
+        </span>
+      </td>
+      <td class="px-2 py-2 text-center">
+        <span title="${escapeHTML(alma.Visita_Bendicion.resultado)}" class="${alma.Visita_Bendicion.color} text-lg">
+          ${alma.Visita_Bendicion.simbolo}
+        </span>
+      </td>
+      <td class="px-2 py-2 text-center">
+        ${alma.Progreso_Celulas.texto}
+      </td>
+      <td class="px-2 py-2 text-center">
+        <span class="${diasSinSeguimiento > 30 ? 'text-red-600 font-bold' : diasSinSeguimiento > 14 ? 'text-orange-600' : 'text-gray-600'}">
+          ${diasSinSeguimiento !== null ? diasSinSeguimiento : '-'}
+        </span>
+      </td>
+    </tr>
+  `;
+}
+
+/**
+ * Filtra la tabla de seguimiento
+ */
+function filtrarSeguimiento(filtro) {
+  const filas = document.querySelectorAll('#tablaSeguimiento tbody tr');
+  
+  filas.forEach(fila => {
+    let mostrar = true;
+    
+    switch(filtro) {
+      case 'urgentes':
+        mostrar = fila.dataset.prioridad === 'Urgente';
+        break;
+      case 'activos':
+        mostrar = fila.dataset.estado === 'Activo';
+        break;
+      case 'sin-bienvenida':
+        // Verificar si tiene ✗ en la columna de bienvenida (Columna 5)
+        const bienvenidaCell = fila.querySelector('td:nth-child(5) span');
+        mostrar = bienvenidaCell && bienvenidaCell.textContent.trim() === '✗';
+        break;
+      case 'todos':
+      default:
+        mostrar = true;
+    }
+    
+    fila.style.display = mostrar ? '' : 'none';
+  });
+}
+
+/**
+ * Ver detalle completo de un alma
+ */
+function verDetalleAlma(idAlma) {
+  // Asegurarse de que window.dataSeguimiento exista
+  if (!window.dataSeguimiento || !window.dataSeguimiento.almas) {
+    console.error("Datos de seguimiento no disponibles.");
+    return;
+  }
+
+  const alma = window.dataSeguimiento.almas.find(a => a.ID_Alma === idAlma);
+  if (!alma) return;
+  
+  Swal.fire({
+    title: `Detalle: ${escapeHTML(alma.Nombre)}`,
+    html: `
+      <div class="text-left space-y-4">
+        <div class="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="font-semibold text-gray-600">Teléfono:</p>
+            <p>${escapeHTML(alma.Telefono)}</p>
+          </div>
+          <div>
+            <p class="font-semibold text-gray-600">Estado:</p>
+            <p class="font-bold ${alma.Estado === 'Activo' ? 'text-green-600' : 'text-red-600'}">${alma.Estado}</p>
+          </div>
+          <div>
+            <p class="font-semibold text-gray-600">Aceptó a Jesús:</p>
+            <p>${alma.Acepto_Jesus}</p>
+          </div>
+          <div>
+            <p class="font-semibold text-gray-600">Desea Visita:</p>
+            <p>${alma.Acepta_Visita}</p>
+          </div>
+          <div class="col-span-2">
+            <p class="font-semibold text-gray-600">Petición de Oración:</p>
+            <p class="italic">${escapeHTML(alma.Peticion)}</p>
+          </div>
+        </div>
+        
+        <div class="border-t pt-4">
+          <h4 class="font-bold mb-2">Progreso de Seguimiento</h4>
+          <div class="space-y-2">
+            <div class="flex justify-between">
+              <span>Bienvenida:</span>
+              <span class="${alma.Bienvenida.completado ? 'text-green-600' : 'text-red-600'}">
+                ${escapeHTML(alma.Bienvenida.resultado)}
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span>Visita de Bendición:</span>
+              <span class="${alma.Visita_Bendicion.completado ? 'text-green-600' : 'text-red-600'}">
+                ${escapeHTML(alma.Visita_Bendicion.resultado)}
+              </span>
+            </div>
+            <div class="flex justify-between">
+              <span>Progreso en Células:</span>
+              <span>${alma.Progreso_Celulas.texto}</span>
+            </div>
+          </div>
+        </div>
+        
+        ${alma.Progreso_Celulas.temas ? `
+          <div class="border-t pt-4">
+            <h4 class="font-bold mb-2">Temas Completados</h4>
+            <div class="grid grid-cols-6 gap-2">
+              ${Object.entries(alma.Progreso_Celulas.temas).map(([tema, completado]) => `
+                <div class="text-center">
+                  <span class="block ${completado ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'} rounded p-1 text-xs">
+                    ${tema}
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        
+        <div class="border-t pt-4">
+          <p class="text-sm text-gray-600">
+            <i class="fas fa-calendar-alt mr-2"></i>
+            Días sin seguimiento: <strong>${alma.Dias_Sin_Seguimiento || 'N/A'}</strong>
+          </p>
+          <p class="text-sm text-gray-600">
+            <i class="fas fa-flag mr-2"></i>
+            Prioridad: <strong class="${alma.Prioridad === 'Urgente' ? 'text-red-600' : ''}">${alma.Prioridad}</strong>
+          </p>
+        </div>
+      </div>
+    `,
+    width: '600px',
+    confirmButtonText: 'Cerrar'
+  });
+}
+
+// ==================== ACTUALIZAR TARJETAS DE LCF ====================
+
+/**
+ * Actualizar las tarjetas de LCF para incluir botón de seguimiento
+ */
+function actualizarTarjetaLCFConSeguimiento(lcf) {
+  // Esta función parece no estar en uso activo en el flujo principal, pero la mantenemos
+  // Usamos escapeHTML para el nombre del LCF
+  return `
+    <button onclick="verSeguimientoAlmasLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')"
+            class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-xs transition"
+            title="Ver seguimiento de almas">
+      <i class="fas fa-chart-line"></i> Seguimiento
+    </button>
+  `;
+}
+
+/**
+ * Controla el estado del botón de baja múltiple.
+ * Se activa/desactiva si hay al menos un checkbox marcado.
+ */
+function actualizarEstadoBotonBaja() {
+  const checkboxes = document.querySelectorAll('.alma-checkbox:checked');
+  const boton = document.getElementById('btnBajaMultiple');
+  if (boton) {
+    boton.disabled = checkboxes.length === 0;
+  }
+}
+
+/**
+ * Lógica para el checkbox "Seleccionar Todos".
+ */
+function seleccionarTodos(source) {
+  const checkboxes = document.querySelectorAll('.alma-checkbox');
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = source.checked;
+  });
+  actualizarEstadoBotonBaja();
+}
+
+/**
+ * Inicia el proceso de baja múltiple, con actualización visual al finalizar.
+ */
+function iniciarBajaMultiple() {
+  const checkboxes = document.querySelectorAll('.alma-checkbox:checked');
+  const idsParaBaja = Array.from(checkboxes).map(cb => cb.value);
+
+  if (idsParaBaja.length === 0) {
+    Swal.fire('Atención', 'Debes seleccionar al menos un alma para dar de baja.', 'warning');
+    return;
+  }
+
+  Swal.fire({
+    title: `¿Dar de baja a ${idsParaBaja.length} almas?`,
+    text: "Esta acción marcará los registros como inactivos.",
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    confirmButtonText: 'Sí, dar de baja',
+    cancelButtonText: 'Cancelar'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      google.script.run
+        .withSuccessHandler(response => {
+          if (response.success) {
+            Swal.fire('¡Éxito!', response.message, 'success');
+            
+            // ===== INICIO DE LA MODIFICACIÓN =====
+            // Bucle para eliminar cada fila de la tabla visualmente
+            idsParaBaja.forEach(id => {
+              const checkbox = document.querySelector(`.alma-checkbox[value="${id}"]`);
+              if (checkbox) {
+                // Sube en el DOM hasta encontrar la fila (tr) y la elimina
+                checkbox.closest('tr').remove();
+              }
+            });
+            // Al eliminar las filas, también reseteamos el botón
+            actualizarEstadoBotonBaja();
+            // ===== FIN DE LA MODIFICACIÓN =====
+
+          } else {
+            Swal.fire('Error', response.error, 'error');
+          }
+        })
+        .withFailureHandler(error => Swal.fire('Error de Conexión', error.toString(), 'error'))
+        .darDeBajaAlmasEnLote(idsParaBaja);
+    }
+  });
+}
+
+// ==================== FUNCIONES DE EXPORTACIÓN ====================
+
+/**
+ * Genera un reporte PDF con el seguimiento
+ */
+function generarReporteSeguimientoPDF(idLCF, nombreLCF) {
+  // Reutilizar la función existente pero con datos de seguimiento
+  generarReporteLCF(idLCF, nombreLCF);
+}
+
+/**
+ * Exporta el seguimiento a Excel (placeholder)
+ */
+function exportarSeguimientoExcel(idLCF) {
+  Swal.fire({
+    icon: 'info',
+    title: 'Función en desarrollo',
+    text: 'La exportación a Excel estará disponible próximamente',
+    confirmButtonText: 'Entendido'
+  });
+}
+</script>
+
+<style>
+  * { font-family: 'Inter', sans-serif; }
+    
+    .loader {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .card-hover { transition: all 0.3s ease; }
+    .card-hover:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .status-activo { background: #d1fae5; color: #065f46; }
+    .status-alerta { background: #fef3c7; color: #92400e; }
+    .status-inactivo { background: #fee2e2; color: #991b1b; }
+    .status-sindatos { background: #e5e7eb; color: #4b5563; }
+
+    .carga-optima { background: #d1fae5; color: #065f46; }
+    .carga-moderada { background: #dbeafe; color: #1e40af; }
+    .carga-alta { background: #fed7aa; color: #92400e; }
+    .carga-sobrecargado { background: #fee2e2; color: #991b1b; }
+    
+    .gradient-bg {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* ---- INICIO DE LAS REGLAS DE IMPRESIÓN ---- */
+    @media print {
+        /* Oculta todo lo que no queremos imprimir */
+        body > *:not(#modalLCF) {
+            display: none !important;
+        }
+
+        /* Asegura que el modal y su contenido sean visibles */
+        #modalLCF, #modalLCF > div {
+            display: block !important;
+            position: static !important;
+            width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+            background: none !important;
+        }
+
+        #modalContenido {
+            padding: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            border: none !important;
+        }
+
+        /* Oculta botones y otros elementos no necesarios */
+        .no-print, header, #loader, #accionesLD, #ldSelector, .swal2-container {
+            display: none !important;
+        }
+        
+        /* Estilos generales para el documento impreso */
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            color: #000;
+        }
+
+        h1, h2, h3, h4, p {
+            color: #000 !important;
+        }
+
+        /* Forzar que las cuadrículas (grids) se mantengan en la impresión */
+        .grid {
+            display: grid !important;
+        }
+        .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+        .gap-4 { gap: 1rem !important; }
+
+        /* Estilos para la tabla en la impresión */
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-top: 1rem;
+        }
+        th, td {
+            border: 1px solid #ccc !important;
+            padding: 4px 6px !important;
+            text-align: left !important;
+        }
+        thead {
+            background-color: #eee !important;
+        }
+
+        /* Prevenir que los elementos se corten entre páginas */
+        tr, h3, h4 {
+            page-break-inside: avoid;
+        }
+    }
+    /* ---- FIN DE LAS REGLAS DE IMPRESIÓN ---- */
+</style>
+
+</body>
+</html>
