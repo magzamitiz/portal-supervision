@@ -12,7 +12,7 @@
  */
 function doGet(e) {
   try {
-    return HtmlService.createTemplateFromFile('Dashboard')
+    return HtmlService.createTemplateFromFile('Dashboard_Original')
       .evaluate()
       .setTitle('Portal de Supervisión V2.0')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)

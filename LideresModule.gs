@@ -449,7 +449,8 @@ function cargarHojaLideres(spreadsheet) {
  */
 function getListaDeLideres() {
   try {
-    const lideresLD = cargarLideresLD(CONFIG.SHEETS.DIRECTORIO, CONFIG.TABS.LIDERES);
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const lideresLD = cargarLideresLD(spreadsheet, CONFIG.TABS.LIDERES);
     return {
       success: true,
       data: lideresLD
