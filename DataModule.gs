@@ -272,203 +272,144 @@ function cargarHojaIngresos(spreadsheet) {
 // ==================== CONSULTAS OPTIMIZADAS ====================
 
 /**
- * Carga solo los datos esenciales de líderes (optimizado)
- * @param {string} spreadsheetId - ID del spreadsheet
- * @param {string} sheetName - Nombre de la hoja
- * @param {Array} requiredColumns - Columnas requeridas
- * @returns {Array} Array de líderes con solo datos necesarios
+ * Carga optimizada de líderes usando rangos específicos
  */
-function cargarLideresOptimizado(spreadsheetId, sheetName, requiredColumns = []) {
+function cargarLideresOptimizado() {
+  console.log('[DataModule] Cargando líderes OPTIMIZADO...');
+  const startTime = Date.now();
+  
   try {
-    const sm = SpreadsheetManager.getInstance();
-    const sheet = sm.getSheet(spreadsheetId, sheetName);
-    if (!sheet || sheet.getLastRow() < 2) return [];
-
-    const headers = sm.getSheetData(sheetName, 1, 1, 1)[0].map(h => h.toString().trim());
-    const columnas = {
-      idLider: sm.findColumn(headers, ['ID_Lider', 'ID Líder', 'ID']),
-      nombreLider: sm.findColumn(headers, ['Nombre_Lider', 'Nombre Líder', 'Nombre']),
-      rol: sm.findColumn(headers, ['Rol', 'Tipo']),
-      idLiderDirecto: sm.findColumn(headers, ['ID_Lider_Directo', 'Supervisor', 'ID LD']),
-      congregacion: sm.findColumn(headers, ['Congregación', 'Congregacion'])
-    };
-
-    if (columnas.idLider === -1) {
-      console.error('No se encontraron columnas críticas en la hoja de Líderes.');
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const sheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
+    
+    if (!sheet) {
+      console.error('[DataModule] Hoja de líderes no encontrada');
       return [];
     }
-
-    const maxColIndex = Math.max(...Object.values(columnas).filter(i => i !== -1));
-    const data = sm.getSheetData(sheetName, 2, 1, null, maxColIndex + 1);
+    
+    // Obtener solo las columnas necesarias (A-E)
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+    
+    const data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
     const lideres = [];
-
+    
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      const idLider = String(row[columnas.idLider] || '').trim();
-      if (!idLider) continue;
-
+      if (!row[0]) continue; // Saltar filas vacías
+      
       lideres.push({
-        ID_Lider: idLider,
-        Nombre_Lider: String(row[columnas.nombreLider] || '').trim(),
-        Rol: String(row[columnas.rol] || '').trim().toUpperCase(),
-        ID_Lider_Directo: String(row[columnas.idLiderDirecto] || '').trim(),
-        Congregacion: String(row[columnas.congregacion] || '').trim(),
-        Estado_Actividad: 'Desconocido',
-        Dias_Inactivo: null,
-        Ultima_Actividad: null
+        ID_Lider: String(row[0] || '').trim(),
+        Nombre_Lider: String(row[1] || '').trim(),
+        Rol: String(row[2] || '').trim(),
+        ID_Lider_Directo: String(row[3] || '').trim(),
+        Estado_Actividad: String(row[4] || 'Activo').trim()
       });
     }
+    
+    console.log(`[DataModule] ✅ ${lideres.length} líderes cargados en ${Date.now() - startTime}ms`);
     return lideres;
+    
   } catch (error) {
-    console.error('[DataModule] Error cargando líderes optimizado:', error);
+    console.error('[DataModule] Error cargando líderes:', error);
     return [];
   }
 }
 
 /**
- * Carga solo los datos esenciales de células (optimizado)
- * @param {string} spreadsheetId - ID del spreadsheet
- * @param {string} sheetName - Nombre de la hoja
- * @returns {Array} Array de células optimizadas
+ * Carga optimizada de células usando rangos específicos
  */
-function cargarCelulasOptimizado(spreadsheetId, sheetName) {
+function cargarCelulasOptimizado() {
+  console.log('[DataModule] Cargando células OPTIMIZADO...');
+  const startTime = Date.now();
+  
   try {
-    const sm = SpreadsheetManager.getInstance();
-    const sheet = sm.getSheet(spreadsheetId, sheetName);
-    if (!sheet || sheet.getLastRow() < 2) return [];
-
-    const headers = sm.getSheetData(sheetName, 1, 1, 1)[0].map(h => h.toString().trim());
-    const columnas = {
-      idCelula: sm.findColumn(headers, ['ID Célula', 'ID_Celula', 'ID']),
-      nombreCelula: sm.findColumn(headers, ['Nombre Célula']),
-      idMiembro: sm.findColumn(headers, ['ID Miembro', 'ID_Miembro', 'ID Alma']),
-      nombreMiembro: sm.findColumn(headers, ['Nombre Miembro']),
-      idLCF: sm.findColumn(headers, ['ID LCF', 'ID_LCF']),
-      nombreLCF: sm.findColumn(headers, ['Nombre LCF'])
-    };
-
-    if (columnas.idCelula === -1) {
-      console.error('No se encontraron columnas críticas en la hoja de Células.');
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const sheet = spreadsheet.getSheetByName(CONFIG.TABS.CELULAS);
+    
+    if (!sheet) {
+      console.error('[DataModule] Hoja de células no encontrada');
       return [];
     }
-
-    const maxColIndex = Math.max(...Object.values(columnas).filter(i => i !== -1));
-    const data = sm.getSheetData(sheetName, 2, 1, null, maxColIndex + 1);
-    const celulasMap = new Map();
-
+    
+    // Obtener solo las columnas necesarias
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+    
+    const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+    const celulas = [];
+    
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      const idCelula = String(row[columnas.idCelula] || '').trim();
-      if (!idCelula) continue;
-
-      if (!celulasMap.has(idCelula)) {
-        celulasMap.set(idCelula, {
-          ID_Celula: idCelula,
-          Nombre_Celula: String(row[columnas.nombreCelula] || '').trim(),
-          ID_LCF_Responsable: String(row[columnas.idLCF] || '').trim(),
-          Nombre_LCF_Responsable: String(row[columnas.nombreLCF] || '').trim(),
-          Miembros: [],
-          Total_Miembros: 0,
-          Estado: 'Activa'
-        });
-      }
-
-      const celula = celulasMap.get(idCelula);
-      const idMiembro = columnas.idMiembro !== -1 ? String(row[columnas.idMiembro] || '').trim() : null;
-      const nombreMiembro = columnas.nombreMiembro !== -1 ? String(row[columnas.nombreMiembro] || '').trim() : null;
-
-      if (idMiembro || nombreMiembro) {
-        celula.Miembros.push({
-          ID_Miembro: idMiembro,
-          Nombre_Miembro: nombreMiembro
-        });
-        celula.Total_Miembros++;
-      }
-    }
-
-    return Array.from(celulasMap.values());
-  } catch (error) {
-    console.error('[DataModule] Error cargando células optimizado:', error);
-    return [];
-  }
-}
-
-/**
- * Carga solo los datos esenciales de ingresos (optimizado)
- * @param {string} spreadsheetId - ID del spreadsheet
- * @param {string} sheetName - Nombre de la hoja
- * @returns {Array} Array de ingresos optimizados
- */
-function cargarIngresosOptimizado(spreadsheetId, sheetName) {
-  try {
-    const sm = SpreadsheetManager.getInstance();
-    const sheet = sm.getSheet(spreadsheetId, sheetName);
-    if (!sheet || sheet.getLastRow() < 2) return [];
-
-    const headers = sm.getSheetData(sheetName, 1, 1, 1)[0].map(h => h.toString().trim());
-    const columnas = {
-      idAlma: sm.findColumn(headers, ['ID_Alma', 'ID Alma']),
-      timestamp: sm.findColumn(headers, ['Timestamp', 'Fecha', 'Marca temporal']),
-      idLCF: sm.findColumn(headers, ['ID LCF', 'ID_LCF']),
-      nombreLCF: sm.findColumn(headers, ['Nombre LCF']),
-      nombresAlma: sm.findColumn(headers, ['Nombres del Alma', 'Nombres']),
-      apellidosAlma: sm.findColumn(headers, ['Apellidos del Alma', 'Apellidos']),
-      telefono: sm.findColumn(headers, ['Teléfono', 'Telefono']),
-      aceptoJesus: sm.findColumn(headers, ['Aceptó a Jesús', 'Acepto a Jesus']),
-      deseaVisita: sm.findColumn(headers, ['Desea Visita', 'Desea visita'])
-    };
-
-    if (columnas.idAlma === -1) {
-      console.error('No se encontraron columnas críticas en la hoja de Ingresos.');
-      return [];
-    }
-
-    const maxColIndex = Math.max(...Object.values(columnas).filter(i => i !== -1));
-    const data = sm.getSheetData(sheetName, 2, 1, null, maxColIndex + 1);
-    const ingresos = [];
-    const hoy = new Date();
-
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      const idAlma = String(row[columnas.idAlma] || '').trim();
-      if (!idAlma) continue;
-
-      const rawTimestamp = columnas.timestamp !== -1 ? row[columnas.timestamp] : null;
-      let fechaIngreso = null;
-      let diasDesdeIngreso = null;
-
-      if (rawTimestamp instanceof Date && !isNaN(rawTimestamp.getTime())) {
-        fechaIngreso = rawTimestamp;
-        diasDesdeIngreso = Math.floor((hoy - fechaIngreso) / (1000 * 60 * 60 * 24));
-      }
-
-      const nombres = String(row[columnas.nombresAlma] || '').trim();
-      const apellidos = String(row[columnas.apellidosAlma] || '').trim();
-      const idLCF = String(row[columnas.idLCF] || '').trim();
-      const aceptoJesus = normalizeYesNo(row[columnas.aceptoJesus]);
-      const deseaVisita = normalizeYesNo(row[columnas.deseaVisita]);
-
-      ingresos.push({
-        ID_Alma: idAlma,
-        Timestamp: fechaIngreso ? fechaIngreso.toISOString() : null,
-        ID_LCF: idLCF,
-        Nombre_LCF: String(row[columnas.nombreLCF] || '').trim(),
-        Nombres: nombres,
-        Apellidos: apellidos,
-        Nombre_Completo: `${nombres} ${apellidos}`.trim(),
-        Telefono: String(row[columnas.telefono] || '').trim(),
-        Acepto_Jesus: aceptoJesus,
-        Desea_Visita: deseaVisita,
-        Dias_Desde_Ingreso: diasDesdeIngreso,
-        Estado_Asignacion: idLCF ? 'Asignado' : 'Pendiente',
-        Prioridad: determinarPrioridad(deseaVisita, aceptoJesus),
-        ID_Celula: null,
-        En_Celula: false
+      if (!row[0]) continue; // Saltar filas vacías
+      
+      celulas.push({
+        ID_Celula: String(row[0] || '').trim(),
+        Nombre_Celula: String(row[1] || '').trim(),
+        ID_LCF_Responsable: String(row[2] || '').trim(),
+        Total_Miembros: parseInt(row[8]) || 0,
+        Total_Asistencia: parseInt(row[9]) || 0,
+        Estado: 'Activa'
       });
     }
-    return ingresos;
+    
+    console.log(`[DataModule] ✅ ${celulas.length} células cargadas en ${Date.now() - startTime}ms`);
+    return celulas;
+    
   } catch (error) {
-    console.error('[DataModule] Error cargando ingresos optimizado:', error);
+    console.error('[DataModule] Error cargando células:', error);
+    return [];
+  }
+}
+
+/**
+ * Carga optimizada de ingresos usando rangos específicos
+ */
+function cargarIngresosOptimizado() {
+  console.log('[DataModule] Cargando ingresos OPTIMIZADO...');
+  const startTime = Date.now();
+  
+  try {
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const sheet = spreadsheet.getSheetByName(CONFIG.TABS.INGRESOS);
+    
+    if (!sheet) {
+      console.warn('[DataModule] Hoja de ingresos no encontrada');
+      return [];
+    }
+    
+    // Obtener solo las columnas necesarias
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      console.log('[DataModule] No hay datos de ingresos');
+      return [];
+    }
+    
+    const data = sheet.getRange(2, 1, lastRow - 1, 20).getValues();
+    const ingresos = [];
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (!row[1]) continue; // Saltar si no hay nombre
+      
+      ingresos.push({
+        Timestamp: row[0],
+        Nombre: String(row[1] || '').trim(),
+        ID_Alma: String(row[2] || '').trim(),
+        Fecha_Ingreso: row[3],
+        ID_LCF: String(row[4] || '').trim(),
+        Desea_Visita: String(row[5] || 'NO').trim().toUpperCase(),
+        Acepto_Jesus: String(row[6] || 'NO').trim().toUpperCase(),
+        Estado_Asignacion: String(row[10] || 'Por Asignar').trim(),
+        En_Celula: String(row[19] || 'NO').trim().toUpperCase() === 'SI'
+      });
+    }
+    
+    console.log(`[DataModule] ✅ ${ingresos.length} ingresos cargados en ${Date.now() - startTime}ms`);
+    return ingresos;
+    
+  } catch (error) {
+    console.error('[DataModule] Error cargando ingresos:', error);
     return [];
   }
 }

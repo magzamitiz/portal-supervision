@@ -133,19 +133,19 @@ function cargarDirectorioCompleto(forceReload = false) {
     const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
     console.log('[CoreModule] Spreadsheet abierto correctamente');
     
-    // OPTIMIZACIÓN 1: Usar funciones optimizadas de DataModule
+    // USAR FUNCIONES OPTIMIZADAS
     const lideresStart = Date.now();
-    const lideres = cargarHojaLideres(spreadsheet);
+    const lideres = cargarLideresOptimizado();
     const lideresTime = Date.now() - lideresStart;
     console.log(`[CoreModule] ✅ Líderes cargados: ${lideres ? lideres.length : 0} en ${lideresTime}ms`);
     
     const celulasStart = Date.now();
-    const celulas = cargarHojaCelulas(spreadsheet);
+    const celulas = cargarCelulasOptimizado();
     const celulasTime = Date.now() - celulasStart;
     console.log(`[CoreModule] ✅ Células cargadas: ${celulas ? celulas.length : 0} en ${celulasTime}ms`);
     
     const ingresosStart = Date.now();
-    const ingresos = cargarHojaIngresos(spreadsheet);
+    const ingresos = cargarIngresosOptimizado();
     const ingresosTime = Date.now() - ingresosStart;
     console.log(`[CoreModule] ✅ Ingresos cargados: ${ingresos ? ingresos.length : 0} en ${ingresosTime}ms`);
 
@@ -767,11 +767,25 @@ function buscarLDRapido(idLD) {
     
     // 3. Si no está en caché, buscar en la hoja
     console.log(`[CoreModule] Buscando LD ${idLD} directamente en hoja...`);
-    
-    // Abrir spreadsheet
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    
-    // Obtener hoja de líderes
+
+    // Usar SpreadsheetManager si está disponible
+    let spreadsheet;
+    try {
+      // Intentar usar SpreadsheetManager
+      if (typeof SpreadsheetManager !== 'undefined' && SpreadsheetManager.getInstance) {
+        spreadsheet = SpreadsheetManager.getInstance().getSpreadsheet();
+        console.log('[CoreModule] Usando SpreadsheetManager');
+      }
+    } catch (e) {
+      // Fallback si SpreadsheetManager no está disponible
+    }
+
+    // Si no se obtuvo por SpreadsheetManager, abrir directamente
+    if (!spreadsheet) {
+      spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+      console.log('[CoreModule] Abriendo spreadsheet directamente');
+    }
+
     const sheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
     if (!sheet) {
       return {
@@ -780,18 +794,10 @@ function buscarLDRapido(idLD) {
         tiempo: Date.now() - startTime
       };
     }
-    
-    // Leer SOLO columnas A-E (índices 0-4)
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      return {
-        success: false,
-        error: 'No hay datos en la hoja de líderes',
-        tiempo: Date.now() - startTime
-      };
-    }
-    
-    const data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+
+    // Optimización: limitar búsqueda a las primeras 200 filas
+    const maxRows = Math.min(sheet.getLastRow() - 1, 200);
+    const data = sheet.getRange(2, 1, maxRows, 5).getValues();
     
     // 4. Buscar fila donde:
     // - Columna A (índice 0) = idLD
