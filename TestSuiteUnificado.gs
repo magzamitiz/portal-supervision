@@ -429,4 +429,65 @@ function ejecutarTestsRendimiento() {
   return { success: exitosos === total, resultados: resultados };
 }
 
-console.log('🧪 TestSuiteUnificado cargado - Ejecuta ejecutarTodosLosTests() o testSistemaCompleto()');
+// ==================== TEST DE CORRECCIONES FINALES ====================
+
+/**
+ * Test de verificación final para las correcciones aplicadas
+ */
+function testCorreccionesFinales() {
+  console.log("=== TEST DE CORRECCIONES FINALES ===");
+  
+  // Test 1: Verificar estructura de células
+  console.log("\n1. Verificando estructura de células:");
+  const celulas = cargarCelulasOptimizado();
+  
+  if (celulas.length > 0) {
+    const primeraCelula = celulas[0];
+    const tieneMiembros = 'Miembros' in primeraCelula;
+    const tieneTotalMiembros = 'Total_Miembros' in primeraCelula;
+    
+    console.log(`   ✅ Propiedad 'Miembros': ${tieneMiembros ? 'SÍ' : 'NO'}`);
+    console.log(`   ❌ Propiedad 'Total_Miembros': ${tieneTotalMiembros ? 'SÍ (ERROR)' : 'NO (CORRECTO)'}`);
+    
+    if (!tieneMiembros) {
+      console.log("   ❌ ERROR: Las células deben tener 'Miembros', no 'Total_Miembros'");
+    }
+  }
+  
+  // Test 2: Probar carga completa
+  console.log("\n2. Probando carga completa:");
+  clearCache();
+  
+  const start = Date.now();
+  const directorio = cargarDirectorioCompleto(true);
+  const tiempo = Date.now() - start;
+  
+  const exitoso = directorio && 
+                  directorio.lideres && directorio.lideres.length > 0 &&
+                  directorio.celulas && directorio.celulas.length > 0 &&
+                  directorio.ingresos && directorio.ingresos.length > 0;
+  
+  console.log(`   Tiempo: ${tiempo}ms`);
+  console.log(`   Líderes: ${directorio.lideres ? directorio.lideres.length : 0}`);
+  console.log(`   Células: ${directorio.celulas ? directorio.celulas.length : 0}`);
+  console.log(`   Ingresos: ${directorio.ingresos ? directorio.ingresos.length : 0}`);
+  console.log(`   Resultado: ${exitoso ? '✅ ÉXITO' : '❌ FALLO'}`);
+  
+  // Test 3: Verificar búsqueda rápida sin errores
+  console.log("\n3. Verificando búsqueda rápida:");
+  const busqueda = buscarLDRapido('LD-4003');
+  console.log(`   Resultado: ${busqueda.success ? '✅' : '❌'}`);
+  console.log(`   Tiempo: ${busqueda.tiempo}ms`);
+  
+  console.log("\n=== RESUMEN ===");
+  console.log(`Sistema funcionando: ${exitoso ? '✅ SÍ' : '❌ NO'}`);
+  
+  return {
+    estructuraCelulas: celulas.length > 0 && 'Miembros' in celulas[0],
+    cargaCompleta: exitoso,
+    busquedaRapida: busqueda.success,
+    tiempoCarga: tiempo
+  };
+}
+
+console.log('🧪 TestSuiteUnificado cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto() o testCorreccionesFinales()');

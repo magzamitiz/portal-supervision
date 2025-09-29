@@ -347,8 +347,8 @@ function cargarCelulasOptimizado() {
         ID_Celula: String(row[0] || '').trim(),
         Nombre_Celula: String(row[1] || '').trim(),
         ID_LCF_Responsable: String(row[2] || '').trim(),
-        Total_Miembros: parseInt(row[8]) || 0,
-        Total_Asistencia: parseInt(row[9]) || 0,
+        Miembros: parseInt(row[8]) || 0,  // CAMBIO: Total_Miembros -> Miembros
+        Asistencia: parseInt(row[9]) || 0,  // CAMBIO: Total_Asistencia -> Asistencia
         Estado: 'Activa'
       });
     }

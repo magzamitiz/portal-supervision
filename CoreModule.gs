@@ -771,13 +771,16 @@ function buscarLDRapido(idLD) {
     // Usar SpreadsheetManager si está disponible
     let spreadsheet;
     try {
-      // Intentar usar SpreadsheetManager
+      // Intentar usar SpreadsheetManager CON EL ID CORRECTO
       if (typeof SpreadsheetManager !== 'undefined' && SpreadsheetManager.getInstance) {
-        spreadsheet = SpreadsheetManager.getInstance().getSpreadsheet();
+        // Pasar el ID del spreadsheet al SpreadsheetManager
+        const sm = SpreadsheetManager.getInstance();
+        spreadsheet = sm.getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
         console.log('[CoreModule] Usando SpreadsheetManager');
       }
-    } catch (e) {
-      // Fallback si SpreadsheetManager no está disponible
+    } catch (smError) {
+      // Si falla, usar fallback
+      console.log('[CoreModule] SpreadsheetManager falló, usando fallback');
     }
 
     // Si no se obtuvo por SpreadsheetManager, abrir directamente
