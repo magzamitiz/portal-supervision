@@ -8,8 +8,7 @@
 
 // ==================== CONFIGURACIÓN DEL MÓDULO ====================
 
-// Función auxiliar para encontrar columnas (compatible con código original)
-const findCol = (headers, names) => headers.findIndex(h => names.some(name => h.includes(name)));
+// Función auxiliar findCol ya está declarada en DataModule.gs
 
 const SEGUIMIENTO_CONFIG = {
   ESTADOS_BIENVENIDA: {

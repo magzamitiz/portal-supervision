@@ -33,7 +33,7 @@ const PERFORMANCE_TEST_CONFIG = {
 
 const testResults = [];
 const benchmarkResults = new Map();
-const performanceAlerts = [];
+// performanceAlerts ya está declarado en PerformanceMonitor.gs
 
 // ==================== CLASE DE RESULTADO DE PRUEBA ====================
 

@@ -5,9 +5,8 @@
 
 // ==================== CONSTANTES Y VARIABLES GLOBALES ====================
 
-const SCRIPT_START_TIME = Date.now();
-const MAX_EXECUTION_TIME = 25000; // 25 segundos
-const CACHE_KEY = 'DASHBOARD_DATA_V2'; // Clave principal para la caché
+// SCRIPT_START_TIME y MAX_EXECUTION_TIME ya están declarados en TimeoutModule.gs
+// CACHE_KEY ya está declarado en CacheModule.gs
 
 // ==================== FUNCIONES AUXILIARES GLOBALES ====================
 
@@ -17,65 +16,36 @@ const CACHE_KEY = 'DASHBOARD_DATA_V2'; // Clave principal para la caché
  * @param {Array<string>} headers - Array de nombres de columnas
  * @param {Array<string>} names - Array de nombres a buscar
  * @returns {number} Índice de la columna encontrada o -1 si no se encuentra
+ * 
+ * NOTA: Esta función ya está declarada en DataModule.gs
  */
-const findCol = (headers, names) => headers.findIndex(h => names.some(name => h.includes(name)));
 
 /**
  * Helper global para verificar timeout de ejecución.
  * @throws {Error} Si el tiempo de ejecución excede MAX_EXECUTION_TIME
+ * 
+ * NOTA: Esta función ya está declarada en TimeoutModule.gs
  */
-const checkTimeout = () => {
-  if (Date.now() - SCRIPT_START_TIME > MAX_EXECUTION_TIME) {
-    console.error('[TIMEOUT] Operación excedió tiempo máximo');
-    throw new Error('Timeout: La operación tardó demasiado tiempo');
-  }
-};
 
 /**
  * Helper global para limpiar caché.
+ * 
+ * NOTA: Esta función ya está declarada en CacheModule.gs
  */
-const clearCache = () => {
-  CacheService.getScriptCache().remove(CACHE_KEY);
-  console.log('Caché limpiada.');
-};
 
 /**
  * Helper global para obtener datos de caché.
  * @returns {Object|null} Datos de caché o null
+ * 
+ * NOTA: Esta función ya está declarada en CacheModule.gs
  */
-const getCacheData = () => {
-  try {
-    const cache = CacheService.getScriptCache();
-    const cached = cache.get(CACHE_KEY);
-    if (cached) {
-      const compressedBlob = Utilities.newBlob(Utilities.base64Decode(cached), 'application/x-gzip');
-      const decompressedBlob = compressedBlob.unzip();
-      const data = JSON.parse(decompressedBlob.getDataAsString());
-      console.log('Datos recuperados de la caché.');
-      return data;
-    }
-  } catch (error) {
-    console.error('Error al leer/descomprimir de la caché:', error);
-    clearCache();
-  }
-  return null;
-};
 
 /**
  * Helper global para guardar datos en caché.
  * @param {Object} data - Datos a guardar
+ * 
+ * NOTA: Esta función ya está declarada en CacheModule.gs
  */
-const setCacheData = (data) => {
-  try {
-    const cache = CacheService.getScriptCache();
-    const compressedData = Utilities.gzip(Utilities.newBlob(JSON.stringify(data)));
-    const cacheDuration = (typeof CONFIG !== 'undefined' && CONFIG.CACHE && CONFIG.CACHE.DURATION) ? CONFIG.CACHE.DURATION : 1800; // 30 minutos por defecto
-    cache.put(CACHE_KEY, Utilities.base64Encode(compressedData.getBytes()), cacheDuration);
-    console.log(`Datos guardados en caché (Comprimidos). Expiración en ${cacheDuration} segundos.`);
-  } catch (error) {
-    console.error('Error al guardar en caché (Quizás los datos son muy grandes):', error);
-  }
-};
 
 // ==================== FUNCIONES DE NORMALIZACIÓN ====================
 
@@ -224,83 +194,26 @@ function normalizarEstadoAsignacion(estado) {
  * Mapea almas a células para integración
  * @param {Array} celulas - Array de células
  * @returns {Map} Mapa de ID_Alma -> ID_Celula
+ * 
+ * NOTA: Esta función ya está declarada en ActividadModule.gs
  */
-function mapearAlmasACelulas(celulas) {
-  const mapa = new Map();
-  celulas.forEach(celula => {
-    celula.Miembros.forEach(miembro => {
-      if (miembro.ID_Miembro) {
-        // ID_Miembro en Células se asume que es el ID_Alma en Ingresos
-        mapa.set(miembro.ID_Miembro, celula.ID_Celula);
-      }
-    });
-  });
-  return mapa;
-}
 
 /**
  * Integra la información de la célula en la lista de ingresos (almas)
  * @param {Array} ingresos - Array de ingresos
  * @param {Map} almasEnCelulasMap - Mapa de almas a células
+ * 
+ * NOTA: Esta función ya está declarada en ActividadModule.gs
  */
-function integrarAlmasACelulas(ingresos, almasEnCelulasMap) {
-  ingresos.forEach(ingreso => {
-    const idCelula = almasEnCelulasMap.get(ingreso.ID_Alma);
-    ingreso.ID_Celula = idCelula || null;
-    ingreso.En_Celula = !!idCelula;
-  });
-}
 
 /**
  * Calcula resumen de seguimiento para un LCF
  * @param {Array} almasConSeguimiento - Array de almas con seguimiento
  * @param {Object} lcf - Información del LCF
  * @returns {Object} Resumen del seguimiento
+ * 
+ * NOTA: Esta función ya está declarada en SeguimientoSeguro.gs
  */
-function calcularResumenSeguimiento(almasConSeguimiento, lcf) {
-  let totalAlmas = almasConSeguimiento.length;
-  let conBienvenida = 0;
-  let conVisita = 0;
-  let enCelulas = 0;
-  let urgentes = 0;
-  let activos = 0;
-  let inactivos = 0;
-
-  for (const alma of almasConSeguimiento) {
-    if (alma.Bienvenida.completado) {
-      conBienvenida++;
-    }
-    if (alma.Visita_Bendicion.completado) {
-      conVisita++;
-    }
-    if (alma.En_Celula) {
-      enCelulas++;
-    }
-    
-    if (alma.Estado === 'Activo') {
-      activos++;
-    } else if (alma.Estado === 'Inactivo') {
-      inactivos++;
-    }
-    
-    if (alma.Dias_Sin_Seguimiento > 30 || alma.Estado === 'En Riesgo') {
-      urgentes++;
-    }
-  }
-
-  return {
-    totalAlmas: totalAlmas,
-    conBienvenida: conBienvenida,
-    conVisita: conVisita,
-    enCelulas: enCelulas,
-    urgentes: urgentes,
-    activos: activos,
-    inactivos: inactivos,
-    porcentajeBienvenida: totalAlmas > 0 ? ((conBienvenida / totalAlmas) * 100).toFixed(1) : 0,
-    porcentajeVisita: totalAlmas > 0 ? ((conVisita / totalAlmas) * 100).toFixed(1) : 0,
-    porcentajeEnCelulas: totalAlmas > 0 ? ((enCelulas / totalAlmas) * 100).toFixed(1) : 0
-  };
-}
 
 /**
  * Procesa un alma de forma segura
@@ -308,50 +221,9 @@ function calcularResumenSeguimiento(almasConSeguimiento, lcf) {
  * @param {Array} data - Datos adicionales
  * @param {Object} lcf - Información del LCF
  * @returns {Object} Alma procesada
+ * 
+ * NOTA: Esta función ya está declarada en SeguimientoSeguro.gs
  */
-function procesarAlmaSegura(alma, data, lcf) {
-  const nombreCompleto = alma.Nombre_Completo || `${alma.Nombres || ''} ${alma.Apellidos || ''}`.trim() || 'Sin nombre';
-  
-  let bienvenida = {
-    completado: false,
-    resultado: 'Pendiente',
-    fecha: null,
-    simbolo: '✗'
-  };
-  
-  let visitaBendicion = {
-    completado: false,
-    resultado: 'Pendiente',
-    fecha: null,
-    simbolo: '✗'
-  };
-  
-  let progresoCelulas = {
-    texto: '0/12',
-    completados: 0,
-    total: 12,
-    porcentaje: 0
-  };
-  
-  return {
-    ID_Alma: alma.ID_Alma || '',
-    Nombre: nombreCompleto,
-    Nombres: alma.Nombres || '',
-    Apellidos: alma.Apellidos || '',
-    Telefono: alma.Telefono || '',
-    Acepta_Visita: alma.Acepta_Visita || false,
-    Bienvenida: bienvenida,
-    Visita_Bendicion: visitaBendicion,
-    Progreso_Celulas: progresoCelulas,
-    Estado: alma.Estado || 'Nuevo',
-    Dias_Sin_Seguimiento: alma.Dias_Sin_Seguimiento || 0,
-    En_Celula: progresoCelulas.completados > 0,
-    LCF: {
-      ID: lcf.ID_Lider || '',
-      Nombre: lcf.Nombre_Lider || ''
-    }
-  };
-}
 
 // ==================== FUNCIONES DE CÁLCULO DE ACTIVIDAD ====================
 
@@ -359,80 +231,9 @@ function procesarAlmaSegura(alma, data, lcf) {
  * Calcula actividad de líderes con mapeo de células
  * @param {Array} celulas - Array de células
  * @returns {Map} Mapa de actividad de líderes
+ * 
+ * NOTA: Esta función ya está declarada en ActividadModule.gs
  */
-function calcularActividadLideres(celulas) {
-  console.log('Calculando actividad de líderes con mapeo de células...');
-  
-  if (!celulas || celulas.length === 0) {
-    return new Map();
-  }
-  
-  const actividadMap = new Map();
-  
-  const celulaLiderMap = new Map(
-    celulas
-      .filter(c => c?.ID_Celula && c?.ID_LCF_Responsable)
-      .map(c => [c.ID_Celula, c.ID_LCF_Responsable])
-  );
-  
-  if (celulaLiderMap.size === 0) {
-    return actividadMap;
-  }
-  
-  const cacheKey = 'ACTIVIDAD_CACHE';
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get(cacheKey);
-  
-  if (cached) {
-    console.log('Usando actividad desde caché');
-    return new Map(JSON.parse(cached));
-  }
-  
-  // Procesar sheets externos para calcular actividad
-  try {
-    // Verificar si CONFIG está disponible y tiene las propiedades necesarias
-    if (typeof CONFIG !== 'undefined' && CONFIG.SHEETS && CONFIG.SHEETS.REPORTE_CELULAS && CONFIG.TABS && CONFIG.TABS.ACTIVIDAD_CELULAS) {
-      procesarHojaActividad(
-        CONFIG.SHEETS.REPORTE_CELULAS,
-        CONFIG.TABS.ACTIVIDAD_CELULAS,
-        ['Timestamp', 'Fecha', 'Marca temporal'],
-        ['ID Célula', 'ID_Celula', 'Id de la célula'],
-        actividadMap,
-        celulaLiderMap
-      );
-    }
-    
-    if (typeof CONFIG !== 'undefined' && CONFIG.SHEETS && CONFIG.SHEETS.VISITAS_BENDICION && CONFIG.TABS && CONFIG.TABS.ACTIVIDAD_VISITAS) {
-      procesarHojaActividad(
-        CONFIG.SHEETS.VISITAS_BENDICION,
-        CONFIG.TABS.ACTIVIDAD_VISITAS,
-        ['Timestamp', 'Fecha', 'Marca temporal'],
-        ['ID Célula', 'ID_Celula', 'Id de la célula'],
-        actividadMap,
-        celulaLiderMap
-      );
-    }
-    
-    if (typeof CONFIG !== 'undefined' && CONFIG.SHEETS && CONFIG.SHEETS.REGISTRO_INTERACCIONES) {
-      procesarHojaActividad(
-        CONFIG.SHEETS.REGISTRO_INTERACCIONES,
-        null,
-        ['Timestamp', 'Fecha', 'Marca temporal'],
-        ['ID LCF', 'ID_LCF', 'ID Líder'],
-        actividadMap
-      );
-    }
-    
-    const actividadArray = Array.from(actividadMap.entries());
-    cache.put(cacheKey, JSON.stringify(actividadArray), 300);
-    console.log(`Actividad calculada para ${actividadMap.size} líderes`);
-    
-  } catch (error) {
-    console.error('Error calculando actividad:', error);
-  }
-  
-  return actividadMap;
-}
 
 /**
  * Procesa una hoja de actividad externa
@@ -489,40 +290,9 @@ function procesarHojaActividad(sheetId, tabName, timestampCols, idCols, activida
  * @param {Array} lideres - Array de líderes
  * @param {Map} actividadMap - Mapa de actividad
  * @returns {Array} Líderes con actividad integrada
+ * 
+ * NOTA: Esta función ya está declarada en ActividadModule.gs
  */
-function integrarActividadLideres(lideres, actividadMap) {
-  const hoy = new Date();
-
-  return lideres.map(lider => {
-    const ultimaActividad = actividadMap.get(lider.ID_Lider);
-    let diasInactivo = null;
-    let estadoActividad = '-';
-
-    if (ultimaActividad) {
-      const fechaActividad = new Date(ultimaActividad);
-      diasInactivo = Math.floor((hoy - fechaActividad) / (1000 * 60 * 60 * 24));
-
-      // Usar valores por defecto si CONFIG no está disponible
-      const diasActivo = (typeof CONFIG !== 'undefined' && CONFIG.DIAS_INACTIVO && CONFIG.DIAS_INACTIVO.ACTIVO) ? CONFIG.DIAS_INACTIVO.ACTIVO : 7;
-      const diasAlerta = (typeof CONFIG !== 'undefined' && CONFIG.DIAS_INACTIVO && CONFIG.DIAS_INACTIVO.ALERTA) ? CONFIG.DIAS_INACTIVO.ALERTA : 14;
-
-      if (diasInactivo <= diasActivo) {
-        estadoActividad = 'Activo';
-      } else if (diasInactivo <= diasAlerta) {
-        estadoActividad = 'Alerta';
-      } else {
-        estadoActividad = 'Inactivo';
-      }
-    }
-
-    return {
-      ...lider,
-      Ultima_Actividad: ultimaActividad ? new Date(ultimaActividad).toISOString() : null,
-      Dias_Inactivo: diasInactivo,
-      Estado_Actividad: estadoActividad
-    };
-  });
-}
 
 /**
  * Cuenta las células activas
