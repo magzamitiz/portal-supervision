@@ -62,7 +62,7 @@ function construirEstructuraCompleta(idLD, lideres, dataCompleta) {
       Rol: lcf.Rol,
       Estado_Actividad: lcf.Estado_Actividad,
       Celulas: celulasDelLCF.length,
-      Miembros: celulasDelLCF.reduce((sum, c) => sum + c.Total_Miembros, 0),
+      Miembros: celulasDelLCF.reduce((sum, c) => sum + obtenerTotalMiembros(c), 0),
       Ingresos: ingresosDelLCF.length,
       Ingresos_Asignados: ingresosDelLCF.filter(i => i.Estado_Asignacion === 'Asignado').length,
       Ingresos_En_Celula: ingresosDelLCF.filter(i => i.En_Celula).length
@@ -625,7 +625,7 @@ function getDatosLDCompleto(idLD) {
         Nombre: lcf.Nombre_Lider,
         Estado: lcf.Estado_Actividad,
         Celulas: susCelulas.length,
-        Miembros: susCelulas.reduce((sum, c) => sum + c.Total_Miembros, 0),
+        Miembros: susCelulas.reduce((sum, c) => sum + obtenerTotalMiembros(c), 0),
         Ingresos: susIngresos.length,
         Ingresos_Asignados: susIngresos.filter(i => i.Estado_Asignacion === 'Asignado').length,
         Ingresos_En_Celula: susIngresos.filter(i => i.En_Celula).length

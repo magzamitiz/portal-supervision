@@ -96,7 +96,8 @@ function analizarCelulas(celulas) {
       case 'Lista para Multiplicar': analisis.celulas_para_multiplicar++; break;
     }
 
-    analisis.total_miembros += celula.Total_Miembros;
+    const totalMiembrosEnCelula = obtenerTotalMiembros(celula);
+    analisis.total_miembros += totalMiembrosEnCelula;
 
     // Por LCF
     if (celula.ID_LCF_Responsable) {
@@ -106,7 +107,7 @@ function analizarCelulas(celulas) {
         };
       }
       analisis.celulas_por_LCF[celula.ID_LCF_Responsable].total_celulas++;
-      analisis.celulas_por_LCF[celula.ID_LCF_Responsable].total_miembros += celula.Total_Miembros;
+      analisis.celulas_por_LCF[celula.ID_LCF_Responsable].total_miembros += totalMiembrosEnCelula;
     }
   });
 

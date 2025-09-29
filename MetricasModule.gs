@@ -131,7 +131,7 @@ function calcularMetricasCelulas(celulas) {
     const celulasVacias = totalCelulas - celulasActivas;
     const celulasListasMultiplicar = celulas.filter(c => c.Estado === 'Lista para Multiplicar').length;
     
-    const totalMiembros = celulas.reduce((sum, c) => sum + (c.Total_Miembros || 0), 0);
+    const totalMiembros = celulas.reduce((sum, celula) => sum + obtenerTotalMiembros(celula), 0);
     const promedioMiembros = totalCelulas > 0 ? (totalMiembros / totalCelulas).toFixed(1) : 0;
     
     return {

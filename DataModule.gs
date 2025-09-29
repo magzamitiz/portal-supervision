@@ -318,6 +318,7 @@ function cargarLideresOptimizado() {
 
 /**
  * Carga optimizada de células usando rangos específicos
+ * VERSIÓN CORREGIDA - Compatible con mapearAlmasACelulas
  */
 function cargarCelulasOptimizado() {
   console.log('[DataModule] Cargando células OPTIMIZADO...');
@@ -332,26 +333,88 @@ function cargarCelulasOptimizado() {
       return [];
     }
     
-    // Obtener solo las columnas necesarias
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) return [];
+    // Obtener todos los datos para procesar correctamente
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return [];
     
-    const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
-    const celulas = [];
+    const headers = data[0].map(h => h.toString().trim());
+    const celulasMap = new Map();
     
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      if (!row[0]) continue; // Saltar filas vacías
-      
-      celulas.push({
-        ID_Celula: String(row[0] || '').trim(),
-        Nombre_Celula: String(row[1] || '').trim(),
-        ID_LCF_Responsable: String(row[2] || '').trim(),
-        Miembros: parseInt(row[8]) || 0,  // CAMBIO: Total_Miembros -> Miembros
-        Asistencia: parseInt(row[9]) || 0,  // CAMBIO: Total_Asistencia -> Asistencia
-        Estado: 'Activa'
-      });
+    // Mapear columnas
+    const columnas = {
+      idCelula: findCol(headers, ['ID Célula', 'ID_Celula', 'ID']),
+      nombreCelula: findCol(headers, ['Nombre Célula']),
+      idMiembro: findCol(headers, ['ID Miembro', 'ID_Miembro', 'ID Alma']),
+      nombreMiembro: findCol(headers, ['Nombre Miembro']),
+      idLCF: findCol(headers, ['ID LCF', 'ID_LCF']),
+      nombreLCF: findCol(headers, ['Nombre LCF'])
+    };
+    
+    if (columnas.idCelula === -1) {
+      console.error('[DataModule] Falta columna crítica ID Célula');
+      return [];
     }
+    
+    // Procesar filas
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const idCelula = String(row[columnas.idCelula] || '').trim();
+      
+      if (!idCelula) continue;
+      
+      // Crear célula si no existe
+      if (!celulasMap.has(idCelula)) {
+        celulasMap.set(idCelula, {
+          ID_Celula: idCelula,
+          Nombre_Celula: String(row[columnas.nombreCelula] || '').trim(),
+          ID_LCF_Responsable: String(row[columnas.idLCF] || '').trim(),
+          Nombre_LCF_Responsable: String(row[columnas.nombreLCF] || '').trim(),
+          Miembros: [],  // IMPORTANTE: Array de objetos, no un número
+          Total_Miembros: 0,
+          Estado: 'Activa'
+        });
+      }
+      
+      const celula = celulasMap.get(idCelula);
+      
+      // Agregar miembro si existe
+      const idMiembro = columnas.idMiembro !== -1 ? String(row[columnas.idMiembro] || '').trim() : null;
+      const nombreMiembro = columnas.nombreMiembro !== -1 ? String(row[columnas.nombreMiembro] || '').trim() : null;
+      
+      if (idMiembro || nombreMiembro) {
+        // Evitar duplicados
+        const miembroExiste = celula.Miembros.some(m => m.ID_Miembro === idMiembro);
+        if (!miembroExiste) {
+          celula.Miembros.push({
+            ID_Miembro: idMiembro,
+            Nombre_Miembro: nombreMiembro
+          });
+          celula.Total_Miembros++;
+        }
+      }
+    }
+    
+    // Convertir Map a Array y determinar estados
+    const celulas = Array.from(celulasMap.values());
+    
+    // Determinar estado de cada célula
+    celulas.forEach(celula => {
+      const minMiembros = (typeof CONFIG !== 'undefined' && CONFIG.CELULAS && CONFIG.CELULAS.MIN_MIEMBROS) ? CONFIG.CELULAS.MIN_MIEMBROS : 3;
+      const maxMiembros = (typeof CONFIG !== 'undefined' && CONFIG.CELULAS && CONFIG.CELULAS.MAX_MIEMBROS) ? CONFIG.CELULAS.MAX_MIEMBROS : 12;
+      const idealMiembros = (typeof CONFIG !== 'undefined' && CONFIG.CELULAS && CONFIG.CELULAS.IDEAL_MIEMBROS) ? CONFIG.CELULAS.IDEAL_MIEMBROS : 8;
+      
+      if (celula.Total_Miembros === 0) {
+        celula.Estado = 'Vacía';
+      } else if (celula.Total_Miembros < minMiembros) {
+        celula.Estado = 'En Riesgo';
+      } else if (celula.Total_Miembros <= idealMiembros) {
+        celula.Estado = 'En Crecimiento';
+      } else if (celula.Total_Miembros <= maxMiembros) {
+        celula.Estado = 'Saludable';
+      } else {
+        celula.Estado = 'Lista para Multiplicar';
+      }
+    });
     
     console.log(`[DataModule] ✅ ${celulas.length} células cargadas en ${Date.now() - startTime}ms`);
     return celulas;

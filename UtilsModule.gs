@@ -11,6 +11,35 @@
 // ==================== FUNCIONES AUXILIARES GLOBALES ====================
 
 /**
+ * Función helper para obtener el total de miembros de una célula
+ * Compatible con ambas estructuras (antigua con Total_Miembros y nueva con Miembros array)
+ * @param {Object} celula - Objeto de célula
+ * @returns {number} Total de miembros de la célula
+ */
+function obtenerTotalMiembros(celula) {
+  if (!celula) return 0;
+  
+  // Prioridad 1: Total_Miembros si existe (estructura antigua)
+  if (typeof celula.Total_Miembros === 'number') {
+    return celula.Total_Miembros;
+  }
+  
+  // Prioridad 2: Miembros como array (estructura nueva correcta)
+  if (Array.isArray(celula.Miembros)) {
+    return celula.Miembros.length;
+  }
+  
+  // Prioridad 3: Miembros como número (estructura errónea temporal)
+  if (typeof celula.Miembros === 'number') {
+    console.warn(`[Helper] Célula ${celula.ID_Celula} tiene Miembros como número, debe ser array`);
+    return celula.Miembros;
+  }
+  
+  // Default
+  return 0;
+}
+
+/**
  * Helper global para búsqueda flexible de columnas.
  * Busca una columna en los headers que contenga cualquiera de los nombres especificados.
  * @param {Array<string>} headers - Array de nombres de columnas
