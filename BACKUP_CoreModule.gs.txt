@@ -110,92 +110,57 @@ function calcularMetricasRealesLD(idLD, estructuraCompleta, dataCompleta) {
  * @returns {Object} Objeto con líderes, células, ingresos y timestamp
  */
 function cargarDirectorioCompleto(forceReload = false) {
-  const startTime = Date.now();
-  console.log('[CoreModule] 🚀 cargarDirectorioCompleto OPTIMIZADO iniciado, forceReload:', forceReload);
+  console.log('[CoreModule] Debug - cargarDirectorioCompleto iniciado, forceReload:', forceReload);
   
   if (forceReload) {
-    console.log('[CoreModule] Limpiando caché...');
+    console.log('[CoreModule] Debug - Limpiando caché...');
     clearCache();
   } else {
-    console.log('[CoreModule] Verificando caché fragmentada...');
+    console.log('[CoreModule] Debug - Verificando caché...');
     const cachedData = getCacheData();
     if (cachedData) {
-      const cacheTime = Date.now() - startTime;
-      console.log(`[CoreModule] ✅ Directorio completo obtenido de caché en ${cacheTime}ms`);
+      console.log('[CoreModule] Directorio completo obtenido de caché.');
       return cachedData;
     }
-    console.log('[CoreModule] No hay datos en caché, cargando desde Sheets...');
+    console.log('[CoreModule] Debug - No hay datos en caché, cargando desde Sheets...');
   }
 
   console.log('[CoreModule] Cargando datos de DIRECTORIO desde Google Sheets...');
   try {
     checkTimeout();
     const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    console.log('[CoreModule] Spreadsheet abierto correctamente');
+    console.log('[CoreModule] Debug - Spreadsheet abierto correctamente');
     
-    // OPTIMIZACIÓN 1: Usar funciones optimizadas de DataModule
-    const lideresStart = Date.now();
-    const lideres = cargarHojaLideres(spreadsheet);
-    const lideresTime = Date.now() - lideresStart;
-    console.log(`[CoreModule] ✅ Líderes cargados: ${lideres ? lideres.length : 0} en ${lideresTime}ms`);
+    // Usar las funciones que sabemos que funcionan
+    const lideres = cargarLideresCompletos(spreadsheet);
+    console.log(`[CoreModule] Debug - Líderes cargados: ${lideres ? lideres.length : 0}`);
     
-    const celulasStart = Date.now();
-    const celulas = cargarHojaCelulas(spreadsheet);
-    const celulasTime = Date.now() - celulasStart;
-    console.log(`[CoreModule] ✅ Células cargadas: ${celulas ? celulas.length : 0} en ${celulasTime}ms`);
+    const celulas = cargarCelulasCompletas(spreadsheet, CONFIG.TABS.CELULAS);
+    console.log(`[CoreModule] Debug - Células cargadas: ${celulas ? celulas.length : 0}`);
     
-    const ingresosStart = Date.now();
-    const ingresos = cargarHojaIngresos(spreadsheet);
-    const ingresosTime = Date.now() - ingresosStart;
-    console.log(`[CoreModule] ✅ Ingresos cargados: ${ingresos ? ingresos.length : 0} en ${ingresosTime}ms`);
+    const ingresos = cargarIngresosCompletos(spreadsheet, CONFIG.TABS.INGRESOS);
+    console.log(`[CoreModule] Debug - Ingresos cargados: ${ingresos ? ingresos.length : 0}`);
 
-    // OPTIMIZACIÓN 2: Procesamiento mínimo y eficiente
-    const procesamientoStart = Date.now();
+    const actividadMap = calcularActividadLideres(celulas);
+    const lideresConActividad = integrarActividadLideres(lideres, actividadMap);
     
-    // Solo procesar si hay datos
-    let lideresConActividad = lideres || [];
-    if (celulas && celulas.length > 0) {
-      const actividadMap = calcularActividadLideres(celulas);
-      lideresConActividad = integrarActividadLideres(lideres, actividadMap);
-    }
-    
-    if (celulas && ingresos && celulas.length > 0 && ingresos.length > 0) {
-      const almasEnCelulasMap = mapearAlmasACelulas(celulas);
-      integrarAlmasACelulas(ingresos, almasEnCelulasMap);
-    }
-    
-    const procesamientoTime = Date.now() - procesamientoStart;
-    console.log(`[CoreModule] ✅ Procesamiento completado en ${procesamientoTime}ms`);
+    const almasEnCelulasMap = mapearAlmasACelulas(celulas);
+    integrarAlmasACelulas(ingresos, almasEnCelulasMap);
 
     const data = {
       lideres: lideresConActividad,
-      celulas: celulas || [],
-      ingresos: ingresos || [],
+      celulas: celulas,
+      ingresos: ingresos,
       timestamp: new Date().toISOString()
     };
 
-    // OPTIMIZACIÓN 3: Usar sistema de caché fragmentado
-    const cacheStart = Date.now();
     setCacheData(data);
-    const cacheTime = Date.now() - cacheStart;
-    console.log(`[CoreModule] ✅ Datos cacheados en ${cacheTime}ms`);
-    
-    const totalTime = Date.now() - startTime;
-    console.log(`[CoreModule] 🎉 Directorio completo cargado en ${totalTime}ms`);
-    console.log(`[CoreModule] 📊 Desglose: Líderes(${lideresTime}ms) + Células(${celulasTime}ms) + Ingresos(${ingresosTime}ms) + Procesamiento(${procesamientoTime}ms) + Caché(${cacheTime}ms)`);
-    
+    console.log('[CoreModule] Directorio completo cargado y cacheado.');
     return data;
 
   } catch (error) {
-    const totalTime = Date.now() - startTime;
-    console.error(`[CoreModule] ❌ Error cargando directorio completo en ${totalTime}ms:`, error);
-    return { 
-      lideres: [], 
-      celulas: [], 
-      ingresos: [], 
-      error: error.toString(),
-      tiempo: totalTime
-    };
+    console.error('[CoreModule] ❌ Error cargando directorio completo:', error);
+    return { lideres: [], celulas: [], ingresos: [], error: error.toString() };
   }
 }
 
@@ -263,6 +228,7 @@ function getIngresosData(lcfId) {
     
     const ingresosLCF = [];
     for (let i = 1; i < data.length; i++) {
+      checkTimeout();
       if (String(data[i][colIDLCF]).trim() === lcfId) {
         const ingreso = {};
         headers.forEach((header, index) => {
@@ -318,6 +284,7 @@ function cargarMaestroAsistentesSelectivo(idsAlmas) {
 
     const resultado = [];
     for (let i = 1; i < data.length; i++) {
+      checkTimeout();
       const idAsistente = String(data[i][0] || '').trim();
       if (idsAlmas.has(idAsistente)) {
         resultado.push({
@@ -373,6 +340,7 @@ function cargarInteraccionesSelectivo(idsAlmas) {
 
     const resultado = [];
     for (let i = 1; i < data.length; i++) {
+      checkTimeout();
       const idAlma = String(data[i][1] || '').trim();
       if (idsAlmas.has(idAlma)) {
         resultado.push({
@@ -428,6 +396,7 @@ function cargarVisitasBendicionSelectivo(idsAlmas) {
 
     const resultado = [];
     for (let i = 1; i < data.length; i++) {
+      checkTimeout();
       const idAlma = String(data[i][1] || '').trim();
       if (idsAlmas.has(idAlma)) {
         resultado.push({
@@ -461,28 +430,6 @@ function cargarVisitasBendicionSelectivo(idsAlmas) {
  */
 function getDatosLD(idLD, modoCompleto = false) {
   try {
-    // NUEVA OPTIMIZACIÓN: Intentar búsqueda rápida primero
-    if (!modoCompleto) {
-      console.log('[CoreModule] Intentando búsqueda rápida para:', idLD);
-      const rapidResult = buscarLDRapido(idLD);
-      if (rapidResult.success) {
-        console.log('[CoreModule] Búsqueda rápida exitosa');
-        // Adaptar estructura de respuesta al formato esperado
-        return {
-          success: true,
-          resumen: {
-            ld: rapidResult.ld,
-            Total_LCF: 0, // Se calculará si es necesario
-            Total_Celulas: 0,
-            Total_Miembros: 0,
-            Total_Ingresos: 0
-          },
-          tiempo: rapidResult.tiempo
-        };
-      }
-      console.log('[CoreModule] Búsqueda rápida falló, usando método tradicional');
-    }
-    
     // Reiniciar timeout para operaciones largas
     resetTimeout();
     
@@ -596,6 +543,7 @@ function getDatosLDCompleto(idLD) {
 
   const almasPorLCF = new Map();
   for (const ingreso of ingresos) {
+    checkTimeout();
     if (ingreso.ID_LCF) {
       if (!almasPorLCF.has(ingreso.ID_LCF)) {
         almasPorLCF.set(ingreso.ID_LCF, []);
@@ -606,6 +554,7 @@ function getDatosLDCompleto(idLD) {
 
   const celulasPorLCF = new Map();
   for (const celula of celulas) {
+    checkTimeout();
     if (celula.ID_LCF_Responsable) {
       if (!celulasPorLCF.has(celula.ID_LCF_Responsable)) {
         celulasPorLCF.set(celula.ID_LCF_Responsable, []);
@@ -617,6 +566,7 @@ function getDatosLDCompleto(idLD) {
   const lcfBajoLD = lideres
     .filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LCF')
     .map(lcf => {
+      checkTimeout();
       const susCelulas = celulasPorLCF.get(lcf.ID_Lider) || [];
       const susIngresos = almasPorLCF.get(lcf.ID_Lider) || [];
       
@@ -703,6 +653,7 @@ function darDeBajaAlmasEnLote(idAlmasArray) {
     const idColumnValues = sheet.getRange(2, idAlmaColIndex + 1, sheet.getLastRow() - 1, 1).getValues();
     const idMap = new Map();
     idColumnValues.forEach((row, index) => {
+      checkTimeout();
       if (row[0]) {
         idMap.set(String(row[0]).trim(), index + 2);
       }
@@ -712,6 +663,7 @@ function darDeBajaAlmasEnLote(idAlmasArray) {
     const idsParaBajaSet = new Set(idAlmasArray.map(id => String(id).trim()));
     
     idsParaBajaSet.forEach(id => {
+      checkTimeout();
       if (idMap.has(id)) {
         const rowNumber = idMap.get(id);
         const cellNotation = sheet.getRange(rowNumber, estadoColIndex + 1).getA1Notation();
@@ -739,121 +691,6 @@ function darDeBajaAlmasEnLote(idAlmasArray) {
     if (lock.hasLock()) {
       lock.releaseLock();
     }
-  }
-}
-
-/**
- * Búsqueda directa y rápida de un LD específico
- * Función de optimización para evitar cargar todo el directorio
- * @param {string} idLD - ID del LD a buscar (ej: 'LD-4003')
- * @returns {Object} Objeto con la estructura de respuesta
- */
-function buscarLDRapido(idLD) {
-  // 1. Medir tiempo desde el inicio
-  const startTime = Date.now();
-  
-  try {
-    // 2. Verificar caché específico primero
-    const cache = CacheService.getScriptCache();
-    const cacheKey = `LD_QUICK_${idLD}`;
-    const cached = cache.get(cacheKey);
-    
-    if (cached) {
-      console.log(`[CoreModule] LD ${idLD} encontrado en caché rápida`);
-      const cachedData = JSON.parse(cached);
-      cachedData.tiempo = Date.now() - startTime;
-      return cachedData;
-    }
-    
-    // 3. Si no está en caché, buscar en la hoja
-    console.log(`[CoreModule] Buscando LD ${idLD} directamente en hoja...`);
-    
-    // Abrir spreadsheet
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    
-    // Obtener hoja de líderes
-    const sheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
-    if (!sheet) {
-      return {
-        success: false,
-        error: `Hoja '${CONFIG.TABS.LIDERES}' no encontrada`,
-        tiempo: Date.now() - startTime
-      };
-    }
-    
-    // Leer SOLO columnas A-E (índices 0-4)
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      return {
-        success: false,
-        error: 'No hay datos en la hoja de líderes',
-        tiempo: Date.now() - startTime
-      };
-    }
-    
-    const data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
-    
-    // 4. Buscar fila donde:
-    // - Columna A (índice 0) = idLD
-    // - Columna C (índice 2) = 'LD'
-    let ldRow = null;
-    let rowNumber = 0;
-    
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      if (String(row[0]).trim() === idLD && String(row[2]).trim() === 'LD') {
-        ldRow = row;
-        rowNumber = i + 2; // +2 porque empezamos desde fila 2
-        break;
-      }
-    }
-    
-    // 5. Si encuentra, crear objeto respuesta
-    if (ldRow) {
-      const resultado = {
-        success: true,
-        ld: {
-          ID: String(ldRow[0]).trim(),
-          Nombre: String(ldRow[1]).trim(),
-          Rol: String(ldRow[2]).trim(),
-          Superior: String(ldRow[3] || '').trim(),
-          Estado: String(ldRow[4] || 'Activo').trim(),
-          Fila: rowNumber
-        },
-        tiempo: Date.now() - startTime
-      };
-      
-      // 6. Cachear si success=true (300 segundos = 5 minutos)
-      try {
-        cache.put(cacheKey, JSON.stringify(resultado), 300);
-        console.log(`[CoreModule] LD ${idLD} cacheado por 5 minutos`);
-      } catch (cacheError) {
-        console.warn(`[CoreModule] No se pudo cachear LD ${idLD}:`, cacheError);
-      }
-      
-      console.log(`[CoreModule] ✅ LD ${idLD} encontrado en ${resultado.tiempo}ms`);
-      return resultado;
-    }
-    
-    // 7. Si no encuentra, retornar error
-    const tiempo = Date.now() - startTime;
-    console.log(`[CoreModule] ❌ LD ${idLD} no encontrado en ${tiempo}ms`);
-    
-    return {
-      success: false,
-      error: `LD ${idLD} no encontrado`,
-      tiempo: tiempo
-    };
-    
-  } catch (error) {
-    const tiempo = Date.now() - startTime;
-    console.error(`[CoreModule] Error en buscarLDRapido para ${idLD}:`, error);
-    
-    return {
-      success: false,
-      error: `Error interno: ${error.toString()}`,
-      tiempo: tiempo
-    };
   }
 }
 
