@@ -135,8 +135,7 @@ function testGetEstadisticasRapidas() {
     // Validar estructura de respuesta
     const expectedStructure = {
       success: 'boolean',
-      data: 'object',
-      error: 'string' // opcional
+      data: 'object'
     };
     
     const structureValidation = validateResponseStructure(execution.result, expectedStructure);

@@ -94,7 +94,7 @@ class CacheEntry {
     
     try {
       const compressedBlob = Utilities.newBlob(Utilities.base64Decode(this.data), 'application/x-gzip');
-      const decompressedBlob = compressedBlob.unzip();
+      const decompressedBlob = Utilities.ungzip(compressedBlob);
       const dataStr = decompressedBlob.getDataAsString();
       this.data = JSON.parse(dataStr);
       this.isCompressed = false;

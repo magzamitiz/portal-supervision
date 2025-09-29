@@ -36,7 +36,7 @@ function getCacheData() {
     if (cached) {
       // Descomprimir datos
       const compressedBlob = Utilities.newBlob(Utilities.base64Decode(cached), 'application/x-gzip');
-      const decompressedBlob = compressedBlob.unzip();
+      const decompressedBlob = Utilities.ungzip(compressedBlob);
       const data = JSON.parse(decompressedBlob.getDataAsString());
       console.log('Datos recuperados de la caché.');
       return data;
