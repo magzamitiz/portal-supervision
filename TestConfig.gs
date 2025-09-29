@@ -138,14 +138,14 @@ function testCargarDirectorioCompleto() {
 function ejecutarTestsCompletos() {
   console.log('🚀 Iniciando tests completos...');
   
-  const testConfig = testConfig();
-  const testLideres = testGetListaDeLideres();
-  const testDirectorio = testCargarDirectorioCompleto();
+  const resultadoConfig = testConfig();
+  const resultadoLideres = testGetListaDeLideres();
+  const resultadoDirectorio = testCargarDirectorioCompleto();
   
   const resultados = {
-    config: testConfig,
-    lideres: testLideres,
-    directorio: testDirectorio,
+    config: resultadoConfig,
+    lideres: resultadoLideres,
+    directorio: resultadoDirectorio,
     timestamp: new Date().toISOString()
   };
   
