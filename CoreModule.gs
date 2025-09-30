@@ -813,31 +813,55 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
 function construirSmallGroupsDirectos(idLD, lideres, ingresosIndex) {
   const misSG = lideres.filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'SMALL GROUP');
   
-  return misSG.map(sg => ({
-    ID_Lider: sg.ID_Lider,
-    Nombre_Lider: sg.Nombre_Lider,
-    Rol: sg.Rol,
-    Estado_Actividad: sg.Estado_Actividad,
-    lcfs: lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF').map(lcf => {
-      const data = ingresosIndex[lcf.ID_Lider] || { ingresos: [], total: 0, cantidad: 0 };
-      const almasEnCelula = data.ingresos.filter(i => i.En_Celula).length;
-      const almasSinCelula = data.cantidad - almasEnCelula;
-      
-      return {
-        ID_Lider: lcf.ID_Lider,
-        Nombre_Lider: lcf.Nombre_Lider,
-        Rol: lcf.Rol,
-        Estado_Actividad: lcf.Estado_Actividad,
-        metricas: {
-          total_almas: data.cantidad,
-          almas_en_celula: almasEnCelula,
-          almas_sin_celula: almasSinCelula,
-          tasa_integracion: data.cantidad > 0 ? ((almasEnCelula / data.cantidad) * 100).toFixed(1) : 0,
-          carga_trabajo: data.cantidad > 0 ? (data.cantidad > 10 ? 'Alta' : data.cantidad > 5 ? 'Media' : 'Baja') : 'Sin Datos'
-        }
-      };
-    })
-  }));
+  return misSG.map(sg => {
+    const lcfs = lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF');
+    
+    // Calcular métricas del Small Group
+    const totalLCF = lcfs.length;
+    const totalAlmas = lcfs.reduce((sum, lcf) => {
+      const data = ingresosIndex[lcf.ID_Lider] || { cantidad: 0 };
+      return sum + data.cantidad;
+    }, 0);
+    
+    const almasEnCelula = lcfs.reduce((sum, lcf) => {
+      const data = ingresosIndex[lcf.ID_Lider] || { ingresos: [] };
+      return sum + data.ingresos.filter(i => i.En_Celula).length;
+    }, 0);
+    
+    return {
+      ID_Lider: sg.ID_Lider,
+      Nombre_Lider: sg.Nombre_Lider,
+      Rol: sg.Rol,
+      Estado_Actividad: sg.Estado_Actividad,
+      metricas: {
+        total_lcf: totalLCF,
+        total_almas: totalAlmas,
+        almas_en_celula: almasEnCelula,
+        almas_sin_celula: totalAlmas - almasEnCelula,
+        tasa_integracion: totalAlmas > 0 ? ((almasEnCelula / totalAlmas) * 100).toFixed(1) : 0,
+        carga_trabajo: totalAlmas > 0 ? (totalAlmas > 50 ? 'Alta' : totalAlmas > 20 ? 'Media' : 'Baja') : 'Sin Datos'
+      },
+      lcfs: lcfs.map(lcf => {
+        const data = ingresosIndex[lcf.ID_Lider] || { ingresos: [], total: 0, cantidad: 0 };
+        const almasEnCelula = data.ingresos.filter(i => i.En_Celula).length;
+        const almasSinCelula = data.cantidad - almasEnCelula;
+        
+        return {
+          ID_Lider: lcf.ID_Lider,
+          Nombre_Lider: lcf.Nombre_Lider,
+          Rol: lcf.Rol,
+          Estado_Actividad: lcf.Estado_Actividad,
+          metricas: {
+            total_almas: data.cantidad,
+            almas_en_celula: almasEnCelula,
+            almas_sin_celula: almasSinCelula,
+            tasa_integracion: data.cantidad > 0 ? ((almasEnCelula / data.cantidad) * 100).toFixed(1) : 0,
+            carga_trabajo: data.cantidad > 0 ? (data.cantidad > 10 ? 'Alta' : data.cantidad > 5 ? 'Media' : 'Baja') : 'Sin Datos'
+          }
+        };
+      })
+    };
+  });
 }
 
 // ==================== OPERACIONES ADMINISTRATIVAS OPTIMIZADAS ====================

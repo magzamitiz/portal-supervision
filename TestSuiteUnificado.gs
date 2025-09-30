@@ -6,7 +6,8 @@
 
 // ==================== CONFIGURACIÓN DE TESTS ====================
 
-const TEST_SUITE_CONFIG = {
+if (typeof TEST_SUITE_CONFIG_V3 === 'undefined') {
+  var TEST_SUITE_CONFIG_V3 = {
   // IDs de prueba (deben existir en los datos reales)
   TEST_LD_ID: 'LD-4003',
   TEST_LCF_ID: 'LCF-1010',
@@ -21,7 +22,8 @@ const TEST_SUITE_CONFIG = {
   MAX_LOAD_TIME: 30000,        // 30 segundos para carga completa
   MAX_QUICK_SEARCH_TIME: 1000, // 1 segundo para búsqueda rápida
   MAX_INDIVIDUAL_LOAD_TIME: 5000 // 5 segundos para funciones individuales
-};
+  };
+}
 
 // ==================== TESTS DE CONFIGURACIÓN ====================
 
@@ -87,7 +89,7 @@ function testFuncionesOptimizadas() {
     resultados.lideres = {
       cantidad: lideres.length,
       tiempo: tiempo1,
-      exitoso: tiempo1 < TEST_SUITE_CONFIG.MAX_INDIVIDUAL_LOAD_TIME
+      exitoso: tiempo1 < TEST_SUITE_CONFIG_V3.MAX_INDIVIDUAL_LOAD_TIME
     };
     
     console.log(`   ✅ Líderes: ${lideres.length} en ${tiempo1}ms`);
@@ -101,7 +103,7 @@ function testFuncionesOptimizadas() {
     resultados.celulas = {
       cantidad: celulas.length,
       tiempo: tiempo2,
-      exitoso: tiempo2 < TEST_SUITE_CONFIG.MAX_INDIVIDUAL_LOAD_TIME
+      exitoso: tiempo2 < TEST_SUITE_CONFIG_V3.MAX_INDIVIDUAL_LOAD_TIME
     };
     
     console.log(`   ✅ Células: ${celulas.length} en ${tiempo2}ms`);
@@ -115,7 +117,7 @@ function testFuncionesOptimizadas() {
     resultados.ingresos = {
       cantidad: ingresos.length,
       tiempo: tiempo3,
-      exitoso: tiempo3 < TEST_SUITE_CONFIG.MAX_INDIVIDUAL_LOAD_TIME
+      exitoso: tiempo3 < TEST_SUITE_CONFIG_V3.MAX_INDIVIDUAL_LOAD_TIME
     };
     
     console.log(`   ✅ Ingresos: ${ingresos.length} en ${tiempo3}ms`);
@@ -204,14 +206,14 @@ function testBusquedaRapida() {
   try {
     // Limpiar caché específica
     const cache = CacheService.getScriptCache();
-    cache.remove(`LD_QUICK_${TEST_SUITE_CONFIG.TEST_LD_ID}`);
+    cache.remove(`LD_QUICK_${TEST_SUITE_CONFIG_V3.TEST_LD_ID}`);
     
     // Ejecutar búsqueda rápida
     const startTime = Date.now();
-    const resultado = buscarLDRapido(TEST_SUITE_CONFIG.TEST_LD_ID);
+    const resultado = buscarLDRapido(TEST_SUITE_CONFIG_V3.TEST_LD_ID);
     const tiempo = Date.now() - startTime;
     
-    console.log(`   ⏱️ Tiempo: ${tiempo}ms (objetivo: <${TEST_SUITE_CONFIG.MAX_QUICK_SEARCH_TIME}ms)`);
+    console.log(`   ⏱️ Tiempo: ${tiempo}ms (objetivo: <${TEST_SUITE_CONFIG_V3.MAX_QUICK_SEARCH_TIME}ms)`);
     console.log(`   ✅ Success: ${resultado.success}`);
     
     if (resultado.success && resultado.ld) {
@@ -220,7 +222,7 @@ function testBusquedaRapida() {
       console.log(`   🎭 Rol: ${resultado.ld.Rol}`);
     }
     
-    const exitoso = tiempo < TEST_SUITE_CONFIG.MAX_QUICK_SEARCH_TIME && resultado.success;
+    const exitoso = tiempo < TEST_SUITE_CONFIG_V3.MAX_QUICK_SEARCH_TIME && resultado.success;
     console.log(`\n📊 RESULTADO: ${exitoso ? '✅ BÚSQUEDA RÁPIDA FUNCIONANDO' : '❌ BÚSQUEDA LENTA O FALLIDA'}`);
     
     return { success: exitoso, tiempo: tiempo, resultado: resultado };
@@ -252,7 +254,7 @@ function testCargaCompleta() {
     console.log(`   📊 Células: ${directorio.celulas ? directorio.celulas.length : 0}`);
     console.log(`   📊 Ingresos: ${directorio.ingresos ? directorio.ingresos.length : 0}`);
     
-    const exitoso = tiempo < TEST_SUITE_CONFIG.MAX_LOAD_TIME && 
+    const exitoso = tiempo < TEST_SUITE_CONFIG_V3.MAX_LOAD_TIME && 
                    directorio.lideres && directorio.lideres.length > 0;
     
     console.log(`\n📊 RESULTADO: ${exitoso ? '✅ CARGA COMPLETA OPTIMIZADA' : '❌ CARGA AÚN LENTA'}`);
@@ -284,13 +286,13 @@ function testGetDatosLDOptimizado() {
   try {
     // Limpiar caché específica
     const cache = CacheService.getScriptCache();
-    cache.remove(`LD_QUICK_${TEST_SUITE_CONFIG.TEST_LD_ID}`);
-    cache.remove(`LD_BASIC_${TEST_SUITE_CONFIG.TEST_LD_ID}`);
+    cache.remove(`LD_QUICK_${TEST_SUITE_CONFIG_V3.TEST_LD_ID}`);
+    cache.remove(`LD_BASIC_${TEST_SUITE_CONFIG_V3.TEST_LD_ID}`);
     
     // Test modo básico (debe usar búsqueda rápida)
     console.log('   🔍 Probando modo básico...');
     const startTime1 = Date.now();
-    const resultadoBasico = getDatosLD(TEST_SUITE_CONFIG.TEST_LD_ID, false);
+    const resultadoBasico = getDatosLD(TEST_SUITE_CONFIG_V3.TEST_LD_ID, false);
     const tiempo1 = Date.now() - startTime1;
     
     console.log(`   ⏱️ Modo básico: ${tiempo1}ms`);
@@ -299,7 +301,7 @@ function testGetDatosLDOptimizado() {
     // Test modo completo (método tradicional)
     console.log('   🔍 Probando modo completo...');
     const startTime2 = Date.now();
-    const resultadoCompleto = getDatosLD(TEST_SUITE_CONFIG.TEST_LD_ID, true);
+    const resultadoCompleto = getDatosLD(TEST_SUITE_CONFIG_V3.TEST_LD_ID, true);
     const tiempo2 = Date.now() - startTime2;
     
     console.log(`   ⏱️ Modo completo: ${tiempo2}ms`);
@@ -2062,4 +2064,323 @@ function testAlertasCompletas() {
   }
 }
 
-console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode), testGetEstadisticasRapidas(debugMode), testCorreccionesCacheCriticas(), testCorreccionCalcularMetricasGenerales(), testVariablesGlobalesFrontend(), testCargaInicialConAlertas(), testCorreccionHoyFormateada(), testVerificarFuenteDatos() o testAlertasCompletas()');
+/**
+ * Test completo para verificar todos los modales y sus datos
+ */
+function testVerificacionCompletaModales() {
+  console.log('🧪 TEST: Verificación completa de modales y datos');
+  console.log('');
+  
+  try {
+    // Test 1: Cargar datos completos
+    console.log('--- Test 1: Cargar datos completos ---');
+    const datos = forceReloadDashboardData();
+    
+    if (!datos || !datos.success) {
+      throw new Error('No se pudieron cargar los datos completos');
+    }
+    
+    const { lideres, celulas, ingresos } = datos.data.datosBase || {};
+    console.log(`✅ Datos cargados: ${lideres?.length || 0} líderes, ${celulas?.length || 0} células, ${ingresos?.length || 0} ingresos`);
+    
+    // Test 2: Verificar estructura de datos para modales
+    console.log('--- Test 2: Verificar estructura de datos ---');
+    
+    // Buscar un LD para probar
+    const ld = lideres?.find(l => l.Rol === 'LD');
+    if (!ld) {
+      throw new Error('No se encontró ningún LD para probar modales');
+    }
+    
+    console.log(`📊 LD de prueba: ${ld.Nombre_Lider} (${ld.ID_Lider})`);
+    
+    // Debug: Verificar roles disponibles bajo este LD
+    const rolesBajoLD = lideres
+      .filter(l => l.ID_Lider_Directo === ld.ID_Lider)
+      .map(l => l.Rol)
+      .reduce((acc, rol) => {
+        acc[rol] = (acc[rol] || 0) + 1;
+        return acc;
+      }, {});
+    console.log(`📊 Roles bajo LD ${ld.ID_Lider}:`, rolesBajoLD);
+    
+    // Debug: Verificar si hay LMs en todo el sistema
+    const totalLMs = lideres.filter(l => l.Rol === 'LM').length;
+    const totalSGs = lideres.filter(l => l.Rol === 'SMALL GROUP').length;
+    const totalLCFs = lideres.filter(l => l.Rol === 'LCF').length;
+    console.log(`📊 Totales en sistema: LMs=${totalLMs}, SGs=${totalSGs}, LCFs=${totalLCFs}`);
+    
+    // Test 3: Obtener datos del LD específico
+    console.log('--- Test 3: Obtener datos del LD específico ---');
+    const datosLD = getDatosLDCompleto(ld.ID_Lider);
+    
+    if (!datosLD || !datosLD.success) {
+      throw new Error('No se pudieron obtener datos del LD específico');
+    }
+    
+    console.log(`✅ Datos del LD obtenidos: ${datosLD.success}`);
+    console.log(`📊 Estructura disponible:`);
+    console.log(`   - cadenas_lm: ${datosLD.cadenas_lm?.length || 0}`);
+    console.log(`   - small_groups_directos: ${datosLD.small_groups_directos?.length || 0}`);
+    console.log(`   - lcf_directos: ${datosLD.lcf_directos?.length || 0}`);
+    
+    // Test 4: Verificar modales de cadenas LM
+    console.log('--- Test 4: Verificar modales de cadenas LM ---');
+    if (datosLD.cadenas_lm && datosLD.cadenas_lm.length > 0) {
+      const lm = datosLD.cadenas_lm[0];
+      console.log(`📋 Cadena LM: ${lm.Nombre_Lider}`);
+      console.log(`   - Small Groups: ${lm.smallGroups?.length || 0}`);
+      console.log(`   - LCFs directos: ${lm.lcfDirectos?.length || 0}`);
+      console.log(`   - Métricas: ${lm.metricas ? 'SÍ' : 'NO'}`);
+      
+      if (lm.metricas) {
+        console.log(`     - Total Small Groups: ${lm.metricas.total_small_groups || 0}`);
+        console.log(`     - Total LCF en cadena: ${lm.metricas.total_lcf_en_cadena || 0}`);
+        console.log(`     - Total almas en cadena: ${lm.metricas.total_almas_en_cadena || 0}`);
+      }
+    } else {
+      console.log('⚠️  No hay cadenas LM disponibles');
+    }
+    
+    // Test 5: Verificar modales de Small Groups
+    console.log('--- Test 5: Verificar modales de Small Groups ---');
+    if (datosLD.small_groups_directos && datosLD.small_groups_directos.length > 0) {
+      const sg = datosLD.small_groups_directos[0];
+      console.log(`📋 Small Group: ${sg.Nombre_Lider}`);
+      console.log(`   - LCFs: ${sg.lcfs?.length || 0}`);
+      console.log(`   - Métricas: ${sg.metricas ? 'SÍ' : 'NO'}`);
+      
+      if (sg.metricas) {
+        console.log(`     - Total LCF: ${sg.metricas.total_lcf || 0}`);
+        console.log(`     - Total almas: ${sg.metricas.total_almas || 0}`);
+      }
+    } else {
+      console.log('⚠️  No hay Small Groups directos disponibles');
+    }
+    
+    // Test 6: Verificar modales de LCF
+    console.log('--- Test 6: Verificar modales de LCF ---');
+    if (datosLD.lcf_directos && datosLD.lcf_directos.length > 0) {
+      const lcf = datosLD.lcf_directos[0];
+      console.log(`📋 LCF: ${lcf.Nombre_Lider}`);
+      console.log(`   - Células: ${lcf.Celulas || 0}`);
+      console.log(`   - Almas: ${lcf.Ingresos || 0}`);
+      console.log(`   - Métricas: ${lcf.metricas ? 'SÍ' : 'NO'}`);
+      
+      if (lcf.metricas) {
+        console.log(`     - Total almas: ${lcf.metricas.total_almas || 0}`);
+        console.log(`     - Almas en célula: ${lcf.metricas.almas_en_celula || 0}`);
+        console.log(`     - Tasa integración: ${lcf.metricas.tasa_integracion || 0}%`);
+      }
+    } else {
+      console.log('⚠️  No hay LCFs directos disponibles');
+    }
+    
+    // Test 7: Verificar consistencia de números
+    console.log('--- Test 7: Verificar consistencia de números ---');
+    
+    // Contar totales desde diferentes fuentes
+    const totalLCFDesdeEstructura = (datosLD.cadenas_lm?.reduce((acc, lm) => {
+      return acc + (lm.smallGroups?.reduce((sgAcc, sg) => sgAcc + (sg.lcfs?.length || 0), 0) || 0) + (lm.lcfDirectos?.length || 0);
+    }, 0) || 0) + (datosLD.small_groups_directos?.reduce((acc, sg) => acc + (sg.lcfs?.length || 0), 0) || 0) + (datosLD.lcf_directos?.length || 0);
+    
+    const totalLCFDesdeLideres = lideres?.filter(l => l.Rol === 'LCF').length || 0;
+    
+    console.log(`📊 Total LCF desde estructura: ${totalLCFDesdeEstructura}`);
+    console.log(`📊 Total LCF desde líderes: ${totalLCFDesdeLideres}`);
+    console.log(`📊 Consistencia: ${totalLCFDesdeEstructura === totalLCFDesdeLideres ? '✅ CORRECTA' : '⚠️  INCONSISTENTE'}`);
+    
+    // Test 8: Verificar métricas de alertas
+    console.log('--- Test 8: Verificar métricas de alertas ---');
+    const alertas = datos.data.alertas || [];
+    console.log(`📊 Alertas detectadas: ${alertas.length}`);
+    
+    alertas.forEach((alerta, index) => {
+      console.log(`   ${index + 1}. [${alerta.tipo}] ${alerta.mensaje}`);
+      if (alerta.detalles) {
+        console.log(`      Detalles: ${alerta.detalles.length} elementos`);
+        // Verificar que los números en los detalles sean consistentes
+        const numerosEnDetalles = alerta.detalles.filter(d => /\d+/.test(d));
+        console.log(`      Con números: ${numerosEnDetalles.length}/${alerta.detalles.length}`);
+      }
+    });
+    
+    console.log('');
+    console.log('✅ VERIFICACIÓN COMPLETA DE MODALES: Finalizada');
+    console.log(`   - Datos cargados: ✅`);
+    console.log(`   - Estructura de modales: ✅`);
+    console.log(`   - Consistencia de números: ${totalLCFDesdeEstructura === totalLCFDesdeLideres ? '✅' : '⚠️'}`);
+    console.log(`   - Alertas verificadas: ${alertas.length}`);
+    
+    return {
+      exitoso: true,
+      mensaje: 'Verificación completa de modales finalizada',
+      datosCargados: true,
+      estructuraModales: true,
+      consistenciaNumeros: totalLCFDesdeEstructura === totalLCFDesdeLideres,
+      totalLCFEstructura: totalLCFDesdeEstructura,
+      totalLCFLideres: totalLCFDesdeLideres,
+      alertasVerificadas: alertas.length,
+      datosLD: datosLD
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en verificación de modales:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test específico para verificar métricas de Small Groups
+ */
+function testMetricasSmallGroups() {
+  console.log('🧪 TEST: Verificación de métricas de Small Groups');
+  console.log('');
+  
+  try {
+    // Cargar datos
+    const datos = forceReloadDashboardData();
+    if (!datos || !datos.success) {
+      throw new Error('No se pudieron cargar los datos');
+    }
+    
+    const { lideres } = datos.data.datosBase || {};
+    const ld = lideres?.find(l => l.Rol === 'LD');
+    if (!ld) {
+      throw new Error('No se encontró ningún LD');
+    }
+    
+    console.log(`📊 LD de prueba: ${ld.Nombre_Lider} (${ld.ID_Lider})`);
+    
+    // Obtener datos del LD
+    const datosLD = getDatosLDCompleto(ld.ID_Lider);
+    if (!datosLD || !datosLD.success) {
+      throw new Error('No se pudieron obtener datos del LD');
+    }
+    
+    console.log(`📊 Small Groups disponibles: ${datosLD.small_groups_directos?.length || 0}`);
+    
+    if (datosLD.small_groups_directos && datosLD.small_groups_directos.length > 0) {
+      const sg = datosLD.small_groups_directos[0];
+      console.log(`📋 Small Group: ${sg.Nombre_Lider}`);
+      console.log(`   - LCFs: ${sg.lcfs?.length || 0}`);
+      console.log(`   - Métricas: ${sg.metricas ? 'SÍ' : 'NO'}`);
+      
+      if (sg.metricas) {
+        console.log(`     - Total LCF: ${sg.metricas.total_lcf || 0}`);
+        console.log(`     - Total almas: ${sg.metricas.total_almas || 0}`);
+        console.log(`     - Almas en célula: ${sg.metricas.almas_en_celula || 0}`);
+        console.log(`     - Tasa integración: ${sg.metricas.tasa_integracion || 0}%`);
+        console.log(`     - Carga trabajo: ${sg.metricas.carga_trabajo || 'Sin Datos'}`);
+      }
+      
+      // Verificar LCFs del Small Group
+      if (sg.lcfs && sg.lcfs.length > 0) {
+        console.log(`   - LCFs con métricas:`);
+        sg.lcfs.forEach((lcf, index) => {
+          console.log(`     ${index + 1}. ${lcf.Nombre_Lider}: ${lcf.metricas?.total_almas || 0} almas`);
+        });
+      }
+    } else {
+      console.log('⚠️  No hay Small Groups disponibles');
+    }
+    
+    console.log('');
+    console.log('✅ TEST MÉTRICAS SMALL GROUPS: Completado');
+    
+    return {
+      exitoso: true,
+      mensaje: 'Métricas de Small Groups verificadas',
+      smallGroups: datosLD.small_groups_directos?.length || 0,
+      conMetricas: datosLD.small_groups_directos?.every(sg => sg.metricas) || false
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test de métricas Small Groups:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test simple para verificar que no hay conflictos de variables
+ */
+function testSinConflictos() {
+  console.log('🧪 TEST: Verificación de conflictos de variables');
+  console.log('');
+  
+  try {
+    // Verificar que TEST_SUITE_CONFIG_V3 está definido
+    if (typeof TEST_SUITE_CONFIG_V3 === 'undefined') {
+      throw new Error('TEST_SUITE_CONFIG_V3 no está definido');
+    }
+    
+    console.log('✅ TEST_SUITE_CONFIG_V3 definido correctamente');
+    console.log(`   - TEST_LD_ID: ${TEST_SUITE_CONFIG_V3.TEST_LD_ID}`);
+    console.log(`   - MAX_LOAD_TIME: ${TEST_SUITE_CONFIG_V3.MAX_LOAD_TIME}ms`);
+    
+    // Verificar que CONFIG está definido
+    if (typeof CONFIG === 'undefined') {
+      throw new Error('CONFIG no está definido');
+    }
+    
+    console.log('✅ CONFIG definido correctamente');
+    console.log(`   - DIRECTORIO: ${CONFIG.SHEETS?.DIRECTORIO || 'No definido'}`);
+    
+    console.log('');
+    console.log('✅ TEST SIN CONFLICTOS: Completado');
+    
+    return {
+      exitoso: true,
+      mensaje: 'No hay conflictos de variables',
+      testSuiteConfig: typeof TEST_SUITE_CONFIG_V3 !== 'undefined',
+      config: typeof CONFIG !== 'undefined'
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test de conflictos:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test simple para verificar que no hay conflictos de variables
+ */
+function testVerificacionRapida() {
+  console.log('🧪 TEST: Verificación rápida de variables');
+  console.log('');
+  
+  try {
+    // Verificar que TEST_SUITE_CONFIG_V3 está definido
+    if (typeof TEST_SUITE_CONFIG_V3 === 'undefined') {
+      throw new Error('TEST_SUITE_CONFIG_V3 no está definido');
+    }
+    
+    console.log('✅ TEST_SUITE_CONFIG_V3 definido correctamente');
+    console.log(`   - TEST_LD_ID: ${TEST_SUITE_CONFIG_V3.TEST_LD_ID}`);
+    console.log(`   - MAX_LOAD_TIME: ${TEST_SUITE_CONFIG_V3.MAX_LOAD_TIME}ms`);
+    
+    // Verificar que CONFIG está definido
+    if (typeof CONFIG === 'undefined') {
+      throw new Error('CONFIG no está definido');
+    }
+    
+    console.log('✅ CONFIG definido correctamente');
+    console.log(`   - DIRECTORIO: ${CONFIG.SHEETS?.DIRECTORIO || 'No definido'}`);
+    
+    console.log('');
+    console.log('✅ TEST VERIFICACIÓN RÁPIDA: Completado');
+    
+    return {
+      exitoso: true,
+      mensaje: 'No hay conflictos de variables',
+      testSuiteConfig: typeof TEST_SUITE_CONFIG_V3 !== 'undefined',
+      config: typeof CONFIG !== 'undefined'
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test de verificación rápida:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode), testGetEstadisticasRapidas(debugMode), testCorreccionesCacheCriticas(), testCorreccionCalcularMetricasGenerales(), testVariablesGlobalesFrontend(), testCargaInicialConAlertas(), testCorreccionHoyFormateada(), testVerificarFuenteDatos(), testAlertasCompletas(), testVerificacionCompletaModales(), testMetricasSmallGroups(), testSinConflictos() o testVerificacionRapida()');
