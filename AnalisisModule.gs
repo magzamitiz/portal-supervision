@@ -336,142 +336,77 @@ function calcularSaludGeneral(analisisLideres, analisisCelulas, analisisIngresos
  * @param {Object} analisis - Análisis consolidado
  * @returns {Array<Object>} Array de alertas generadas
  */
-function generarAlertas(analisis) {
-  const alertas = [];
-
-  try {
-    // Alertas de líderes
-    if (analisis.lideres.LCF_sin_LD && analisis.lideres.LCF_sin_LD.length > 0) {
-      alertas.push({
-        tipo: 'LCF_SIN_LD',
-        severidad: 'Media',
-        mensaje: `${analisis.lideres.LCF_sin_LD.length} LCF sin LD asignado`,
-        datos: analisis.lideres.LCF_sin_LD
-      });
-    }
-
-    // Alertas de células
-    if (analisis.celulas.celulas_vacias > 0) {
-      alertas.push({
-        tipo: 'CELULAS_VACIAS',
-        severidad: 'Alta',
-        mensaje: `${analisis.celulas.celulas_vacias} células vacías`,
-        datos: { cantidad: analisis.celulas.celulas_vacias }
-      });
-    }
-
-    // Alertas de ingresos
-    if (analisis.ingresos.pendientes_asignacion > 10) {
-      alertas.push({
-        tipo: 'INGRESOS_PENDIENTES',
-        severidad: 'Media',
-        mensaje: `${analisis.ingresos.pendientes_asignacion} ingresos pendientes de asignación`,
-        datos: { cantidad: analisis.ingresos.pendientes_asignacion }
-      });
-    }
-
-    console.log(`[AnalisisModule] ${alertas.length} alertas generadas`);
-    return alertas;
-
-  } catch (error) {
-    console.error('[AnalisisModule] Error generando alertas:', error);
-    return [];
-  }
-}
-
-/**
- * Genera alertas basadas en datos completos (compatible con código original)
- * @param {Object} data - Datos completos del directorio
- * @returns {Array} Array de alertas
- */
-function generarAlertasCompleto(data) {
+function generarAlertas(data) {
   const alertas = [];
 
   if (!data) return alertas;
 
-  try {
-    // 1. Líderes Inactivos/Alerta
-    if (data.lideres) {
-      const ldInactivos = data.lideres.filter(l =>
-        l.Rol === 'LD' && (l.Estado_Actividad === 'Inactivo' || l.Estado_Actividad === 'Sin Datos')
-      );
-      
-      if (ldInactivos.length > 0) {
-        alertas.push({
-          tipo: 'LD_INACTIVOS',
-          severidad: 'Alta',
-          mensaje: `${ldInactivos.length} LD inactivos o sin datos`,
-          detalles: ldInactivos.map(ld => ld.Nombre_Lider)
-        });
-      }
-
-      const lcfInactivos = data.lideres.filter(l =>
-        l.Rol === 'LCF' && (l.Estado_Actividad === 'Inactivo' || l.Estado_Actividad === 'Sin Datos')
-      );
-      
-      if (lcfInactivos.length > 0) {
-        alertas.push({
-          tipo: 'LCF_INACTIVOS',
-          severidad: 'Media',
-          mensaje: `${lcfInactivos.length} LCF inactivos o sin datos`,
-          detalles: lcfInactivos.map(lcf => lcf.Nombre_Lider)
-        });
-      }
-
-      // LCF sin LD asignado
-      const lcfSinLD = data.lideres.filter(l =>
-        l.Rol === 'LCF' && (!l.ID_Lider_Directo || l.ID_Lider_Directo === '')
-      );
-      
-      if (lcfSinLD.length > 0) {
-        alertas.push({
-          tipo: 'LCF_SIN_LD',
-          severidad: 'Media',
-          mensaje: `${lcfSinLD.length} LCF sin LD asignado`,
-          detalles: lcfSinLD.map(lcf => lcf.Nombre_Lider)
-        });
-      }
+  // 1. Líderes Inactivos/Alerta
+  if (data.lideres) {
+    const ldInactivos = data.lideres.filter(l =>
+      l.Rol === 'LD' && (l.Estado_Actividad === 'Inactivo' || l.Estado_Actividad === 'Sin Datos')
+    );
+    if (ldInactivos.length > 0) {
+      alertas.push({
+        tipo: 'error',
+        mensaje: `${ldInactivos.length} Líder(es) de Discípulos (LD) inactivos o sin datos.`,
+        detalles: ldInactivos.map(l => `${l.Nombre_Lider} (Días: ${l.Dias_Inactivo || 'N/A'})`)
+      });
     }
 
-    // 2. Células que necesitan atención
-    if (data.celulas) {
-      const celulasProblema = data.celulas.filter(c => 
-        c.Estado === 'Inactiva' || c.Estado === 'Necesita Atención' || c.Estado === 'Crítica'
-      );
-      
-      if (celulasProblema.length > 0) {
-        alertas.push({
-          tipo: 'CELULAS_PROBLEMA',
-          severidad: 'Media',
-          mensaje: `${celulasProblema.length} células necesitan atención`,
-          detalles: celulasProblema.map(c => c.Nombre_Celula)
-        });
-      }
+    const lcfAlerta = data.lideres.filter(l =>
+      l.Rol === 'LCF' && l.Estado_Actividad === 'Alerta'
+    );
+     if (lcfAlerta.length > 0) {
+      alertas.push({
+        tipo: 'warning',
+        mensaje: `${lcfAlerta.length} LCF(s) en estado de Alerta (riesgo de inactividad).`,
+        detalles: lcfAlerta.map(l => `${l.Nombre_Lider} (Días: ${l.Dias_Inactivo})`)
+      });
     }
-
-    // 3. Ingresos sin asignar
-    if (data.ingresos) {
-      const ingresosSinAsignar = data.ingresos.filter(i => 
-        !i.En_Celula || i.En_Celula === false
-      );
-      
-      if (ingresosSinAsignar.length > 0) {
-        alertas.push({
-          tipo: 'INGRESOS_SIN_ASIGNAR',
-          severidad: 'Baja',
-          mensaje: `${ingresosSinAsignar.length} ingresos sin asignar a célula`,
-          detalles: ingresosSinAsignar.map(i => i.Nombre_Alma)
-        });
-      }
-    }
-
-    console.log(`[AnalisisModule] ${alertas.length} alertas generadas (completo)`);
-    return alertas;
-
-  } catch (error) {
-    console.error('[AnalisisModule] Error generando alertas completo:', error);
-    return [];
   }
+
+  // 2. Almas sin seguimiento
+  if (data.ingresos) {
+    // Almas sin asignar a LCF por más de 3 días
+    const pendientesUrgentesLCF = data.ingresos.filter(i =>
+      i.Estado_Asignacion === 'Pendiente' && i.Dias_Desde_Ingreso > 3
+    );
+    if (pendientesUrgentesLCF.length > 0) {
+      alertas.push({
+        tipo: 'warning',
+        mensaje: `${pendientesUrgentesLCF.length} alma(s) sin asignar a LCF por más de 3 días.`,
+        detalles: pendientesUrgentesLCF.slice(0, 5).map(i => i.Nombre_Completo)
+      });
+    }
+
+    // Almas sin integrar a Célula por más de 14 días
+    const pendientesUrgentesCelula = data.ingresos.filter(i =>
+      !i.En_Celula && i.Dias_Desde_Ingreso > 14
+    );
+     if (pendientesUrgentesCelula.length > 0) {
+      alertas.push({
+        tipo: 'warning',
+        mensaje: `${pendientesUrgentesCelula.length} alma(s) sin integrar a Célula por más de 14 días.`,
+        detalles: pendientesUrgentesCelula.slice(0, 5).map(i => i.Nombre_Completo)
+      });
+    }
+  }
+
+  // 3. Células vacías
+  if (data.celulas) {
+    const celulasVacias = data.celulas.filter(c => c.Total_Miembros === 0);
+    if (celulasVacias.length > 0) {
+      alertas.push({
+        tipo: 'warning',
+        mensaje: `${celulasVacias.length} célula(s) vacía(s) (sin miembros).`,
+        detalles: celulasVacias.slice(0, 5).map(c => `${c.Nombre_Celula} (${c.ID_LCF_Responsable})`)
+      });
+    }
+  }
+
+  return alertas;
 }
+
 
 console.log('📊 AnalisisModule cargado - Funciones de análisis disponibles');

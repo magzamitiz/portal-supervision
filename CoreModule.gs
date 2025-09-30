@@ -214,7 +214,14 @@ function getListaDeLideres() {
       return { success: false, error: 'Hoja de líderes no encontrada', data: [] };
     }
 
-    const dataLideres = sheetLideres.getRange(2, 1, sheetLideres.getLastRow() - 1, 3).getValues();
+    // Validar que hay al menos 2 filas (header + datos)
+    const lastRow = sheetLideres.getLastRow();
+    if (lastRow < 2) {
+      console.log('[CoreModule] Hoja de líderes vacía o solo con headers');
+      return { success: true, data: [] };
+    }
+
+    const dataLideres = sheetLideres.getRange(2, 1, lastRow - 1, 3).getValues();
     const lideresParaSelector = dataLideres
       .filter(row => row[2] === 'LD' && row[0])
       .map(row => ({ ID_Lider: String(row[0]).trim(), Nombre_Lider: String(row[1]).trim() }));

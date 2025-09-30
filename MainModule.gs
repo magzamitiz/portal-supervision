@@ -363,7 +363,7 @@ function forceReloadDashboardData() {
       ingresos: analizarIngresos(directorioData.ingresos || []),
       datosBase: directorioData,
       metricas: calcularMetricasGenerales(directorioData),
-      alertas: generarAlertasCompleto(directorioData),
+      alertas: generarAlertas(directorioData),
       timestamp: directorioData.timestamp 
     };
 

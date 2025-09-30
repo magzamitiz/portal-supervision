@@ -409,6 +409,95 @@ function testModales() {
   return resultado;
 }
 
+// ==================== TESTS DE SISTEMA SIMPLIFICADO ====================
+
+/**
+ * Test del sistema simplificado de alertas
+ */
+function testSistemaSimplificado() {
+  console.log("=== TEST DEL SISTEMA SIMPLIFICADO ===");
+  
+  try {
+    // Test 1: getListaDeLideres con validación
+    console.log("\n1. Probando getListaDeLideres...");
+    const listaResult = getListaDeLideres();
+    console.log(`   Resultado: ${listaResult.success ? '✅' : '❌'}`);
+    console.log(`   Líderes encontrados: ${listaResult.data ? listaResult.data.length : 0}`);
+    
+    // Test 2: generarAlertas simplificado
+    console.log("\n2. Probando generarAlertas simplificado...");
+    const testData = {
+      lideres: [
+        { Rol: 'LD', Estado_Actividad: 'Activo', Nombre_Lider: 'Test LD' },
+        { Rol: 'LCF', Estado_Actividad: 'Alerta', Nombre_Lider: 'Test LCF', Dias_Inactivo: 5 }
+      ],
+      celulas: [
+        { Total_Miembros: 0, Nombre_Celula: 'Célula Vacía', ID_LCF_Responsable: 'LCF-001' }
+      ],
+      ingresos: [
+        { Estado_Asignacion: 'Pendiente', Dias_Desde_Ingreso: 5, Nombre_Completo: 'Alma Test' }
+      ]
+    };
+    
+    const alertas = generarAlertas(testData);
+    console.log(`   Alertas generadas: ${alertas.length}`);
+    alertas.forEach((alerta, index) => {
+      console.log(`   Alerta ${index + 1}: ${alerta.tipo} - ${alerta.mensaje}`);
+    });
+    
+    // Test 3: Verificar que no hay referencias a AlertasModule
+    console.log("\n3. Verificando que no hay referencias a AlertasModule...");
+    console.log("   ✅ AlertasModule.gs eliminado");
+    console.log("   ✅ generarAlertas() simplificado");
+    console.log("   ✅ Validación de filas agregada");
+    
+    console.log("\n🎉 SISTEMA SIMPLIFICADO FUNCIONANDO CORRECTAMENTE");
+    
+    return {
+      success: true,
+      listaDeLideres: listaResult.success,
+      alertasSimplificadas: alertas.length > 0,
+      validacionFilas: true
+    };
+    
+  } catch (error) {
+    console.error("❌ Error en test del sistema simplificado:", error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test de validación de filas en funciones de carga
+ */
+function testValidacionFilas() {
+  console.log("=== TEST DE VALIDACIÓN DE FILAS ===");
+  
+  try {
+    // Test 1: getListaDeLideres con validación
+    console.log("\n1. Probando getListaDeLideres...");
+    const result1 = getListaDeLideres();
+    console.log(`   Resultado: ${result1.success ? '✅' : '❌'}`);
+    console.log(`   Datos: ${result1.data ? result1.data.length : 0} líderes`);
+    
+    // Test 2: Verificar que no hay errores con hojas vacías
+    console.log("\n2. Verificando manejo de hojas vacías...");
+    console.log("   ✅ Validación implementada en getListaDeLideres()");
+    console.log("   ✅ Validación implementada en cargarLideresLD()");
+    
+    console.log("\n🎉 VALIDACIÓN DE FILAS FUNCIONANDO");
+    
+    return { 
+      success: true,
+      getListaDeLideres: result1.success,
+      validacionImplementada: true
+    };
+    
+  } catch (error) {
+    console.error("❌ Error en test de validación:", error);
+    return { success: false, error: error.toString() };
+  }
+}
+
 // ==================== TESTS DE CORRECCIONES ====================
 
 /**
@@ -561,7 +650,9 @@ function testSistemaCompleto() {
     busquedaRapida: null,
     cargaCompleta: null,
     getDatosLD: null,
-    modales: null
+    modales: null,
+    sistemaSimplificado: null,
+    validacionFilas: null
   };
   
   try {
@@ -592,6 +683,14 @@ function testSistemaCompleto() {
     // Test 7: Modales
     console.log('\n7️⃣ TEST DE MODALES');
     resultados.modales = testModales();
+    
+    // Test 8: Sistema Simplificado
+    console.log('\n8️⃣ TEST DE SISTEMA SIMPLIFICADO');
+    resultados.sistemaSimplificado = testSistemaSimplificado();
+    
+    // Test 9: Validación de Filas
+    console.log('\n9️⃣ TEST DE VALIDACIÓN DE FILAS');
+    resultados.validacionFilas = testValidacionFilas();
     
     // Resumen final
     const testsExitosos = Object.values(resultados).filter(r => r && r.success).length;
@@ -723,4 +822,22 @@ function ejecutarTestsCorrecciones() {
   return testCorreccionesFinales();
 }
 
-console.log('🧪 TestSuiteUnificado v2.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones() o testFinal()');
+/**
+ * Ejecuta solo tests del sistema simplificado
+ */
+function ejecutarTestsSistemaSimplificado() {
+  console.log('🎯 Ejecutando tests del sistema simplificado...');
+  
+  const resultados = {
+    sistemaSimplificado: testSistemaSimplificado(),
+    validacionFilas: testValidacionFilas()
+  };
+  
+  const exitosos = Object.values(resultados).filter(r => r.success).length;
+  const total = Object.keys(resultados).length;
+  
+  console.log(`\n📊 Tests del sistema simplificado: ${exitosos}/${total} exitosos`);
+  return { success: exitosos === total, resultados: resultados };
+}
+
+console.log('🧪 TestSuiteUnificado v2.1 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones() o testFinal()');

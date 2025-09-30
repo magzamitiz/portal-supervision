@@ -92,7 +92,14 @@ function cargarLideresLD(spreadsheet, sheetName) {
     const sheet = spreadsheet.getSheetByName(sheetName);
     if (!sheet) return [];
 
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues();
+    // Validar que hay al menos 2 filas (header + datos)
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      console.log('[LideresModule] Hoja vacía o solo con headers');
+      return [];
+    }
+
+    const data = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
     
     const lideresLD = [];
     for (const row of data) {
