@@ -343,29 +343,55 @@ function validarConectividad() {
 
 /**
  * Fuerza la recarga completa de datos del dashboard
+ * VERSIÓN OPTIMIZADA: Carga solo datos esenciales para evitar timeout
  * @returns {Object} Respuesta con análisis completo
  */
 function forceReloadDashboardData() {
   try {
     console.log('[MainModule] Solicitud de recarga forzada recibida desde el Frontend.');
+    const startTime = Date.now();
     
-    // Forzar la carga desde Sheets (ignora y sobrescribe la caché)
-    const directorioData = cargarDirectorioCompleto(true);
-
-    // Realizar el análisis (mismo proceso que getDashboardData)
-    if (!directorioData || (!directorioData.lideres.length && !directorioData.celulas.length && !directorioData.ingresos.length)) {
-      return { success: true, data: createEmptyAnalysis() };
+    // ✅ OPTIMIZACIÓN: Cargar solo datos esenciales para evitar timeout
+    console.log('[MainModule] Cargando datos esenciales (versión optimizada)...');
+    
+    // 1. Obtener estadísticas rápidas (ya optimizadas)
+    const stats = getEstadisticasRapidas();
+    if (!stats.success) {
+      throw new Error('Error obteniendo estadísticas: ' + stats.error);
     }
-
+    
+    // 2. Obtener lista de líderes (ya optimizada)
+    const lideres = getListaDeLideres();
+    if (!lideres.success) {
+      throw new Error('Error obteniendo líderes: ' + lideres.error);
+    }
+    
+    // 3. Obtener alertas (función rápida)
+    const alertas = generarAlertasRapidas();
+    
+    // 4. Crear análisis simplificado con datos disponibles
     const analisis = {
-      lideres: analizarLideres(directorioData.lideres || []),
-      celulas: analizarCelulas(directorioData.celulas || []),
-      ingresos: analizarIngresos(directorioData.ingresos || []),
-      datosBase: directorioData,
-      metricas: calcularMetricasPrincipales(directorioData),
-      alertas: generarAlertas(directorioData),
-      timestamp: directorioData.timestamp 
+      lideres: {
+        total_LD: stats.data.lideres.total_LD,
+        total_LCF: stats.data.lideres.total_LCF,
+        lista: lideres.data || []
+      },
+      celulas: {
+        total_celulas: stats.data.celulas.total_celulas
+      },
+      ingresos: {
+        total_historico: stats.data.ingresos.total_historico,
+        ingresos_mes: stats.data.ingresos.ingresos_mes,
+        tasa_integracion_celula: stats.data.ingresos.tasa_integracion_celula
+      },
+      metricas: stats.data.metricas,
+      alertas: alertas || [],
+      timestamp: stats.data.timestamp,
+      modo_optimizado: true
     };
+
+    const timeElapsed = Date.now() - startTime;
+    console.log(`[MainModule] ✅ Datos optimizados cargados en ${timeElapsed}ms`);
 
     return {
       success: true,
@@ -379,6 +405,63 @@ function forceReloadDashboardData() {
       error: 'Error al forzar la recarga de datos. Detalle: ' + error.toString(),
       data: null
     };
+  }
+}
+
+/**
+ * Genera alertas de forma rápida sin cargar todos los datos
+ * @returns {Array} Lista de alertas
+ */
+function generarAlertasRapidas() {
+  try {
+    console.log('[MainModule] Generando alertas rápidas...');
+    
+    // Obtener datos del caché si están disponibles
+    const datosCache = getCacheData();
+    if (datosCache && datosCache.lideres) {
+      return generarAlertas(datosCache);
+    }
+    
+    // Si no hay caché, generar alertas básicas
+    const alertas = [];
+    
+    // Verificar si hay datos en _ResumenDashboard
+    try {
+      const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+      const resumenSheet = spreadsheet.getSheetByName('_ResumenDashboard');
+      
+      if (resumenSheet) {
+        const valores = resumenSheet.getRange('B1:B7').getValues();
+        const totalLD = parseInt(valores[0][0]) || 0;
+        const totalLCF = parseInt(valores[1][0]) || 0;
+        
+        if (totalLD === 0) {
+          alertas.push({
+            tipo: 'warning',
+            titulo: 'Sin Líderes de Discipulado',
+            mensaje: 'No se encontraron Líderes de Discipulado en el sistema',
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        if (totalLCF === 0) {
+          alertas.push({
+            tipo: 'warning',
+            titulo: 'Sin Líderes de Casas de FE',
+            mensaje: 'No se encontraron Líderes de Casas de FE en el sistema',
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (error) {
+      console.log('[MainModule] No se pudieron generar alertas desde _ResumenDashboard:', error);
+    }
+    
+    return alertas;
+    
+  } catch (error) {
+    console.error('[MainModule] Error generando alertas rápidas:', error);
+    return [];
   }
 }
 

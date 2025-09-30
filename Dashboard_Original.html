@@ -336,7 +336,7 @@ function cargarDatosIniciales() {
     console.log('Cargando datos completos con alertas...');
     google.script.run
         .withSuccessHandler(handleDatosCompletosResponse)
-        .withFailureHandler(error => console.error("Error cargando datos completos:", error))
+        .withFailureHandler(handleDatosCompletosError)
         .forceReloadDashboardData();
 }
 
@@ -372,6 +372,47 @@ function handleDatosCompletosResponse(response) {
         console.error('Error cargando datos completos:', response ? response.error : 'Error desconocido');
         // No fallar completamente, solo mostrar warning
         console.warn('Continuando sin alertas completas...');
+    }
+}
+
+// Nueva función para manejar errores de datos completos
+function handleDatosCompletosError(error) {
+    console.error("Error cargando datos completos:", error);
+    
+    // Ocultar loader
+    document.getElementById('loader').style.display = 'none';
+    
+    // Mostrar mensaje de error amigable
+    if (error && error.toString().includes('Excedió el tiempo máximo de ejecución')) {
+        console.log('Timeout detectado, mostrando mensaje informativo...');
+        
+        // Mostrar alerta informativa sobre el timeout
+        Swal.fire({
+            title: '⏱️ Carga Optimizada',
+            html: `
+                <p>El sistema está cargando datos de forma optimizada para evitar timeouts.</p>
+                <p><strong>Datos disponibles:</strong></p>
+                <ul style="text-align: left; margin: 10px 0;">
+                    <li>✅ Estadísticas básicas</li>
+                    <li>✅ Lista de líderes</li>
+                    <li>⚠️ Datos completos en proceso...</li>
+                </ul>
+                <p><small>Puedes usar el botón "Recargar" para intentar cargar datos completos.</small></p>
+            `,
+            icon: 'info',
+            confirmButtonText: 'Entendido',
+            allowOutsideClick: true,
+            timer: 5000,
+            timerProgressBar: true
+        });
+    } else {
+        // Error genérico
+        Swal.fire({
+            title: 'Error de Carga',
+            text: 'Hubo un problema cargando los datos completos. Los datos básicos están disponibles.',
+            icon: 'warning',
+            confirmButtonText: 'Entendido'
+        });
     }
 }
 

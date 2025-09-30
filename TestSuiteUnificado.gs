@@ -2383,4 +2383,87 @@ function testVerificacionRapida() {
   }
 }
 
-console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode), testGetEstadisticasRapidas(debugMode), testCorreccionesCacheCriticas(), testCorreccionCalcularMetricasGenerales(), testVariablesGlobalesFrontend(), testCargaInicialConAlertas(), testCorreccionHoyFormateada(), testVerificarFuenteDatos(), testAlertasCompletas(), testVerificacionCompletaModales(), testMetricasSmallGroups(), testSinConflictos() o testVerificacionRapida()');
+/**
+ * Test de optimización de forceReloadDashboardData
+ * Verifica que la función optimizada funcione correctamente
+ */
+function testOptimizacionForceReload() {
+  console.log('');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║ TEST DE OPTIMIZACIÓN FORCE RELOAD ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('');
+
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: []
+  };
+
+  try {
+    // Test 1: forceReloadDashboardData optimizada
+    console.log('🧪 Test 1: forceReloadDashboardData optimizada');
+    const start1 = Date.now();
+    const resultado1 = forceReloadDashboardData();
+    const time1 = Date.now() - start1;
+    
+    resultados.tests.push({
+      test: 'forceReloadDashboardData_optimizada',
+      tiempo_ms: time1,
+      exitoso: resultado1.success,
+      tiene_datos: resultado1.data ? true : false,
+      modo_optimizado: resultado1.data && resultado1.data.modo_optimizado ? true : false
+    });
+
+    console.log(` ⏱️ Tiempo: ${time1}ms`);
+    console.log(` ✅ Exitoso: ${resultado1.success ? 'SÍ' : 'NO'}`);
+    console.log(` 📊 Tiene datos: ${resultado1.data ? 'SÍ' : 'NO'}`);
+    console.log(` 🚀 Modo optimizado: ${resultado1.data && resultado1.data.modo_optimizado ? 'SÍ' : 'NO'}`);
+
+    // Test 2: generarAlertasRapidas
+    console.log('\n🧪 Test 2: generarAlertasRapidas');
+    const start2 = Date.now();
+    const resultado2 = generarAlertasRapidas();
+    const time2 = Date.now() - start2;
+    
+    resultados.tests.push({
+      test: 'generarAlertasRapidas',
+      tiempo_ms: time2,
+      exitoso: Array.isArray(resultado2),
+      cantidad_alertas: Array.isArray(resultado2) ? resultado2.length : 0
+    });
+
+    console.log(` ⏱️ Tiempo: ${time2}ms`);
+    console.log(` ✅ Exitoso: ${Array.isArray(resultado2) ? 'SÍ' : 'NO'}`);
+    console.log(` 📊 Alertas: ${Array.isArray(resultado2) ? resultado2.length : 0}`);
+
+    // Verificar que la optimización funciona
+    const cumpleObjetivo = time1 < 30000; // Debe ser < 30 segundos
+    const tieneDatos = resultado1.success && resultado1.data;
+    const esOptimizado = resultado1.data && resultado1.data.modo_optimizado;
+
+    console.log('');
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log('║ RESUMEN DE OPTIMIZACIÓN ║');
+    console.log('╚════════════════════════════════════════════════════════════╝');
+    console.log(`Tiempo: ${time1}ms (objetivo: <30s) ${cumpleObjetivo ? '✅' : '⚠️'}`);
+    console.log(`Datos: ${tieneDatos ? '✅' : '❌'}`);
+    console.log(`Optimizado: ${esOptimizado ? '✅' : '❌'}`);
+    console.log(`Estado: ${cumpleObjetivo && tieneDatos && esOptimizado ? '✅ EXITOSO' : '⚠️ REVISAR'}`);
+
+    resultados.resumen = {
+      cumpleObjetivo,
+      tieneDatos,
+      esOptimizado,
+      estado: cumpleObjetivo && tieneDatos && esOptimizado ? 'EXITOSO' : 'REVISAR'
+    };
+
+    return resultados;
+
+  } catch (error) {
+    console.error('❌ Error en test de optimización:', error);
+    resultados.error = error.toString();
+    return resultados;
+  }
+}
+
+console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode), testGetEstadisticasRapidas(debugMode), testCorreccionesCacheCriticas(), testCorreccionCalcularMetricasGenerales(), testVariablesGlobalesFrontend(), testCargaInicialConAlertas(), testCorreccionHoyFormateada(), testVerificarFuenteDatos(), testAlertasCompletas(), testVerificacionCompletaModales(), testMetricasSmallGroups(), testSinConflictos(), testVerificacionRapida() o testOptimizacionForceReload()');
