@@ -335,53 +335,8 @@ function getIngresosData(lcfId) {
  * @returns {Array<Object>} Lista de objetos de asistentes
  */
 function cargarMaestroAsistentesSelectivo(idsAlmas) {
-  checkTimeout();
-  if (!idsAlmas || idsAlmas.size === 0) return [];
-  
-  try {
-    console.log('[CoreModule] Cargando Maestro_Asistentes selectivamente...');
-    const cache = CacheService.getScriptCache();
-    const cacheKey = 'MAESTRO_SELECTIVO_' + Array.from(idsAlmas).sort().slice(0, 10).join('_');
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      console.log('[CoreModule] Maestro_Asistentes selectivo obtenido de caché.');
-      return JSON.parse(cached);
-    }
-    
-    const reporteCelulasId = (typeof CONFIG !== 'undefined' && CONFIG.SHEETS && CONFIG.SHEETS.REPORTE_CELULAS) ? CONFIG.SHEETS.REPORTE_CELULAS : '18wOkxTauLETdpkEy5qsd0shlZUf8FsfQg9oCN8-pCxI';
-    const ss = SpreadsheetApp.openById(reporteCelulasId);
-    const sheetName = (typeof CONFIG_SEGUIMIENTO !== 'undefined' && CONFIG_SEGUIMIENTO.TABS && CONFIG_SEGUIMIENTO.TABS.MAESTRO_ASISTENTES) ? CONFIG_SEGUIMIENTO.TABS.MAESTRO_ASISTENTES : 'Maestro_Asistentes';
-    const sheet = ss.getSheetByName(sheetName);
-    if (!sheet) {
-      console.warn(`[CoreModule] Hoja '${sheetName}' no encontrada.`);
-      return [];
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-
-    const resultado = [];
-    for (let i = 1; i < data.length; i++) {
-      const idAsistente = String(data[i][0] || '').trim();
-      if (idsAlmas.has(idAsistente)) {
-        resultado.push({
-          ID_Asistente: idAsistente,
-          Nombre: String(data[i][1] || '').trim(),
-          Temas_Completados: String(data[i][2] || '0/12'),
-          Porcentaje: parseFloat(data[i][4] || 0),
-          Estado: String(data[i][5] || 'Sin datos')
-        });
-      }
-    }
-    
-    cache.put(cacheKey, JSON.stringify(resultado), 300);
-    console.log(`[CoreModule] ${resultado.length} asistentes selectivos cargados.`);
-    return resultado;
-    
-  } catch (e) {
-    console.error('[CoreModule] Error cargando Maestro_Asistentes selectivo:', e);
-    return [];
-  }
+  console.log('[CoreModule] ⚠️ cargarMaestroAsistentesSelectivo simplificado - retornando array vacío');
+  return []; // ✅ SIMPLIFICADO: No usamos libros externos
 }
 
 /**
@@ -390,53 +345,8 @@ function cargarMaestroAsistentesSelectivo(idsAlmas) {
  * @returns {Array<Object>} Lista de objetos de interacciones
  */
 function cargarInteraccionesSelectivo(idsAlmas) {
-  checkTimeout();
-  if (!idsAlmas || idsAlmas.size === 0) return [];
-  
-  try {
-    console.log('[CoreModule] Cargando interacciones selectivamente...');
-    const cache = CacheService.getScriptCache();
-    const cacheKey = 'INTERACCIONES_SELECTIVO_' + Array.from(idsAlmas).sort().slice(0, 10).join('_');
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      console.log('[CoreModule] Interacciones selectivas obtenidas de caché.');
-      return JSON.parse(cached);
-    }
-
-    const interaccionesId = (typeof CONFIG !== 'undefined' && CONFIG.SHEETS && CONFIG.SHEETS.REGISTRO_INTERACCIONES) ? CONFIG.SHEETS.REGISTRO_INTERACCIONES : '1Rzx4k6ipkFvVpTYdisjAYSwGuIgyWiYFBsYu4RHFWPs';
-    const ss = SpreadsheetApp.openById(interaccionesId);
-    const sheetName = (typeof CONFIG_SEGUIMIENTO !== 'undefined' && CONFIG_SEGUIMIENTO.TABS && CONFIG_SEGUIMIENTO.TABS.REGISTRO_INTERACCIONES) ? CONFIG_SEGUIMIENTO.TABS.REGISTRO_INTERACCIONES : 'Registro de Interacciones';
-    const sheet = ss.getSheetByName(sheetName) || ss.getSheets()[0];
-    if (!sheet) {
-      console.warn(`[CoreModule] Hoja '${sheetName}' no encontrada.`);
-      return [];
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-
-    const resultado = [];
-    for (let i = 1; i < data.length; i++) {
-      const idAlma = String(data[i][1] || '').trim();
-      if (idsAlmas.has(idAlma)) {
-        resultado.push({
-          ID_Alma: idAlma,
-          Nombre_Alma: String(data[i][2] || '').trim(),
-          Timestamp_Interaccion: data[i][3],
-          Resultado: String(data[i][13] || '').trim(),
-          Medio_Contacto: String(data[i][12] || '').trim()
-        });
-      }
-    }
-    
-    cache.put(cacheKey, JSON.stringify(resultado), 300);
-    console.log(`[CoreModule] ${resultado.length} interacciones selectivas cargadas.`);
-    return resultado;
-    
-  } catch (e) {
-    console.error('[CoreModule] Error cargando interacciones selectivas:', e);
-    return [];
-  }
+  console.log('[CoreModule] ⚠️ cargarInteraccionesSelectivo simplificado - retornando array vacío');
+  return []; // ✅ SIMPLIFICADO: No usamos libros externos
 }
 
 /**
@@ -445,54 +355,8 @@ function cargarInteraccionesSelectivo(idsAlmas) {
  * @returns {Array<Object>} Lista de objetos de visitas
  */
 function cargarVisitasBendicionSelectivo(idsAlmas) {
-  checkTimeout();
-  if (!idsAlmas || idsAlmas.size === 0) return [];
-  
-  try {
-    console.log('[CoreModule] Cargando visitas de bendición selectivamente...');
-    const cache = CacheService.getScriptCache();
-    const cacheKey = 'VISITAS_SELECTIVO_' + Array.from(idsAlmas).sort().slice(0, 10).join('_');
-    const cached = cache.get(cacheKey);
-    if (cached) {
-      console.log('[CoreModule] Visitas selectivas obtenidas de caché.');
-      return JSON.parse(cached);
-    }
-
-    const visitasId = (typeof CONFIG !== 'undefined' && CONFIG.SHEETS && CONFIG.SHEETS.VISITAS_BENDICION) ? CONFIG.SHEETS.VISITAS_BENDICION : '1md72JN8LOJCpBLrPIGP9HQG8GQ1RzFFE-hAOlawQ2eg';
-    const ss = SpreadsheetApp.openById(visitasId);
-    const sheetName = (typeof CONFIG_SEGUIMIENTO !== 'undefined' && CONFIG_SEGUIMIENTO.TABS && CONFIG_SEGUIMIENTO.TABS.REGISTRO_VISITAS) ? CONFIG_SEGUIMIENTO.TABS.REGISTRO_VISITAS : 'Registro de Visitas';
-    const sheet = ss.getSheetByName(sheetName) || ss.getSheets()[0];
-    if (!sheet) {
-      console.warn(`[CoreModule] Hoja '${sheetName}' no encontrada.`);
-      return [];
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-
-    const resultado = [];
-    for (let i = 1; i < data.length; i++) {
-      const idAlma = String(data[i][1] || '').trim();
-      if (idsAlmas.has(idAlma)) {
-        resultado.push({
-          ID_Visita: String(data[i][0] || '').trim(),
-          ID_Alma: idAlma,
-          Timestamp_Visita: data[i][2],
-          Nombre_Agente: String(data[i][3] || '').trim(),
-          Estatus_Visita: String(data[i][12] || '').trim(),
-          Resultado_Visita: String(data[i][13] || '').trim()
-        });
-      }
-    }
-    
-    cache.put(cacheKey, JSON.stringify(resultado), 300);
-    console.log(`[CoreModule] ${resultado.length} visitas selectivas cargadas.`);
-    return resultado;
-    
-  } catch (e) {
-    console.error('[CoreModule] Error cargando visitas de bendición selectivas:', e);
-    return [];
-  }
+  console.log('[CoreModule] ⚠️ cargarVisitasBendicionSelectivo simplificado - retornando array vacío');
+  return []; // ✅ SIMPLIFICADO: No usamos libros externos
 }
 
 // ==================== GESTIÓN DE DATOS DE LD ====================

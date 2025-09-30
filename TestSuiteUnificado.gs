@@ -2561,4 +2561,311 @@ function testSeparacionCargaInicialRecarga() {
   }
 }
 
-console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode), testGetEstadisticasRapidas(debugMode), testCorreccionesCacheCriticas(), testCorreccionCalcularMetricasGenerales(), testVariablesGlobalesFrontend(), testCargaInicialConAlertas(), testCorreccionHoyFormateada(), testVerificarFuenteDatos(), testAlertasCompletas(), testVerificacionCompletaModales(), testMetricasSmallGroups(), testSinConflictos(), testVerificacionRapida(), testOptimizacionForceReload() o testSeparacionCargaInicialRecarga()');
+/**
+ * Test de simplificación de libros externos
+ * Verifica que las funciones que usaban libros externos ahora retornen arrays vacíos
+ */
+function testSimplificacionLibrosExternos() {
+  console.log('');
+  console.log('========================================');
+  console.log('📚 TEST: SIMPLIFICACIÓN DE LIBROS EXTERNOS');
+  console.log('========================================');
+  console.log('');
+  
+  const resultados = {
+    cargarMaestroAsistentes: null,
+    cargarInteracciones: null,
+    cargarVisitasBendicion: null,
+    cargarMaestroAsistentesSelectivo: null,
+    cargarInteraccionesSelectivo: null,
+    cargarVisitasBendicionSelectivo: null
+  };
+  
+  try {
+    // Test 1: cargarMaestroAsistentes
+    console.log('--- Test 1: cargarMaestroAsistentes ---');
+    const start1 = Date.now();
+    const asistentes = cargarMaestroAsistentes();
+    const time1 = Date.now() - start1;
+    
+    const test1 = {
+      funcion: 'cargarMaestroAsistentes',
+      tiempo_ms: time1,
+      resultado: Array.isArray(asistentes) ? asistentes : 'No es array',
+      longitud: Array.isArray(asistentes) ? asistentes.length : 0,
+      exitoso: Array.isArray(asistentes) && asistentes.length === 0,
+      mensaje: Array.isArray(asistentes) && asistentes.length === 0 ? '✅ Simplificado correctamente' : '❌ No simplificado'
+    };
+    
+    console.log(`⏱️ Tiempo: ${time1}ms`);
+    console.log(`📊 Resultado: ${test1.resultado}`);
+    console.log(`📏 Longitud: ${test1.longitud}`);
+    console.log(`✅ ${test1.mensaje}`);
+    resultados.cargarMaestroAsistentes = test1;
+    
+    // Test 2: cargarInteracciones
+    console.log('');
+    console.log('--- Test 2: cargarInteracciones ---');
+    const start2 = Date.now();
+    const interacciones = cargarInteracciones();
+    const time2 = Date.now() - start2;
+    
+    const test2 = {
+      funcion: 'cargarInteracciones',
+      tiempo_ms: time2,
+      resultado: Array.isArray(interacciones) ? interacciones : 'No es array',
+      longitud: Array.isArray(interacciones) ? interacciones.length : 0,
+      exitoso: Array.isArray(interacciones) && interacciones.length === 0,
+      mensaje: Array.isArray(interacciones) && interacciones.length === 0 ? '✅ Simplificado correctamente' : '❌ No simplificado'
+    };
+    
+    console.log(`⏱️ Tiempo: ${time2}ms`);
+    console.log(`📊 Resultado: ${test2.resultado}`);
+    console.log(`📏 Longitud: ${test2.longitud}`);
+    console.log(`✅ ${test2.mensaje}`);
+    resultados.cargarInteracciones = test2;
+    
+    // Test 3: cargarVisitasBendicion
+    console.log('');
+    console.log('--- Test 3: cargarVisitasBendicion ---');
+    const start3 = Date.now();
+    const visitas = cargarVisitasBendicion();
+    const time3 = Date.now() - start3;
+    
+    const test3 = {
+      funcion: 'cargarVisitasBendicion',
+      tiempo_ms: time3,
+      resultado: Array.isArray(visitas) ? visitas : 'No es array',
+      longitud: Array.isArray(visitas) ? visitas.length : 0,
+      exitoso: Array.isArray(visitas) && visitas.length === 0,
+      mensaje: Array.isArray(visitas) && visitas.length === 0 ? '✅ Simplificado correctamente' : '❌ No simplificado'
+    };
+    
+    console.log(`⏱️ Tiempo: ${time3}ms`);
+    console.log(`📊 Resultado: ${test3.resultado}`);
+    console.log(`📏 Longitud: ${test3.longitud}`);
+    console.log(`✅ ${test3.mensaje}`);
+    resultados.cargarVisitasBendicion = test3;
+    
+    // Test 4: cargarMaestroAsistentesSelectivo
+    console.log('');
+    console.log('--- Test 4: cargarMaestroAsistentesSelectivo ---');
+    const start4 = Date.now();
+    const asistentesSelectivo = cargarMaestroAsistentesSelectivo(new Set(['TEST_ID']));
+    const time4 = Date.now() - start4;
+    
+    const test4 = {
+      funcion: 'cargarMaestroAsistentesSelectivo',
+      tiempo_ms: time4,
+      resultado: Array.isArray(asistentesSelectivo) ? asistentesSelectivo : 'No es array',
+      longitud: Array.isArray(asistentesSelectivo) ? asistentesSelectivo.length : 0,
+      exitoso: Array.isArray(asistentesSelectivo) && asistentesSelectivo.length === 0,
+      mensaje: Array.isArray(asistentesSelectivo) && asistentesSelectivo.length === 0 ? '✅ Simplificado correctamente' : '❌ No simplificado'
+    };
+    
+    console.log(`⏱️ Tiempo: ${time4}ms`);
+    console.log(`📊 Resultado: ${test4.resultado}`);
+    console.log(`📏 Longitud: ${test4.longitud}`);
+    console.log(`✅ ${test4.mensaje}`);
+    resultados.cargarMaestroAsistentesSelectivo = test4;
+    
+    // Test 5: cargarInteraccionesSelectivo
+    console.log('');
+    console.log('--- Test 5: cargarInteraccionesSelectivo ---');
+    const start5 = Date.now();
+    const interaccionesSelectivo = cargarInteraccionesSelectivo(new Set(['TEST_ID']));
+    const time5 = Date.now() - start5;
+    
+    const test5 = {
+      funcion: 'cargarInteraccionesSelectivo',
+      tiempo_ms: time5,
+      resultado: Array.isArray(interaccionesSelectivo) ? interaccionesSelectivo : 'No es array',
+      longitud: Array.isArray(interaccionesSelectivo) ? interaccionesSelectivo.length : 0,
+      exitoso: Array.isArray(interaccionesSelectivo) && interaccionesSelectivo.length === 0,
+      mensaje: Array.isArray(interaccionesSelectivo) && interaccionesSelectivo.length === 0 ? '✅ Simplificado correctamente' : '❌ No simplificado'
+    };
+    
+    console.log(`⏱️ Tiempo: ${time5}ms`);
+    console.log(`📊 Resultado: ${test5.resultado}`);
+    console.log(`📏 Longitud: ${test5.longitud}`);
+    console.log(`✅ ${test5.mensaje}`);
+    resultados.cargarInteraccionesSelectivo = test5;
+    
+    // Test 6: cargarVisitasBendicionSelectivo
+    console.log('');
+    console.log('--- Test 6: cargarVisitasBendicionSelectivo ---');
+    const start6 = Date.now();
+    const visitasSelectivo = cargarVisitasBendicionSelectivo(new Set(['TEST_ID']));
+    const time6 = Date.now() - start6;
+    
+    const test6 = {
+      funcion: 'cargarVisitasBendicionSelectivo',
+      tiempo_ms: time6,
+      resultado: Array.isArray(visitasSelectivo) ? visitasSelectivo : 'No es array',
+      longitud: Array.isArray(visitasSelectivo) ? visitasSelectivo.length : 0,
+      exitoso: Array.isArray(visitasSelectivo) && visitasSelectivo.length === 0,
+      mensaje: Array.isArray(visitasSelectivo) && visitasSelectivo.length === 0 ? '✅ Simplificado correctamente' : '❌ No simplificado'
+    };
+    
+    console.log(`⏱️ Tiempo: ${time6}ms`);
+    console.log(`📊 Resultado: ${test6.resultado}`);
+    console.log(`📏 Longitud: ${test6.longitud}`);
+    console.log(`✅ ${test6.mensaje}`);
+    resultados.cargarVisitasBendicionSelectivo = test6;
+    
+    // Resumen
+    console.log('');
+    console.log('========================================');
+    console.log('📊 RESUMEN DE SIMPLIFICACIÓN');
+    console.log('========================================');
+    
+    const todosSimplificados = Object.values(resultados).every(test => test.exitoso);
+    const tiempoTotal = Object.values(resultados).reduce((sum, test) => sum + test.tiempo_ms, 0);
+    
+    console.log(`✅ Todas las funciones simplificadas: ${todosSimplificados ? 'SÍ' : 'NO'}`);
+    console.log(`⏱️ Tiempo total: ${tiempoTotal}ms`);
+    console.log(`📚 Libros externos eliminados: 3 (REPORTE_CELULAS, VISITAS_BENDICION, REGISTRO_INTERACCIONES)`);
+    console.log(`📊 Solo se usa: DIRECTORIO (${CONFIG.SHEETS.DIRECTORIO})`);
+    
+    if (todosSimplificados) {
+      console.log('');
+      console.log('🎉 ¡SIMPLIFICACIÓN EXITOSA!');
+      console.log('✅ Todas las funciones que usaban libros externos ahora retornan arrays vacíos');
+      console.log('✅ Solo se usa el libro DIRECTORIO');
+      console.log('✅ Mejora significativa en rendimiento esperada');
+    } else {
+      console.log('');
+      console.log('⚠️ SIMPLIFICACIÓN INCOMPLETA');
+      console.log('❌ Algunas funciones no están simplificadas correctamente');
+    }
+    
+    return {
+      exitoso: todosSimplificados,
+      tiempo_total_ms: tiempoTotal,
+      funciones_simplificadas: Object.keys(resultados).filter(key => resultados[key].exitoso).length,
+      total_funciones: Object.keys(resultados).length,
+      resultados: resultados
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test de simplificación:', error);
+    return {
+      exitoso: false,
+      error: error.toString(),
+      resultados: resultados
+    };
+  }
+}
+
+/**
+ * Test de corrección del error de días sin seguimiento
+ * Verifica que calcularDiasSinSeguimiento maneje correctamente arrays vacíos
+ */
+function testCorreccionDiasSinSeguimiento() {
+  console.log('');
+  console.log('========================================');
+  console.log('🔧 TEST: CORRECCIÓN DÍAS SIN SEGUIMIENTO');
+  console.log('========================================');
+  console.log('');
+  
+  try {
+    // Test 1: Con arrays vacíos (simplificados)
+    console.log('--- Test 1: Arrays vacíos (simplificados) ---');
+    const almaTest = {
+      ID_Alma: 'TEST-001',
+      Fecha_Ingreso: '2024-01-01'
+    };
+    
+    const start1 = Date.now();
+    const dias1 = calcularDiasSinSeguimiento(almaTest, [], []);
+    const time1 = Date.now() - start1;
+    
+    console.log(`⏱️ Tiempo: ${time1}ms`);
+    console.log(`📊 Días calculados: ${dias1}`);
+    console.log(`✅ Sin errores: ${typeof dias1 === 'number' ? 'SÍ' : 'NO'}`);
+    
+    // Test 2: Con arrays undefined
+    console.log('');
+    console.log('--- Test 2: Arrays undefined ---');
+    const start2 = Date.now();
+    const dias2 = calcularDiasSinSeguimiento(almaTest, undefined, undefined);
+    const time2 = Date.now() - start2;
+    
+    console.log(`⏱️ Tiempo: ${time2}ms`);
+    console.log(`📊 Días calculados: ${dias2}`);
+    console.log(`✅ Sin errores: ${typeof dias2 === 'number' ? 'SÍ' : 'NO'}`);
+    
+    // Test 3: Con arrays null
+    console.log('');
+    console.log('--- Test 3: Arrays null ---');
+    const start3 = Date.now();
+    const dias3 = calcularDiasSinSeguimiento(almaTest, null, null);
+    const time3 = Date.now() - start3;
+    
+    console.log(`⏱️ Tiempo: ${time3}ms`);
+    console.log(`📊 Días calculados: ${dias3}`);
+    console.log(`✅ Sin errores: ${typeof dias3 === 'number' ? 'SÍ' : 'NO'}`);
+    
+    // Test 4: Con arrays mixtos (válidos y vacíos)
+    console.log('');
+    console.log('--- Test 4: Arrays mixtos ---');
+    const interaccionesMixtas = [
+      { ID_Alma: 'TEST-001', Fecha_Interaccion: '2024-01-15' },
+      { ID_Alma: 'TEST-002', Fecha_Interaccion: '2024-01-20' }
+    ];
+    const visitasMixtas = [];
+    
+    const start4 = Date.now();
+    const dias4 = calcularDiasSinSeguimiento(almaTest, interaccionesMixtas, visitasMixtas);
+    const time4 = Date.now() - start4;
+    
+    console.log(`⏱️ Tiempo: ${time4}ms`);
+    console.log(`📊 Días calculados: ${dias4}`);
+    console.log(`✅ Sin errores: ${typeof dias4 === 'number' ? 'SÍ' : 'NO'}`);
+    
+    // Resumen
+    console.log('');
+    console.log('========================================');
+    console.log('📊 RESUMEN DE CORRECCIÓN');
+    console.log('========================================');
+    
+    const todosExitosos = [dias1, dias2, dias3, dias4].every(dias => typeof dias === 'number');
+    const tiempoTotal = time1 + time2 + time3 + time4;
+    
+    console.log(`✅ Todos los tests exitosos: ${todosExitosos ? 'SÍ' : 'NO'}`);
+    console.log(`⏱️ Tiempo total: ${tiempoTotal}ms`);
+    console.log(`🔧 Error corregido: ${todosExitosos ? 'SÍ' : 'NO'}`);
+    
+    if (todosExitosos) {
+      console.log('');
+      console.log('🎉 ¡CORRECCIÓN EXITOSA!');
+      console.log('✅ calcularDiasSinSeguimiento maneja correctamente arrays vacíos/undefined/null');
+      console.log('✅ No más errores de "Cannot read properties of undefined"');
+      console.log('✅ Funciona con la simplificación de libros externos');
+    } else {
+      console.log('');
+      console.log('⚠️ CORRECCIÓN INCOMPLETA');
+      console.log('❌ Algunos tests fallaron');
+    }
+    
+    return {
+      exitoso: todosExitosos,
+      tiempo_total_ms: tiempoTotal,
+      tests: {
+        arrays_vacios: { dias: dias1, tiempo: time1, exitoso: typeof dias1 === 'number' },
+        arrays_undefined: { dias: dias2, tiempo: time2, exitoso: typeof dias2 === 'number' },
+        arrays_null: { dias: dias3, tiempo: time3, exitoso: typeof dias3 === 'number' },
+        arrays_mixtos: { dias: dias4, tiempo: time4, exitoso: typeof dias4 === 'number' }
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test de corrección:', error);
+    return {
+      exitoso: false,
+      error: error.toString()
+    };
+  }
+}
+
+console.log('🧪 TestSuiteUnificado v3.2 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode), testGetEstadisticasRapidas(debugMode), testCorreccionesCacheCriticas(), testCorreccionCalcularMetricasGenerales(), testVariablesGlobalesFrontend(), testCargaInicialConAlertas(), testCorreccionHoyFormateada(), testVerificarFuenteDatos(), testAlertasCompletas(), testVerificacionCompletaModales(), testMetricasSmallGroups(), testSinConflictos(), testVerificacionRapida(), testOptimizacionForceReload(), testSeparacionCargaInicialRecarga(), testSimplificacionLibrosExternos() o testCorreccionDiasSinSeguimiento()');

@@ -34,36 +34,8 @@ function cargarDatosCompletos() {
  * @returns {Array} Array de asistentes
  */
 function cargarMaestroAsistentes() {
-  try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.REGISTRO_INTERACCIONES);
-    const sheet = ss.getSheetByName(CONFIG.TABS.ACTIVIDAD_CELULAS);
-    if (!sheet) return [];
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-    
-    const headers = data[0].map(h => h.toString().trim());
-    const asistentes = [];
-    
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      if (row[0]) { // ID_Alma
-        asistentes.push({
-          ID_Alma: row[0],
-          Nombre_Alma: row[1],
-          Fecha_Registro: row[2],
-          Estado: row[3],
-          Temas_Completados: row[4],
-          Observaciones: row[5]
-        });
-      }
-    }
-    
-    return asistentes;
-  } catch (error) {
-    console.error('[UtilidadesAvanzadas] Error cargando maestro asistentes:', error);
-    return [];
-  }
+  console.log('[UtilidadesAvanzadas] ⚠️ cargarMaestroAsistentes simplificado - retornando array vacío');
+  return []; // ✅ SIMPLIFICADO: No usamos libros externos
 }
 
 /**
@@ -71,36 +43,8 @@ function cargarMaestroAsistentes() {
  * @returns {Array} Array de interacciones
  */
 function cargarInteracciones() {
-  try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.REGISTRO_INTERACCIONES);
-    const sheet = ss.getSheetByName(CONFIG.TABS.ACTIVIDAD_VISITAS);
-    if (!sheet) return [];
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-    
-    const headers = data[0].map(h => h.toString().trim());
-    const interacciones = [];
-    
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      if (row[0]) { // ID_Alma
-        interacciones.push({
-          ID_Alma: row[0],
-          Nombre_Alma: row[1],
-          Fecha_Interaccion: row[2],
-          Tipo_Interaccion: row[3],
-          Resultado: row[4],
-          Observaciones: row[5]
-        });
-      }
-    }
-    
-    return interacciones;
-  } catch (error) {
-    console.error('[UtilidadesAvanzadas] Error cargando interacciones:', error);
-    return [];
-  }
+  console.log('[UtilidadesAvanzadas] ⚠️ cargarInteracciones simplificado - retornando array vacío');
+  return []; // ✅ SIMPLIFICADO: No usamos libros externos
 }
 
 /**
@@ -108,35 +52,8 @@ function cargarInteracciones() {
  * @returns {Array} Array de visitas
  */
 function cargarVisitasBendicion() {
-  try {
-    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.VISITAS_BENDICION);
-    const sheet = ss.getSheets()[0]; // Primera hoja
-    if (!sheet) return [];
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-    
-    const headers = data[0].map(h => h.toString().trim());
-    const visitas = [];
-    
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      if (row[0]) { // ID_Alma
-        visitas.push({
-          ID_Alma: row[0],
-          Nombre_Alma: row[1],
-          Fecha_Visita: row[2],
-          Resultado: row[3],
-          Observaciones: row[4]
-        });
-      }
-    }
-    
-    return visitas;
-  } catch (error) {
-    console.error('[UtilidadesAvanzadas] Error cargando visitas:', error);
-    return [];
-  }
+  console.log('[UtilidadesAvanzadas] ⚠️ cargarVisitasBendicion simplificado - retornando array vacío');
+  return []; // ✅ SIMPLIFICADO: No usamos libros externos
 }
 
 /**
@@ -225,9 +142,13 @@ function calcularDiasSinSeguimiento(alma, interacciones, visitas) {
     const hoy = new Date();
     let ultimaActividad = null;
     
+    // ✅ CORRECCIÓN: Verificar que los arrays existan y no sean undefined/null
+    const interaccionesValidas = Array.isArray(interacciones) ? interacciones : [];
+    const visitasValidas = Array.isArray(visitas) ? visitas : [];
+    
     // Buscar última interacción
-    const ultimaInteraccion = interacciones
-      .filter(i => i.ID_Alma === alma.ID_Alma)
+    const ultimaInteraccion = interaccionesValidas
+      .filter(i => i && i.ID_Alma === alma.ID_Alma)
       .sort((a, b) => new Date(b.Fecha_Interaccion) - new Date(a.Fecha_Interaccion))[0];
     
     if (ultimaInteraccion) {
@@ -235,8 +156,8 @@ function calcularDiasSinSeguimiento(alma, interacciones, visitas) {
     }
     
     // Buscar última visita
-    const ultimaVisita = visitas
-      .filter(v => v.ID_Alma === alma.ID_Alma)
+    const ultimaVisita = visitasValidas
+      .filter(v => v && v.ID_Alma === alma.ID_Alma)
       .sort((a, b) => new Date(b.Fecha_Visita) - new Date(a.Fecha_Visita))[0];
     
     if (ultimaVisita) {
