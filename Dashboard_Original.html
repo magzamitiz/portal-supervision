@@ -1369,27 +1369,41 @@ function crearTarjetaSGDirecto(sg) {
 
 // REEMPLAZAR crearTarjetaLCFDirectoConReporte con esta versión:
 function crearTarjetaLCFDirectoConReporte(lcf) {
-  const estadoColor = getEstadoColor(lcf.Estado_Actividad);
+  const estadoColor = getEstadoColor(lcf.Perfil_Lider || lcf.Estado_Actividad);
   const cargaColor = getCargaColor(lcf.metricas.carga_trabajo);
+  
+  // ✅ HYBRID: Mostrar días de inactividad si están disponibles
+  const diasInactivo = lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo !== undefined ? lcf.Dias_Inactivo : null;
+  const diasTexto = diasInactivo !== null ? `${diasInactivo} días` : 'N/A';
+  const diasColor = diasInactivo !== null && diasInactivo <= 7 ? 'text-green-600' : 
+                   diasInactivo !== null && diasInactivo <= 14 ? 'text-yellow-600' : 
+                   diasInactivo !== null ? 'text-red-600' : 'text-gray-400';
   
   return `
     <div class="bg-red-50 border border-red-200 rounded-lg shadow p-3">
       <div class="mb-2">
         <h5 class="font-semibold text-sm text-gray-800 truncate">${lcf.Nombre_Lider}</h5>
         <p class="text-xs text-gray-500">${lcf.ID_Lider}</p>
-        <span class="status-badge ${estadoColor} text-xs mt-1">
-          ${lcf.Estado_Actividad}
-        </span>
+        <div class="flex gap-1 mt-1">
+          <span class="status-badge ${estadoColor} text-xs">
+            ${lcf.Perfil_Lider || lcf.Estado_Actividad}
+          </span>
+          ${diasInactivo !== null ? `<span class="text-xs ${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
+        </div>
       </div>
       
-      <div class="grid grid-cols-2 gap-2 text-center text-xs mb-2">
+      <div class="grid grid-cols-3 gap-2 text-center text-xs mb-2">
         <div class="bg-white rounded p-1">
           <div class="font-bold text-blue-600">${lcf.metricas.total_almas}</div>
           <div class="text-gray-500">Almas</div>
         </div>
         <div class="bg-white rounded p-1">
           <div class="font-bold text-green-600">${lcf.metricas.tasa_integracion}%</div>
-          <div class="text-gray-500">Integración</div>
+          <div class="text-gray-500">Integr.</div>
+        </div>
+        <div class="bg-white rounded p-1">
+          <div class="font-bold text-purple-600">${lcf.IDP || 0}</div>
+          <div class="text-gray-500">IDP</div>
         </div>
       </div>
       

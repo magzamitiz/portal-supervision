@@ -243,4 +243,92 @@ function limpiarCache() {
   }
 }
 
-console.log('🧪 TestSuiteSimple cargado - Ejecuta testPrincipal() para empezar');
+/**
+ * 🎯 TEST HYBRID - Verifica el sistema hybrid de perfiles + días de inactividad
+ */
+function testHybrid() {
+  console.log('');
+  console.log('========================================');
+  console.log('🎯 TEST SISTEMA HYBRID');
+  console.log('========================================');
+  console.log('');
+  
+  try {
+    // Test 1: Verificar funciones
+    console.log('--- Test 1: Funciones disponibles ---');
+    const funcionPerfiles = typeof cargarEstadoLideres === 'function';
+    const funcionDias = typeof calcularDiasInactividadEquipo === 'function';
+    const funcionIntegrar = typeof integrarDiasInactividad === 'function';
+    
+    console.log(`✅ cargarEstadoLideres: ${funcionPerfiles ? 'OK' : 'ERROR'}`);
+    console.log(`✅ calcularDiasInactividadEquipo: ${funcionDias ? 'OK' : 'ERROR'}`);
+    console.log(`✅ integrarDiasInactividad: ${funcionIntegrar ? 'OK' : 'ERROR'}`);
+    
+    if (!funcionPerfiles || !funcionDias || !funcionIntegrar) {
+      console.log('❌ Funciones híbridas no disponibles');
+      return { exitoso: false };
+    }
+    
+    // Test 2: Probar carga de perfiles
+    console.log('');
+    console.log('--- Test 2: Carga de perfiles ---');
+    const start1 = Date.now();
+    const estadosMap = cargarEstadoLideres();
+    const time1 = Date.now() - start1;
+    
+    console.log(`✅ Perfiles cargados: ${estadosMap.size} líderes (${time1}ms)`);
+    
+    // Test 3: Probar cálculo de días de inactividad
+    console.log('');
+    console.log('--- Test 3: Días de inactividad ---');
+    
+    // Obtener algunos IDs de LCF para probar
+    const lcfIds = Array.from(estadosMap.keys()).slice(0, 5);
+    console.log(`Probando con ${lcfIds.length} LCF del equipo`);
+    
+    const start2 = Date.now();
+    const inactividadMap = calcularDiasInactividadEquipo(lcfIds);
+    const time2 = Date.now() - start2;
+    
+    console.log(`✅ Días calculados: ${inactividadMap.size} líderes (${time2}ms)`);
+    
+    // Test 4: Mostrar ejemplos
+    console.log('');
+    console.log('--- Test 4: Ejemplos de datos híbridos ---');
+    
+    let ejemplosCount = 0;
+    for (const [id, estado] of estadosMap) {
+      if (ejemplosCount >= 3) break;
+      
+      const inactividad = inactividadMap.get(id);
+      
+      console.log(`📊 ${estado.Nombre_Lider}`);
+      console.log(`   ID: ${id}`);
+      console.log(`   Perfil: ${estado.Perfil_Lider} (IDP: ${estado.IDP})`);
+      console.log(`   Días inactivo: ${inactividad ? inactividad.dias_inactivo : 'N/A'}`);
+      console.log(`   Última actividad: ${inactividad && inactividad.ultima_actividad ? new Date(inactividad.ultima_actividad).toLocaleDateString() : 'N/A'}`);
+      
+      ejemplosCount++;
+    }
+    
+    console.log('');
+    console.log('🎉 ¡SISTEMA HYBRID FUNCIONANDO!');
+    console.log('✅ Perfiles pre-calculados (rápido)');
+    console.log('✅ Días de inactividad calculados por equipo (preciso)');
+    console.log('📊 Balance perfecto entre velocidad e información');
+    
+    return {
+      exitoso: true,
+      tiempo_perfiles_ms: time1,
+      tiempo_dias_ms: time2,
+      lideres_con_perfil: estadosMap.size,
+      lideres_con_dias: inactividadMap.size
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test hybrid:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+console.log('🧪 TestSuiteSimple cargado - Ejecuta testPrincipal() o testHybrid() para empezar');

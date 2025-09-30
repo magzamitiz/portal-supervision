@@ -479,6 +479,110 @@ function integrarPerfilesLideres(lideres, estadosMap) {
   });
 }
 
+/**
+ * Calcula días de inactividad solo para un equipo específico de LCF
+ * ✅ OPTIMIZADO: Solo calcula para el equipo seleccionado, no todos los líderes
+ * @param {Array<string>} lcfIds - Array de IDs de LCF del equipo
+ * @param {Object} spreadsheet - (Opcional) Objeto spreadsheet ya abierto
+ * @returns {Map<string, Object>} Mapa de ID_Lider a {dias_inactivo, ultima_actividad}
+ */
+function calcularDiasInactividadEquipo(lcfIds, spreadsheet) {
+  console.log(`[CoreModule] Calculando días de inactividad para ${lcfIds.length} LCF...`);
+  
+  const inactividadMap = new Map();
+  
+  if (!lcfIds || lcfIds.length === 0) {
+    return inactividadMap;
+  }
+  
+  try {
+    // Reutilizar spreadsheet si se proporcionó
+    if (!spreadsheet) {
+      spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    }
+    
+    const sheet = spreadsheet.getSheetByName('_SeguimientoConsolidado');
+    
+    if (!sheet) {
+      console.warn('[CoreModule] ⚠️ Hoja _SeguimientoConsolidado no encontrada');
+      return inactividadMap;
+    }
+    
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      console.log('[CoreModule] ⚠️ Hoja _SeguimientoConsolidado vacía');
+      return inactividadMap;
+    }
+    
+    // Leer datos: solo columnas necesarias (ID_LCF y Dias_Sin_Seguimiento)
+    const data = sheet.getRange(2, 3, lastRow - 1, 8).getValues(); // C:J
+    console.log(`[CoreModule] 📊 Procesando ${data.length} registros de seguimiento`);
+    
+    const hoy = new Date();
+    const lcfSet = new Set(lcfIds); // Para búsqueda rápida
+    
+    data.forEach(row => {
+      const idLCF = String(row[0] || '').trim(); // Columna C (índice 0 en el rango)
+      const diasSinSeguimiento = parseInt(row[7]) || null; // Columna J (índice 7 en el rango)
+      
+      // Solo procesar si el LCF está en el equipo
+      if (idLCF && lcfSet.has(idLCF)) {
+        // Calcular última actividad basada en días sin seguimiento
+        let ultimaActividad = null;
+        let diasInactivo = null;
+        
+        if (diasSinSeguimiento !== null && diasSinSeguimiento >= 0) {
+          ultimaActividad = new Date(hoy);
+          ultimaActividad.setDate(hoy.getDate() - diasSinSeguimiento);
+          diasInactivo = diasSinSeguimiento;
+        }
+        
+        // Solo actualizar si es más reciente o no existe
+        const existente = inactividadMap.get(idLCF);
+        if (!existente || (ultimaActividad && ultimaActividad > existente.ultima_actividad)) {
+          inactividadMap.set(idLCF, {
+            dias_inactivo: diasInactivo,
+            ultima_actividad: ultimaActividad ? ultimaActividad.toISOString() : null
+          });
+        }
+      }
+    });
+    
+    console.log(`[CoreModule] ✅ Días de inactividad calculados para ${inactividadMap.size} LCF del equipo`);
+    
+  } catch (error) {
+    console.error('[CoreModule] ❌ Error calculando días de inactividad:', error);
+  }
+  
+  return inactividadMap;
+}
+
+/**
+ * Integra días de inactividad en el array de líderes
+ * @param {Array<Object>} lideres - Array de líderes
+ * @param {Map<string, Object>} inactividadMap - Mapa de días de inactividad
+ * @returns {Array<Object>} Array de líderes con días de inactividad
+ */
+function integrarDiasInactividad(lideres, inactividadMap) {
+  return lideres.map(lider => {
+    const inactividad = inactividadMap.get(lider.ID_Lider);
+    
+    if (inactividad) {
+      return {
+        ...lider,
+        Dias_Inactivo: inactividad.dias_inactivo,
+        Ultima_Actividad: inactividad.ultima_actividad
+      };
+    } else {
+      return {
+        ...lider,
+        Dias_Inactivo: null,
+        Ultima_Actividad: null
+      };
+    }
+  });
+}
+
 // ==================== GESTIÓN DE DATOS DE LD ====================
 
 /**
@@ -642,17 +746,30 @@ function getDatosLDCompleto(idLD) {
     }
   }
   
+  // ✅ HYBRID: Calcular días de inactividad solo para este equipo
+  const lcfIdsEquipo = lideres
+    .filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LCF')
+    .map(l => l.ID_Lider);
+  
+  console.log(`[CoreModule] Calculando días de inactividad para ${lcfIdsEquipo.length} LCF del equipo...`);
+  const inactividadMap = calcularDiasInactividadEquipo(lcfIdsEquipo);
+  
   const lcfBajoLD = lideres
     .filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LCF')
     .map(lcf => {
       const susCelulas = celulasPorLCF.get(lcf.ID_Lider) || [];
       const susIngresos = almasPorLCF.get(lcf.ID_Lider) || [];
+      const inactividad = inactividadMap.get(lcf.ID_Lider);
       
       return {
         ID_Lider: lcf.ID_Lider,
-        Nombre_Lider: lcf.Nombre_Lider || 'Sin Nombre',  // Validación para evitar undefined
+        Nombre_Lider: lcf.Nombre_Lider || 'Sin Nombre',
         Rol: lcf.Rol,
-        Estado_Actividad: (lcf.Estado_Actividad && lcf.Estado_Actividad !== '-') ? lcf.Estado_Actividad : 'Activo',  // Validación para evitar undefined y guiones
+        Estado_Actividad: (lcf.Estado_Actividad && lcf.Estado_Actividad !== '-') ? lcf.Estado_Actividad : 'Activo',
+        Perfil_Lider: lcf.Perfil_Lider || '🌱 EN DESARROLLO', // ✅ NUEVO: Perfil del líder
+        IDP: lcf.IDP || 0, // ✅ NUEVO: Índice de Productividad
+        Dias_Inactivo: inactividad ? inactividad.dias_inactivo : null, // ✅ HYBRID: Días de inactividad
+        Ultima_Actividad: inactividad ? inactividad.ultima_actividad : null, // ✅ HYBRID: Última actividad
         Celulas: susCelulas.length,
         Miembros: susCelulas.reduce((sum, c) => sum + obtenerTotalMiembros(c), 0),
         Ingresos: susIngresos.length,
