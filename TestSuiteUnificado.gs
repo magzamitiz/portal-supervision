@@ -2466,4 +2466,99 @@ function testOptimizacionForceReload() {
   }
 }
 
-console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode), testGetEstadisticasRapidas(debugMode), testCorreccionesCacheCriticas(), testCorreccionCalcularMetricasGenerales(), testVariablesGlobalesFrontend(), testCargaInicialConAlertas(), testCorreccionHoyFormateada(), testVerificarFuenteDatos(), testAlertasCompletas(), testVerificacionCompletaModales(), testMetricasSmallGroups(), testSinConflictos(), testVerificacionRapida() o testOptimizacionForceReload()');
+/**
+ * Test para verificar la separación entre carga inicial y recarga forzada
+ */
+function testSeparacionCargaInicialRecarga() {
+  console.log('');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║ TEST DE SEPARACIÓN CARGA INICIAL vs RECARGA FORZADA ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('');
+
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: []
+  };
+
+  try {
+    // Test 1: getDashboardData (carga inicial con caché)
+    console.log('🧪 Test 1: getDashboardData (carga inicial)');
+    const start1 = Date.now();
+    const resultado1 = getDashboardData(false); // forceReload = false
+    const time1 = Date.now() - start1;
+    
+    resultados.tests.push({
+      test: 'getDashboardData_carga_inicial',
+      tiempo_ms: time1,
+      exitoso: resultado1.success,
+      tiene_datos: resultado1.data ? true : false,
+      modo_carga: resultado1.data?.modo_carga || 'No especificado'
+    });
+
+    console.log(` ⏱️ Tiempo: ${time1}ms`);
+    console.log(` ✅ Exitoso: ${resultado1.success ? 'SÍ' : 'NO'}`);
+    console.log(` 📊 Tiene datos: ${resultado1.data ? 'SÍ' : 'NO'}`);
+    console.log(` 🔄 Modo: ${resultado1.data?.modo_carga || 'No especificado'}`);
+
+    // Test 2: forceReloadDashboardData (recarga forzada)
+    console.log('\n🧪 Test 2: forceReloadDashboardData (recarga forzada)');
+    const start2 = Date.now();
+    const resultado2 = forceReloadDashboardData();
+    const time2 = Date.now() - start2;
+    
+    resultados.tests.push({
+      test: 'forceReloadDashboardData_recarga_forzada',
+      tiempo_ms: time2,
+      exitoso: resultado2.success,
+      tiene_datos: resultado2.data ? true : false,
+      modo_carga: resultado2.data?.modo_carga || 'No especificado'
+    });
+
+    console.log(` ⏱️ Tiempo: ${time2}ms`);
+    console.log(` ✅ Exitoso: ${resultado2.success ? 'SÍ' : 'NO'}`);
+    console.log(` 📊 Tiene datos: ${resultado2.data ? 'SÍ' : 'NO'}`);
+    console.log(` 🔄 Modo: ${resultado2.data?.modo_carga || 'No especificado'}`);
+
+    // Test 3: Verificar que son diferentes
+    console.log('\n🧪 Test 3: Verificar diferencias');
+    const sonDiferentes = resultado1.data?.modo_carga !== resultado2.data?.modo_carga;
+    const cargaInicialCorrecta = resultado1.data?.modo_carga?.includes('CACHÉ');
+    const recargaCorrecta = resultado2.data?.modo_carga?.includes('RECARGA FORZADA');
+
+    console.log(` 🔄 Modos diferentes: ${sonDiferentes ? '✅ SÍ' : '❌ NO'}`);
+    console.log(` 📊 Carga inicial correcta: ${cargaInicialCorrecta ? '✅ SÍ' : '❌ NO'}`);
+    console.log(` 🔄 Recarga correcta: ${recargaCorrecta ? '✅ SÍ' : '❌ NO'}`);
+
+    // Verificar que ambas funcionan
+    const ambasFuncionan = resultado1.success && resultado2.success;
+    const ambasTienenDatos = resultado1.data && resultado2.data;
+
+    console.log('');
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log('║ RESUMEN DE SEPARACIÓN ║');
+    console.log('╚════════════════════════════════════════════════════════════╝');
+    console.log(`Carga inicial: ${time1}ms ${resultado1.success ? '✅' : '❌'}`);
+    console.log(`Recarga forzada: ${time2}ms ${resultado2.success ? '✅' : '❌'}`);
+    console.log(`Modos diferentes: ${sonDiferentes ? '✅' : '❌'}`);
+    console.log(`Ambas funcionan: ${ambasFuncionan ? '✅' : '❌'}`);
+    console.log(`Estado: ${ambasFuncionan && sonDiferentes ? '✅ EXITOSO' : '⚠️ REVISAR'}`);
+
+    resultados.resumen = {
+      ambasFuncionan,
+      sonDiferentes,
+      cargaInicialCorrecta,
+      recargaCorrecta,
+      estado: ambasFuncionan && sonDiferentes ? 'EXITOSO' : 'REVISAR'
+    };
+
+    return resultados;
+
+  } catch (error) {
+    console.error('❌ Error en test de separación:', error);
+    resultados.error = error.toString();
+    return resultados;
+  }
+}
+
+console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode), testGetEstadisticasRapidas(debugMode), testCorreccionesCacheCriticas(), testCorreccionCalcularMetricasGenerales(), testVariablesGlobalesFrontend(), testCargaInicialConAlertas(), testCorreccionHoyFormateada(), testVerificarFuenteDatos(), testAlertasCompletas(), testVerificacionCompletaModales(), testMetricasSmallGroups(), testSinConflictos(), testVerificacionRapida(), testOptimizacionForceReload() o testSeparacionCargaInicialRecarga()');

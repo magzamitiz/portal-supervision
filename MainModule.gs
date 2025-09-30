@@ -181,7 +181,8 @@ function reiniciarAplicacion() {
  */
 function getDashboardData(forceReload = false) {
   try {
-    console.log('[MainModule] Obteniendo datos del dashboard...');
+    const modo = forceReload ? 'FORZADA (sin caché)' : 'CACHÉ (optimizada)';
+    console.log(`[MainModule] Obteniendo datos del dashboard - Modo: ${modo}`);
     
     // Cargar datos del directorio
     const directorioData = cargarDirectorioCompleto(forceReload);
@@ -199,10 +200,11 @@ function getDashboardData(forceReload = false) {
       datosBase: directorioData,
       metricas: calcularMetricasPrincipales(directorioData),
       alertas: generarAlertas(directorioData),
-      timestamp: directorioData.timestamp 
+      timestamp: directorioData.timestamp,
+      modo_carga: modo
     };
 
-    console.log('[MainModule] Datos del dashboard obtenidos exitosamente');
+    console.log(`[MainModule] Datos del dashboard obtenidos exitosamente - Modo: ${modo}`);
     return {
       success: true,
       data: analisis
@@ -348,7 +350,7 @@ function validarConectividad() {
  */
 function forceReloadDashboardData() {
   try {
-    console.log('[MainModule] Solicitud de recarga forzada recibida desde el Frontend.');
+    console.log('[MainModule] 🔄 RECARGA FORZADA solicitada desde el Frontend');
     const startTime = Date.now();
     
     // ✅ OPTIMIZACIÓN: Cargar solo datos esenciales para evitar timeout
@@ -387,11 +389,12 @@ function forceReloadDashboardData() {
       metricas: stats.data.metricas,
       alertas: alertas || [],
       timestamp: stats.data.timestamp,
-      modo_optimizado: true
+      modo_optimizado: true,
+      modo_carga: 'RECARGA FORZADA (optimizada)'
     };
 
     const timeElapsed = Date.now() - startTime;
-    console.log(`[MainModule] ✅ Datos optimizados cargados en ${timeElapsed}ms`);
+    console.log(`[MainModule] ✅ Recarga forzada completada en ${timeElapsed}ms`);
 
     return {
       success: true,

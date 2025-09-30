@@ -333,11 +333,11 @@ function cargarDatosIniciales() {
         .getListaDeLideres();
 
     // TERCERA LLAMADA: Carga datos completos con alertas para mostrar desde el inicio
-    console.log('Cargando datos completos con alertas...');
+    console.log('Cargando datos completos con alertas (usando caché)...');
     google.script.run
         .withSuccessHandler(handleDatosCompletosResponse)
         .withFailureHandler(handleDatosCompletosError)
-        .forceReloadDashboardData();
+        .getDashboardData();
 }
 
 // Nueva función para manejar la respuesta de las estadísticas
@@ -355,6 +355,8 @@ function handleEstadisticasResponse(response) {
 // Nueva función para manejar la respuesta de datos completos con alertas
 function handleDatosCompletosResponse(response) {
     if (response && response.success) {
+        const modo = response.data.modo_carga || 'Desconocido';
+        console.log(`📊 Datos completos recibidos - Modo: ${modo}`);
         console.log('Datos completos con alertas recibidos:', response.data);
         
         // Actualizar datosActuales con la información completa
@@ -367,7 +369,7 @@ function handleDatosCompletosResponse(response) {
         // Ocultar el loader una vez que tenemos los datos completos
         document.getElementById('loader').style.display = 'none';
         
-        console.log('Dashboard cargado completamente con alertas');
+        console.log(`✅ Dashboard cargado completamente con alertas - Modo: ${modo}`);
     } else {
         console.error('Error cargando datos completos:', response ? response.error : 'Error desconocido');
         // No fallar completamente, solo mostrar warning
@@ -416,6 +418,58 @@ function handleDatosCompletosError(error) {
     }
 }
 
+// Función para manejar la respuesta de recarga completa
+function handleRecargaCompleta(response) {
+    const modo = response.data?.modo_carga || 'Desconocido';
+    console.log(`🔄 Recarga completa exitosa - Modo: ${modo}`);
+    console.log('Recarga completa exitosa:', response);
+    
+    if (response && response.success && response.data) {
+        // Actualizar datosActuales con la información completa
+        datosActuales = response.data;
+        window.datosActuales = response.data;
+        
+        // Mostrar alertas globales si existen
+        mostrarAlertasGlobales();
+        
+        // Cerrar el modal de carga
+        if (Swal.isVisible()) {
+            Swal.close();
+        }
+        
+        console.log(`✅ Recarga completa procesada correctamente - Modo: ${modo}`);
+    } else {
+        console.error('Error en recarga completa:', response ? response.error : 'Respuesta inválida');
+        if (Swal.isVisible()) {
+            Swal.close();
+        }
+        Swal.fire({
+            title: 'Error en Recarga',
+            text: 'Hubo un problema durante la recarga completa de datos.',
+            icon: 'error',
+            confirmButtonText: 'Entendido'
+        });
+    }
+}
+
+// Función para manejar errores de recarga completa
+function handleErrorRecarga(error) {
+    console.error("Error en recarga completa:", error);
+    
+    // Cerrar el modal de carga
+    if (Swal.isVisible()) {
+        Swal.close();
+    }
+    
+    // Mostrar mensaje de error
+    Swal.fire({
+        title: 'Error en Recarga',
+        text: 'Hubo un problema durante la recarga completa. Inténtalo de nuevo más tarde.',
+        icon: 'error',
+        confirmButtonText: 'Entendido'
+    });
+}
+
 // Nueva función para manejar la respuesta de los líderes
 function handleLideresResponse(response) {
     if (response && response.success) {
@@ -439,8 +493,11 @@ function handleLideresResponse(response) {
                     Swal.showLoading();
                 }
             });
-            // Llama a la función del backend que ignora la caché (Debe existir en Code.gs)
-            fetchData('forceReloadDashboardData', true);
+            // Llama a la función del backend que ignora la caché
+            google.script.run
+                .withSuccessHandler(handleRecargaCompleta)
+                .withFailureHandler(handleErrorRecarga)
+                .forceReloadDashboardData();
         }
 
         // Función genérica para obtener datos del backend
