@@ -923,21 +923,39 @@ function testOptimizacionesCompleto() {
   return resultados;
 }
 
-function testGetListaDeLideres() {
+function testGetListaDeLideres(debugMode = false) {
   Logger.log('');
-  Logger.log('--- TEST: getListaDeLideres ---');
+  Logger.log('--- TEST: getListaDeLideres' + (debugMode ? ' (DEBUG)' : '') + ' ---');
   
   const startTime = Date.now();
   
   try {
-    const lideres = getListaDeLideres();
+    // Limpiar caché si es modo debug
+    if (debugMode) {
+      Logger.log('🧹 Limpiando caché para test limpio...');
+      clearCache();
+    }
+    
+    const response = getListaDeLideres();
     const timeElapsed = Date.now() - startTime;
     
+    // ✅ CORREGIDO: Manejar respuesta {success, data} correctamente
+    if (!response.success) {
+      Logger.log('❌ Error en getListaDeLideres: ' + response.error);
+      return {
+        funcion: 'getListaDeLideres',
+        exitoso: false,
+        error: response.error,
+        tiempo_ms: timeElapsed
+      };
+    }
+    
+    const registros = response.data ? response.data.length : 0;
     const exitoso = timeElapsed < 10000; // Debe ser < 10 segundos
     const objetivo = timeElapsed < 5000; // Objetivo: < 5 segundos
     
     Logger.log('⏱️  Tiempo: ' + timeElapsed + 'ms');
-    Logger.log('📊 Líderes obtenidos: ' + (lideres ? lideres.length : 0));
+    Logger.log('📊 Líderes obtenidos: ' + registros);
     Logger.log('🎯 Cumple objetivo (<5s): ' + (objetivo ? '✅ SÍ' : '⚠️  NO'));
     Logger.log('✅ Funcional: ' + (exitoso ? '✅ SÍ' : '❌ NO'));
     
@@ -945,37 +963,61 @@ function testGetListaDeLideres() {
       funcion: 'getListaDeLideres',
       tiempo_ms: timeElapsed,
       tiempo_s: (timeElapsed / 1000).toFixed(2),
-      registros: lideres ? lideres.length : 0,
+      registros: registros,
       exitoso: exitoso,
       cumpleObjetivo: objetivo,
-      mejoraPorcentual: ((192000 - timeElapsed) / 192000 * 100).toFixed(1) + '%'
+      mejoraPorcentual: ((192000 - timeElapsed) / 192000 * 100).toFixed(1) + '%',
+      data: response.data
     };
     
   } catch (error) {
-    Logger.log('❌ ERROR: ' + error);
+    Logger.log('❌ EXCEPCIÓN: ' + error);
     return {
       funcion: 'getListaDeLideres',
       exitoso: false,
-      error: error.toString()
+      error: error.toString(),
+      tiempo_ms: Date.now() - startTime
     };
   }
 }
 
-function testGetEstadisticasRapidas() {
+function testGetEstadisticasRapidas(debugMode = false) {
   Logger.log('');
-  Logger.log('--- TEST: getEstadisticasRapidas ---');
+  Logger.log('--- TEST: getEstadisticasRapidas' + (debugMode ? ' (DEBUG)' : '') + ' ---');
   
   const startTime = Date.now();
   
   try {
-    const stats = getEstadisticasRapidas();
+    // Limpiar caché si es modo debug
+    if (debugMode) {
+      Logger.log('🧹 Limpiando caché para test limpio...');
+      clearCache();
+    }
+    
+    const response = getEstadisticasRapidas();
     const timeElapsed = Date.now() - startTime;
+    
+    // ✅ CORREGIDO: Manejar respuesta {success, data} correctamente
+    if (!response.success) {
+      Logger.log('❌ Error en getEstadisticasRapidas: ' + response.error);
+      return {
+        funcion: 'getEstadisticasRapidas',
+        exitoso: false,
+        error: response.error,
+        tiempo_ms: timeElapsed
+      };
+    }
     
     const exitoso = timeElapsed < 5000; // Debe ser < 5 segundos
     const objetivo = timeElapsed < 2000; // Objetivo: < 2 segundos
     
     Logger.log('⏱️  Tiempo: ' + timeElapsed + 'ms');
-    Logger.log('📊 Estadísticas: ' + JSON.stringify(stats));
+    Logger.log('📊 Estadísticas obtenidas: ' + (response.data ? 'SÍ' : 'NO'));
+    if (response.data) {
+      Logger.log('   - Total LD: ' + (response.data.lideres?.total_LD || 0));
+      Logger.log('   - Total LCF: ' + (response.data.lideres?.total_LCF || 0));
+      Logger.log('   - Total Células: ' + (response.data.celulas?.total_celulas || 0));
+    }
     Logger.log('🎯 Cumple objetivo (<2s): ' + (objetivo ? '✅ SÍ' : '⚠️  NO'));
     Logger.log('✅ Funcional: ' + (exitoso ? '✅ SÍ' : '❌ NO'));
     
@@ -983,18 +1025,20 @@ function testGetEstadisticasRapidas() {
       funcion: 'getEstadisticasRapidas',
       tiempo_ms: timeElapsed,
       tiempo_s: (timeElapsed / 1000).toFixed(2),
-      stats: stats,
+      stats: response.data,
       exitoso: exitoso,
       cumpleObjetivo: objetivo,
-      mejoraPorcentual: ((124000 - timeElapsed) / 124000 * 100).toFixed(1) + '%'
+      mejoraPorcentual: ((124000 - timeElapsed) / 124000 * 100).toFixed(1) + '%',
+      data: response.data
     };
     
   } catch (error) {
-    Logger.log('❌ ERROR: ' + error);
+    Logger.log('❌ EXCEPCIÓN: ' + error);
     return {
       funcion: 'getEstadisticasRapidas',
       exitoso: false,
-      error: error.toString()
+      error: error.toString(),
+      tiempo_ms: Date.now() - startTime
     };
   }
 }
@@ -1072,8 +1116,8 @@ function testPerformanceDebug() {
   console.log('=====================================');
   
   const resultados = {
-    getListaDeLideres: testGetListaDeLideresDebug(),
-    getEstadisticasRapidas: testGetEstadisticasRapidasDebug(),
+    getListaDeLideres: testGetListaDeLideres(true), // debugMode = true
+    getEstadisticasRapidas: testGetEstadisticasRapidas(true), // debugMode = true
     cacheStatus: testCacheStatus(),
     configStatus: testConfigStatus()
   };
@@ -1085,84 +1129,21 @@ function testPerformanceDebug() {
   return resultados;
 }
 
-function testGetListaDeLideresDebug() {
-  console.log('');
-  console.log('--- DEBUG: getListaDeLideres ---');
-  
-  const startTime = Date.now();
-  
-  try {
-    // Limpiar caché para test limpio
-    clearCache();
-    
-    const lideres = getListaDeLideres();
-    const timeElapsed = Date.now() - startTime;
-    
-    console.log('⏱️  Tiempo total: ' + timeElapsed + 'ms');
-    console.log('📊 Líderes obtenidos: ' + (lideres.data ? lideres.data.length : 0));
-    console.log('✅ Éxito: ' + lideres.success);
-    
-    if (lideres.error) {
-      console.log('❌ Error: ' + lideres.error);
-    }
-    
-    return {
-      funcion: 'getListaDeLideres',
-      tiempo_ms: timeElapsed,
-      exitoso: lideres.success,
-      cantidad: lideres.data ? lideres.data.length : 0,
-      error: lideres.error || null
-    };
-    
-  } catch (error) {
-    console.log('❌ EXCEPCIÓN: ' + error);
-    return {
-      funcion: 'getListaDeLideres',
-      exitoso: false,
-      error: error.toString()
-    };
-  }
-}
+// ============================================
+// NOTA: testGetListaDeLideresDebug() eliminada
+// ============================================
+// Esta función estaba duplicada y causaba conflictos.
+// La funcionalidad se consolidó en testGetListaDeLideres(debugMode = true)
+// Eliminada en optimización de tests v3.0
+// Fecha: 30 de septiembre de 2025
 
-function testGetEstadisticasRapidasDebug() {
-  console.log('');
-  console.log('--- DEBUG: getEstadisticasRapidas ---');
-  
-  const startTime = Date.now();
-  
-  try {
-    // Limpiar caché para test limpio
-    clearCache();
-    
-    const stats = getEstadisticasRapidas();
-    const timeElapsed = Date.now() - startTime;
-    
-    console.log('⏱️  Tiempo total: ' + timeElapsed + 'ms');
-    console.log('📊 Stats obtenidas: ' + (stats.success ? 'SÍ' : 'NO'));
-    
-    if (stats.data) {
-      console.log('   - Total LD: ' + (stats.data.lideres?.total_LD || 0));
-      console.log('   - Total LCF: ' + (stats.data.lideres?.total_LCF || 0));
-      console.log('   - Total Células: ' + (stats.data.celulas?.total_celulas || 0));
-    }
-    
-    return {
-      funcion: 'getEstadisticasRapidas',
-      tiempo_ms: timeElapsed,
-      exitoso: stats.success,
-      data: stats.data || null,
-      error: stats.error || null
-    };
-    
-  } catch (error) {
-    console.log('❌ EXCEPCIÓN: ' + error);
-    return {
-      funcion: 'getEstadisticasRapidas',
-      exitoso: false,
-      error: error.toString()
-    };
-  }
-}
+// ============================================
+// NOTA: testGetEstadisticasRapidasDebug() eliminada
+// ============================================
+// Esta función estaba duplicada y causaba conflictos.
+// La funcionalidad se consolidó en testGetEstadisticasRapidas(debugMode = true)
+// Eliminada en optimización de tests v3.0
+// Fecha: 30 de septiembre de 2025
 
 function testCacheStatus() {
   console.log('');
@@ -1435,4 +1416,4 @@ function limpiarCacheYProbar() {
   };
 }
 
-console.log('🧪 TestSuiteUnificado v2.5 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard() o limpiarCacheYProbar()');
+console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode) o testGetEstadisticasRapidas(debugMode)');
