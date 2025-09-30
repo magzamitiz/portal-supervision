@@ -359,6 +359,118 @@ function cargarVisitasBendicionSelectivo(idsAlmas) {
   return []; // ✅ SIMPLIFICADO: No usamos libros externos
 }
 
+// ==================== CÁLCULO DE ACTIVIDAD DE LÍDERES ====================
+
+/**
+ * Calcula la actividad de líderes usando _SeguimientoConsolidado (versión optimizada).
+ * @param {Array<Object>} celulas - Array de células (no se usa en esta versión)
+ * @returns {Map<string, Date>} Mapa de ID_Lider a última fecha de actividad
+ */
+function calcularActividadLideres(celulas) {
+  console.log('[CoreModule] Calculando actividad de líderes desde _SeguimientoConsolidado...');
+  
+  const actividadMap = new Map();
+  
+  // Cache de resultados
+  const cacheKey = 'ACTIVIDAD_CACHE_SEGUIMIENTO';
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(cacheKey);
+  
+  if (cached) {
+    console.log('[CoreModule] Usando actividad desde caché');
+    return new Map(JSON.parse(cached));
+  }
+  
+  try {
+    // Acceder a la hoja _SeguimientoConsolidado
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const sheet = spreadsheet.getSheetByName('_SeguimientoConsolidado');
+    
+    if (!sheet) {
+      console.warn('[CoreModule] Hoja _SeguimientoConsolidado no encontrada');
+      return actividadMap;
+    }
+    
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      console.log('[CoreModule] Hoja _SeguimientoConsolidado vacía o solo con headers');
+      return actividadMap;
+    }
+    
+    // Leer datos: A2:J (ID_Alma, Nombre, ID_LCF, ..., Dias_Sin_Seguimiento)
+    const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+    console.log(`[CoreModule] Procesando ${data.length} registros de seguimiento`);
+    
+    data.forEach(row => {
+      const idLCF = String(row[2] || '').trim(); // Columna C: ID_LCF
+      const diasSinSeguimiento = parseInt(row[9]) || 0; // Columna J: Dias_Sin_Seguimiento
+      
+      if (idLCF && diasSinSeguimiento >= 0) {
+        // Calcular última actividad basada en días sin seguimiento
+        const hoy = new Date();
+        const ultimaActividad = new Date(hoy);
+        ultimaActividad.setDate(hoy.getDate() - diasSinSeguimiento);
+        
+        // Solo actualizar si es más reciente o no existe
+        const actividadExistente = actividadMap.get(idLCF);
+        if (!actividadExistente || ultimaActividad > actividadExistente) {
+          actividadMap.set(idLCF, ultimaActividad);
+        }
+      }
+    });
+    
+    console.log(`[CoreModule] Actividad calculada para ${actividadMap.size} líderes desde _SeguimientoConsolidado`);
+    
+    // Guardar en caché (convertir Map a Array para serialización)
+    const actividadArray = Array.from(actividadMap.entries());
+    cache.put(cacheKey, JSON.stringify(actividadArray), 300); // 5 minutos
+    
+  } catch (error) {
+    console.error('[CoreModule] Error calculando actividad desde _SeguimientoConsolidado:', error);
+  }
+  
+  return actividadMap;
+}
+
+/**
+ * Integra la información de actividad calculada en la lista de líderes.
+ * @param {Array<Object>} lideres - Array de líderes
+ * @param {Map<string, Date>} actividadMap - Mapa de ID_Lider a última fecha de actividad
+ * @returns {Array<Object>} Array de líderes con información de actividad integrada
+ */
+function integrarActividadLideres(lideres, actividadMap) {
+  const hoy = new Date();
+
+  return lideres.map(lider => {
+    const ultimaActividad = actividadMap.get(lider.ID_Lider);
+    let diasInactivo = null;
+    let estadoActividad = 'Sin Datos';
+
+    if (ultimaActividad) {
+      // Convertir la fecha (puede venir serializada desde caché)
+      const fechaActividad = new Date(ultimaActividad);
+      diasInactivo = Math.floor((hoy - fechaActividad) / (1000 * 60 * 60 * 24));
+
+      // Aplicar reglas del semáforo
+      if (diasInactivo <= CONFIG.DIAS_INACTIVO.ACTIVO) {
+        estadoActividad = 'Activo';
+      } else if (diasInactivo <= CONFIG.DIAS_INACTIVO.ALERTA) {
+        estadoActividad = 'Alerta';
+      } else {
+        estadoActividad = 'Inactivo';
+      }
+    }
+
+    return {
+      ...lider,
+      // Guardar como ISO String para caché
+      Ultima_Actividad: ultimaActividad ? new Date(ultimaActividad).toISOString() : null,
+      Dias_Inactivo: diasInactivo,
+      Estado_Actividad: estadoActividad
+    };
+  });
+}
+
 // ==================== GESTIÓN DE DATOS DE LD ====================
 
 /**
