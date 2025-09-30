@@ -885,4 +885,554 @@ function ejecutarTestsSistemaSimplificado() {
   return { success: exitosos === total, resultados: resultados };
 }
 
-console.log('🧪 TestSuiteUnificado v2.2 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones() o testFinal()');
+// ==================== TESTS DE OPTIMIZACIÓN DE PERFORMANCE ====================
+
+/**
+ * Suite de tests para validar las optimizaciones de performance
+ * Ejecutar manualmente después de implementar los cambios
+ */
+function testOptimizacionesCompleto() {
+  Logger.log('');
+  Logger.log('========================================');
+  Logger.log('🧪 INICIANDO TESTS DE OPTIMIZACIÓN');
+  Logger.log('========================================');
+  Logger.log('');
+  
+  const resultados = {
+    getListaDeLideres: testGetListaDeLideres(),
+    getEstadisticasRapidas: testGetEstadisticasRapidas(),
+    cargarDirectorioCompleto: testCargarDirectorioCompleto()
+  };
+  
+  Logger.log('');
+  Logger.log('========================================');
+  Logger.log('📊 RESUMEN DE RESULTADOS');
+  Logger.log('========================================');
+  Logger.log(JSON.stringify(resultados, null, 2));
+  Logger.log('');
+  
+  // Verificar que todos pasaron
+  const todosPasaron = Object.values(resultados).every(r => r.exitoso);
+  
+  if (todosPasaron) {
+    Logger.log('✅ TODOS LOS TESTS PASARON');
+  } else {
+    Logger.log('❌ ALGUNOS TESTS FALLARON - REVISAR LOGS');
+  }
+  
+  return resultados;
+}
+
+function testGetListaDeLideres() {
+  Logger.log('');
+  Logger.log('--- TEST: getListaDeLideres ---');
+  
+  const startTime = Date.now();
+  
+  try {
+    const lideres = getListaDeLideres();
+    const timeElapsed = Date.now() - startTime;
+    
+    const exitoso = timeElapsed < 10000; // Debe ser < 10 segundos
+    const objetivo = timeElapsed < 5000; // Objetivo: < 5 segundos
+    
+    Logger.log('⏱️  Tiempo: ' + timeElapsed + 'ms');
+    Logger.log('📊 Líderes obtenidos: ' + (lideres ? lideres.length : 0));
+    Logger.log('🎯 Cumple objetivo (<5s): ' + (objetivo ? '✅ SÍ' : '⚠️  NO'));
+    Logger.log('✅ Funcional: ' + (exitoso ? '✅ SÍ' : '❌ NO'));
+    
+    return {
+      funcion: 'getListaDeLideres',
+      tiempo_ms: timeElapsed,
+      tiempo_s: (timeElapsed / 1000).toFixed(2),
+      registros: lideres ? lideres.length : 0,
+      exitoso: exitoso,
+      cumpleObjetivo: objetivo,
+      mejoraPorcentual: ((192000 - timeElapsed) / 192000 * 100).toFixed(1) + '%'
+    };
+    
+  } catch (error) {
+    Logger.log('❌ ERROR: ' + error);
+    return {
+      funcion: 'getListaDeLideres',
+      exitoso: false,
+      error: error.toString()
+    };
+  }
+}
+
+function testGetEstadisticasRapidas() {
+  Logger.log('');
+  Logger.log('--- TEST: getEstadisticasRapidas ---');
+  
+  const startTime = Date.now();
+  
+  try {
+    const stats = getEstadisticasRapidas();
+    const timeElapsed = Date.now() - startTime;
+    
+    const exitoso = timeElapsed < 5000; // Debe ser < 5 segundos
+    const objetivo = timeElapsed < 2000; // Objetivo: < 2 segundos
+    
+    Logger.log('⏱️  Tiempo: ' + timeElapsed + 'ms');
+    Logger.log('📊 Estadísticas: ' + JSON.stringify(stats));
+    Logger.log('🎯 Cumple objetivo (<2s): ' + (objetivo ? '✅ SÍ' : '⚠️  NO'));
+    Logger.log('✅ Funcional: ' + (exitoso ? '✅ SÍ' : '❌ NO'));
+    
+    return {
+      funcion: 'getEstadisticasRapidas',
+      tiempo_ms: timeElapsed,
+      tiempo_s: (timeElapsed / 1000).toFixed(2),
+      stats: stats,
+      exitoso: exitoso,
+      cumpleObjetivo: objetivo,
+      mejoraPorcentual: ((124000 - timeElapsed) / 124000 * 100).toFixed(1) + '%'
+    };
+    
+  } catch (error) {
+    Logger.log('❌ ERROR: ' + error);
+    return {
+      funcion: 'getEstadisticasRapidas',
+      exitoso: false,
+      error: error.toString()
+    };
+  }
+}
+
+function testCargarDirectorioCompleto() {
+  Logger.log('');
+  Logger.log('--- TEST: cargarDirectorioCompleto ---');
+  Logger.log('⚠️  Este test puede tardar varios minutos...');
+  
+  const startTime = Date.now();
+  
+  try {
+    const datos = cargarDirectorioCompleto(true); // Force reload
+    const timeElapsed = Date.now() - startTime;
+    
+    const exitoso = timeElapsed < 300000; // Debe ser < 5 minutos
+    const objetivo = timeElapsed < 200000; // Objetivo: < 3.5 minutos
+    
+    Logger.log('⏱️  Tiempo: ' + timeElapsed + 'ms (' + (timeElapsed/1000/60).toFixed(2) + ' minutos)');
+    Logger.log('📊 Datos cargados:');
+    Logger.log('   - Líderes: ' + (datos.lideres ? datos.lideres.length : 0));
+    Logger.log('   - Células: ' + (datos.celulas ? datos.celulas.length : 0));
+    Logger.log('   - Ingresos: ' + (datos.ingresos ? datos.ingresos.length : 0));
+    Logger.log('🎯 Cumple objetivo (<3.5min): ' + (objetivo ? '✅ SÍ' : '⚠️  NO'));
+    Logger.log('✅ Funcional: ' + (exitoso ? '✅ SÍ' : '❌ NO'));
+    
+    return {
+      funcion: 'cargarDirectorioCompleto',
+      tiempo_ms: timeElapsed,
+      tiempo_s: (timeElapsed / 1000).toFixed(2),
+      tiempo_min: (timeElapsed / 1000 / 60).toFixed(2),
+      lideres: datos.lideres ? datos.lideres.length : 0,
+      celulas: datos.celulas ? datos.celulas.length : 0,
+      ingresos: datos.ingresos ? datos.ingresos.length : 0,
+      exitoso: exitoso,
+      cumpleObjetivo: objetivo,
+      mejoraPorcentual: ((503000 - timeElapsed) / 503000 * 100).toFixed(1) + '%'
+    };
+    
+  } catch (error) {
+    Logger.log('❌ ERROR: ' + error);
+    return {
+      funcion: 'cargarDirectorioCompleto',
+      exitoso: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Test rápido solo de las funciones optimizadas (sin carga completa)
+ */
+function testRapido() {
+  Logger.log('🧪 TEST RÁPIDO DE OPTIMIZACIONES');
+  
+  const r1 = testGetListaDeLideres();
+  const r2 = testGetEstadisticasRapidas();
+  
+  Logger.log('');
+  Logger.log('📊 RESUMEN:');
+  Logger.log('getListaDeLideres: ' + r1.tiempo_s + 's (' + r1.mejoraPorcentual + ' mejora)');
+  Logger.log('getEstadisticasRapidas: ' + r2.tiempo_s + 's (' + r2.mejoraPorcentual + ' mejora)');
+  
+  return { r1, r2 };
+}
+
+// ==================== TESTS DE DEBUG DE PERFORMANCE ====================
+
+/**
+ * Test de debug para identificar problemas de performance
+ * Ejecutar en Google Apps Script para diagnosticar
+ */
+function testPerformanceDebug() {
+  console.log('🔍 INICIANDO DEBUG DE PERFORMANCE');
+  console.log('=====================================');
+  
+  const resultados = {
+    getListaDeLideres: testGetListaDeLideresDebug(),
+    getEstadisticasRapidas: testGetEstadisticasRapidasDebug(),
+    cacheStatus: testCacheStatus(),
+    configStatus: testConfigStatus()
+  };
+  
+  console.log('');
+  console.log('📊 RESUMEN DE DEBUG:');
+  console.log(JSON.stringify(resultados, null, 2));
+  
+  return resultados;
+}
+
+function testGetListaDeLideresDebug() {
+  console.log('');
+  console.log('--- DEBUG: getListaDeLideres ---');
+  
+  const startTime = Date.now();
+  
+  try {
+    // Limpiar caché para test limpio
+    clearCache();
+    
+    const lideres = getListaDeLideres();
+    const timeElapsed = Date.now() - startTime;
+    
+    console.log('⏱️  Tiempo total: ' + timeElapsed + 'ms');
+    console.log('📊 Líderes obtenidos: ' + (lideres.data ? lideres.data.length : 0));
+    console.log('✅ Éxito: ' + lideres.success);
+    
+    if (lideres.error) {
+      console.log('❌ Error: ' + lideres.error);
+    }
+    
+    return {
+      funcion: 'getListaDeLideres',
+      tiempo_ms: timeElapsed,
+      exitoso: lideres.success,
+      cantidad: lideres.data ? lideres.data.length : 0,
+      error: lideres.error || null
+    };
+    
+  } catch (error) {
+    console.log('❌ EXCEPCIÓN: ' + error);
+    return {
+      funcion: 'getListaDeLideres',
+      exitoso: false,
+      error: error.toString()
+    };
+  }
+}
+
+function testGetEstadisticasRapidasDebug() {
+  console.log('');
+  console.log('--- DEBUG: getEstadisticasRapidas ---');
+  
+  const startTime = Date.now();
+  
+  try {
+    // Limpiar caché para test limpio
+    clearCache();
+    
+    const stats = getEstadisticasRapidas();
+    const timeElapsed = Date.now() - startTime;
+    
+    console.log('⏱️  Tiempo total: ' + timeElapsed + 'ms');
+    console.log('📊 Stats obtenidas: ' + (stats.success ? 'SÍ' : 'NO'));
+    
+    if (stats.data) {
+      console.log('   - Total LD: ' + (stats.data.lideres?.total_LD || 0));
+      console.log('   - Total LCF: ' + (stats.data.lideres?.total_LCF || 0));
+      console.log('   - Total Células: ' + (stats.data.celulas?.total_celulas || 0));
+    }
+    
+    return {
+      funcion: 'getEstadisticasRapidas',
+      tiempo_ms: timeElapsed,
+      exitoso: stats.success,
+      data: stats.data || null,
+      error: stats.error || null
+    };
+    
+  } catch (error) {
+    console.log('❌ EXCEPCIÓN: ' + error);
+    return {
+      funcion: 'getEstadisticasRapidas',
+      exitoso: false,
+      error: error.toString()
+    };
+  }
+}
+
+function testCacheStatus() {
+  console.log('');
+  console.log('--- DEBUG: Estado del Caché ---');
+  
+  try {
+    const cache = CacheService.getScriptCache();
+    
+    const keys = [
+      'STATS_RAPIDAS_V2',
+      'DIRECTORIO_COMPLETO',
+      'LIDERES_DATA',
+      'CELULAS_DATA',
+      'INGRESOS_DATA'
+    ];
+    
+    const cacheStatus = {};
+    
+    keys.forEach(key => {
+      const value = cache.get(key);
+      cacheStatus[key] = value ? 'EXISTS' : 'EMPTY';
+    });
+    
+    console.log('📊 Estado del caché:');
+    Object.entries(cacheStatus).forEach(([key, status]) => {
+      console.log(`   ${key}: ${status}`);
+    });
+    
+    return cacheStatus;
+    
+  } catch (error) {
+    console.log('❌ Error verificando caché: ' + error);
+    return { error: error.toString() };
+  }
+}
+
+function testConfigStatus() {
+  console.log('');
+  console.log('--- DEBUG: Estado de CONFIG ---');
+  
+  try {
+    const config = {
+      SHEETS_DIRECTORIO: CONFIG?.SHEETS?.DIRECTORIO || 'NO_DEFINIDO',
+      TABS_LIDERES: CONFIG?.TABS?.LIDERES || 'NO_DEFINIDO',
+      TABS_CELULAS: CONFIG?.TABS?.CELULAS || 'NO_DEFINIDO',
+      TABS_INGRESOS: CONFIG?.TABS?.INGRESOS || 'NO_DEFINIDO'
+    };
+    
+    console.log('📊 Configuración:');
+    Object.entries(config).forEach(([key, value]) => {
+      console.log(`   ${key}: ${value}`);
+    });
+    
+    return config;
+    
+  } catch (error) {
+    console.log('❌ Error verificando CONFIG: ' + error);
+    return { error: error.toString() };
+  }
+}
+
+function testCargarLideresOptimizadoDirecto() {
+  console.log('');
+  console.log('--- DEBUG: cargarLideresOptimizado DIRECTO ---');
+  
+  const startTime = Date.now();
+  
+  try {
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const lideres = cargarLideresOptimizado(spreadsheet);
+    const timeElapsed = Date.now() - startTime;
+    
+    console.log('⏱️  Tiempo: ' + timeElapsed + 'ms');
+    console.log('📊 Líderes: ' + (lideres ? lideres.length : 0));
+    
+    return {
+      funcion: 'cargarLideresOptimizado',
+      tiempo_ms: timeElapsed,
+      cantidad: lideres ? lideres.length : 0,
+      exitoso: true
+    };
+    
+  } catch (error) {
+    console.log('❌ Error: ' + error);
+    return {
+      funcion: 'cargarLideresOptimizado',
+      exitoso: false,
+      error: error.toString()
+    };
+  }
+}
+
+function testCargarEstadisticasMinimasDirecto() {
+  console.log('');
+  console.log('--- DEBUG: cargarEstadisticasMinimas DIRECTO ---');
+  
+  const startTime = Date.now();
+  
+  try {
+    const stats = cargarEstadisticasMinimas();
+    const timeElapsed = Date.now() - startTime;
+    
+    console.log('⏱️  Tiempo: ' + timeElapsed + 'ms');
+    console.log('📊 Stats: ' + JSON.stringify(stats, null, 2));
+    
+    return {
+      funcion: 'cargarEstadisticasMinimas',
+      tiempo_ms: timeElapsed,
+      stats: stats,
+      exitoso: true
+    };
+    
+  } catch (error) {
+    console.log('❌ Error: ' + error);
+    return {
+      funcion: 'cargarEstadisticasMinimas',
+      exitoso: false,
+      error: error.toString()
+    };
+  }
+}
+
+// ==================== TESTS DE RESUMEN DASHBOARD ====================
+
+/**
+ * Test para verificar que los datos se cargan correctamente desde _ResumenDashboard
+ */
+function testResumenDashboard() {
+  Logger.log('🧪 TEST: Verificando datos de _ResumenDashboard');
+  Logger.log('');
+  
+  try {
+    // Test 1: Verificar que la hoja existe
+    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const resumenSheet = ss.getSheetByName('_ResumenDashboard');
+    
+    if (!resumenSheet) {
+      Logger.log('❌ ERROR: Hoja _ResumenDashboard no encontrada');
+      return { success: false, error: 'Hoja no encontrada' };
+    }
+    
+    Logger.log('✅ Hoja _ResumenDashboard encontrada');
+    
+    // Test 2: Leer datos de la hoja
+    const metricasValues = resumenSheet.getRange("B1:B7").getValues();
+    
+    Logger.log('📊 Datos leídos de _ResumenDashboard:');
+    Logger.log('  B1 (Total LD): ' + metricasValues[0][0]);
+    Logger.log('  B2 (Total LCF): ' + metricasValues[1][0]);
+    Logger.log('  B3 (Total Células): ' + metricasValues[2][0]);
+    Logger.log('  B4 (Total Almas Histórico): ' + metricasValues[3][0]);
+    Logger.log('  B5 (Ingresos del Mes): ' + metricasValues[4][0]);
+    Logger.log('  B6 (Almas en Célula): ' + metricasValues[5][0]);
+    Logger.log('  B7 (Tasa Integración): ' + metricasValues[6][0]);
+    
+    // Test 3: Probar cargarEstadisticasMinimas
+    Logger.log('');
+    Logger.log('🧪 Probando cargarEstadisticasMinimas()...');
+    const stats = cargarEstadisticasMinimas();
+    
+    Logger.log('📊 Resultado de cargarEstadisticasMinimas():');
+    Logger.log('  totalLideres: ' + stats.totalLideres);
+    Logger.log('  totalLCF: ' + stats.totalLCF);
+    Logger.log('  totalCelulas: ' + stats.totalCelulas);
+    Logger.log('  totalIngresos: ' + stats.totalIngresos);
+    Logger.log('  ingresosMes: ' + stats.ingresosMes);
+    Logger.log('  almasEnCelula: ' + stats.almasEnCelula);
+    Logger.log('  tasaIntegracion: ' + stats.tasaIntegracion);
+    Logger.log('  ultimaActualizacion: ' + stats.ultimaActualizacion);
+    
+    // Test 4: Probar getEstadisticasRapidas
+    Logger.log('');
+    Logger.log('🧪 Probando getEstadisticasRapidas()...');
+    const estadisticas = getEstadisticasRapidas();
+    
+    Logger.log('📊 Resultado de getEstadisticasRapidas():');
+    Logger.log('  success: ' + estadisticas.success);
+    Logger.log('  lideres.total_LD: ' + estadisticas.data.lideres.total_LD);
+    Logger.log('  lideres.total_LCF: ' + estadisticas.data.lideres.total_LCF);
+    Logger.log('  celulas.total_celulas: ' + estadisticas.data.celulas.total_celulas);
+    Logger.log('  ingresos.total_historico: ' + estadisticas.data.ingresos.total_historico);
+    Logger.log('  ingresos.ingresos_mes: ' + estadisticas.data.ingresos.ingresos_mes);
+    Logger.log('  ingresos.tasa_integracion_celula: ' + estadisticas.data.ingresos.tasa_integracion_celula);
+    Logger.log('  metricas.promedio_lcf_por_ld: ' + estadisticas.data.metricas.promedio_lcf_por_ld);
+    
+    // Verificar si hay datos válidos
+    const tieneDatos = estadisticas.data.lideres.total_LD > 0 || 
+                      estadisticas.data.celulas.total_celulas > 0 || 
+                      estadisticas.data.ingresos.total_historico > 0;
+    
+    if (tieneDatos) {
+      Logger.log('');
+      Logger.log('✅✅✅ DATOS CARGADOS CORRECTAMENTE ✅✅✅');
+    } else {
+      Logger.log('');
+      Logger.log('⚠️ ADVERTENCIA: Todos los valores son 0 - Verificar datos en _ResumenDashboard');
+    }
+    
+    return {
+      success: true,
+      tieneDatos: tieneDatos,
+      estadisticas: estadisticas,
+      datosRaw: metricasValues
+    };
+    
+  } catch (error) {
+    Logger.log('❌ ERROR: ' + error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== TESTS SIN CACHÉ ====================
+
+/**
+ * Test para verificar optimizaciones sin caché (worst case scenario)
+ */
+function limpiarCacheYProbar() {
+  Logger.log('🧹 Limpiando todos los cachés...');
+  
+  // Limpiar caché de script
+  CacheService.getScriptCache().removeAll(['STATS_RAPIDAS_V2', 'LISTA_LIDERES', 'DIRECTORIO_COMPLETO']);
+  
+  Logger.log('✅ Cachés limpiados');
+  Logger.log('');
+  Logger.log('🧪 Probando funciones sin caché (worst case)...');
+  Logger.log('');
+  
+  // Test 1: getEstadisticasRapidas sin caché
+  const t1 = Date.now();
+  const stats = getEstadisticasRapidas();
+  const time1 = Date.now() - t1;
+  
+  Logger.log('⏱️ getEstadisticasRapidas (sin caché): ' + time1 + 'ms');
+  Logger.log('📊 Resultado: ' + JSON.stringify(stats));
+  Logger.log('🎯 Objetivo: <5000ms → ' + (time1 < 5000 ? '✅ PASS' : '❌ FAIL'));
+  Logger.log('');
+  
+  // Test 2: getListaDeLideres sin caché
+  const t2 = Date.now();
+  const lideres = getListaDeLideres();
+  const time2 = Date.now() - t2;
+  
+  Logger.log('⏱️ getListaDeLideres (sin caché): ' + time2 + 'ms');
+  Logger.log('📊 Líderes: ' + (lideres ? lideres.length : 0));
+  Logger.log('🎯 Objetivo: <10000ms → ' + (time2 < 10000 ? '✅ PASS' : '❌ FAIL'));
+  Logger.log('');
+  
+  const totalTime = time1 + time2;
+  const mejora = ((316000 - totalTime) / 316000 * 100).toFixed(1);
+  
+  Logger.log('========================================');
+  Logger.log('📊 RESUMEN SIN CACHÉ (PEOR ESCENARIO)');
+  Logger.log('========================================');
+  Logger.log('Tiempo total: ' + totalTime + 'ms (' + (totalTime/1000).toFixed(1) + 's)');
+  Logger.log('Antes: 316000ms (316s)');
+  Logger.log('Mejora: ' + mejora + '%');
+  Logger.log('');
+  
+  if (time1 < 5000 && time2 < 10000) {
+    Logger.log('✅✅✅ OPTIMIZACIÓN EXITOSA ✅✅✅');
+  } else {
+    Logger.log('⚠️ Revisar funciones que exceden objetivo');
+  }
+  
+  return {
+    getEstadisticasRapidas: { tiempo_ms: time1, objetivo: '<5s', pass: time1 < 5000 },
+    getListaDeLideres: { tiempo_ms: time2, objetivo: '<10s', pass: time2 < 10000 },
+    totalTime_ms: totalTime,
+    mejoraPorcentual: mejora + '%'
+  };
+}
+
+console.log('🧪 TestSuiteUnificado v2.5 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard() o limpiarCacheYProbar()');

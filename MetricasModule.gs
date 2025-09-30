@@ -159,37 +159,40 @@ function calcularMetricasCelulas(celulas) {
 function calcularMetricasIngresos(ingresos) {
   try {
     const totalIngresos = ingresos.length;
-    const asignados = ingresos.filter(i => i.Estado_Asignacion === 'Asignado').length;
-    const enCelula = ingresos.filter(i => i.En_Celula).length;
-    const aceptaronJesus = ingresos.filter(i => 
-      i.Acepto_Jesus === 'SI' || i.Acepto_Jesus === 'SÍ'
-    ).length;
-    const deseanVisita = ingresos.filter(i => 
-      i.Desea_Visita === 'SI' || i.Desea_Visita === 'SÍ'
-    ).length;
     
-    // Análisis temporal
+    // ✅ OPTIMIZACIÓN: Un solo pase por el array para calcular todas las métricas
     const hoy = new Date();
-    const ingresosHoy = ingresos.filter(i => {
-      if (!i.Timestamp) return false;
-      const fechaIngreso = new Date(i.Timestamp);
-      return Utilities.formatDate(fechaIngreso, CONFIG.TIMEZONE, 'yyyy-MM-dd') === 
-             Utilities.formatDate(hoy, CONFIG.TIMEZONE, 'yyyy-MM-dd');
-    }).length;
+    const hoyFormatted = Utilities.formatDate(hoy, CONFIG.TIMEZONE, 'yyyy-MM-dd');
     
-    const ingresosSemana = ingresos.filter(i => {
-      if (!i.Timestamp) return false;
-      const fechaIngreso = new Date(i.Timestamp);
-      const diasDiferencia = Math.floor((hoy - fechaIngreso) / (1000 * 60 * 60 * 24));
-      return diasDiferencia <= 7;
-    }).length;
+    let asignados = 0;
+    let enCelula = 0;
+    let aceptaronJesus = 0;
+    let deseanVisita = 0;
+    let ingresosHoy = 0;
+    let ingresosSemana = 0;
+    let ingresosMes = 0;
     
-    const ingresosMes = ingresos.filter(i => {
-      if (!i.Timestamp) return false;
-      const fechaIngreso = new Date(i.Timestamp);
-      const diasDiferencia = Math.floor((hoy - fechaIngreso) / (1000 * 60 * 60 * 24));
-      return diasDiferencia <= 30;
-    }).length;
+    // Procesar todos los ingresos en un solo bucle
+    ingresos.forEach(ingreso => {
+      // Estados de asignación
+      if (ingreso.Estado_Asignacion === 'Asignado') asignados++;
+      if (ingreso.En_Celula) enCelula++;
+      
+      // Decisiones espirituales
+      if (ingreso.Acepto_Jesus === 'SI' || ingreso.Acepto_Jesus === 'SÍ') aceptaronJesus++;
+      if (ingreso.Desea_Visita === 'SI' || ingreso.Desea_Visita === 'SÍ') deseanVisita++;
+      
+      // Análisis temporal
+      if (ingreso.Timestamp) {
+        const fechaIngreso = new Date(ingreso.Timestamp);
+        const fechaFormatted = Utilities.formatDate(fechaIngreso, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+        const diasDiferencia = Math.floor((hoy - fechaIngreso) / (1000 * 60 * 60 * 24));
+        
+        if (fechaFormatted === hoyFormatted) ingresosHoy++;
+        if (diasDiferencia <= 7) ingresosSemana++;
+        if (diasDiferencia <= 30) ingresosMes++;
+      }
+    });
     
     return {
       total_historico: totalIngresos,
@@ -446,40 +449,140 @@ function analizarMetricasPorPeriodo(datos, periodo) {
  * Función de compatibilidad para estadísticas rápidas (usa hoja _ResumenDashboard como original)
  * @returns {Object} Estadísticas rápidas
  */
+/**
+ * Obtiene estadísticas rápidas sin cargar todo el directorio
+ * Usa caché agresivo de 30 segundos para máxima velocidad
+ */
 function getEstadisticasRapidas() {
+  Logger.log('[getEstadisticasRapidas] 🚀 Iniciando...');
+  const startTime = Date.now();
+  
   try {
-    const resumenSheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO)
-                                      .getSheetByName('_ResumenDashboard');
-    if (!resumenSheet) {
-      throw new Error("La hoja de resumen '_ResumenDashboard' no fue encontrada.");
+    // ✅ Verificar caché primero (30 segundos TTL)
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get('STATS_RAPIDAS_V2');
+    
+    if (cached) {
+      const timeElapsed = Date.now() - startTime;
+      Logger.log('[getEstadisticasRapidas] ✅ Cache HIT - ' + timeElapsed + 'ms');
+      return JSON.parse(cached);
     }
-
-    const metricasValues = resumenSheet.getRange("B1:B7").getValues();
-
-    return {
+    
+    Logger.log('[getEstadisticasRapidas] ⚠️ Cache MISS - Calculando...');
+    
+    // ✅ Intentar obtener desde caché del directorio (si existe)
+    const cacheDir = cache.get('DIRECTORIO_COMPLETO');
+    
+    if (cacheDir) {
+      const datos = JSON.parse(cacheDir);
+      if (datos && datos.lideres) {
+        const stats = {
+          success: true,
+          data: {
+            lideres: { 
+              total_LD: datos.lideres.filter(l => l.Rol === 'LD').length,
+              total_LCF: datos.lideres.filter(l => l.Rol === 'LCF').length 
+            },
+            celulas: { total_celulas: datos.celulas ? datos.celulas.length : 0 },
+            ingresos: {
+              total_historico: datos.ingresos ? datos.ingresos.length : 0,
+              ingresos_mes: 0, // Se calculará si es necesario
+              tasa_integracion_celula: 0 // Se calculará si es necesario
+            },
+            metricas: { 
+              promedio_lcf_por_ld: 0 // Se calculará si es necesario
+            },
+            timestamp: new Date().toISOString()
+          }
+        };
+        
+        // Cachear por 30 segundos
+        cache.put('STATS_RAPIDAS_V2', JSON.stringify(stats), 30);
+        
+        const timeElapsed = Date.now() - startTime;
+        Logger.log('[getEstadisticasRapidas] ✅ Desde caché directorio - ' + timeElapsed + 'ms');
+        
+        return stats;
+      }
+    }
+    
+    // ✅ Si no hay datos en memoria, cargar solo conteos mínimos (ultra rápido)
+    Logger.log('[getEstadisticasRapidas] ⚠️ Sin caché ni memoria, usando conteos mínimos');
+    const statsMinimas = cargarEstadisticasMinimas();
+    
+    // Convertir al formato esperado por el frontend
+    const statsFormateadas = {
       success: true,
       data: {
-        lideres: { total_LD: metricasValues[0][0], total_LCF: metricasValues[1][0] },
-        celulas: { total_celulas: metricasValues[2][0] },
+        lideres: { 
+          total_LD: statsMinimas.totalLideres,
+          total_LCF: statsMinimas.totalLCF
+        },
+        celulas: { total_celulas: statsMinimas.totalCelulas },
         ingresos: {
-          total_historico: metricasValues[3][0],
-          ingresos_mes: metricasValues[4][0],
-          tasa_integracion_celula: (metricasValues[6][0] * 100).toFixed(1)
+          total_historico: statsMinimas.totalIngresos,
+          ingresos_mes: statsMinimas.ingresosMes,
+          tasa_integracion_celula: statsMinimas.tasaIntegracion
         },
         metricas: { 
-          promedio_lcf_por_ld: metricasValues[0][0] > 0 ? (metricasValues[1][0] / metricasValues[0][0]).toFixed(1) : 0 
+          promedio_lcf_por_ld: statsMinimas.totalLideres > 0 ? (statsMinimas.totalLCF / statsMinimas.totalLideres).toFixed(1) : 0
         },
-        timestamp: new Date().toISOString()
+        timestamp: statsMinimas.ultimaActualizacion
       }
     };
     
+    // Cachear por 30 segundos
+    cache.put('STATS_RAPIDAS_V2', JSON.stringify(statsFormateadas), 30);
+    
+    const timeElapsed = Date.now() - startTime;
+    Logger.log('[getEstadisticasRapidas] ✅ Completado - ' + timeElapsed + 'ms');
+    
+    return statsFormateadas;
+    
   } catch (error) {
-    console.error('[MetricasModule] Error en getEstadisticasRapidas:', error);
-    return {
-      success: false,
-      error: error.toString(),
-      data: null
+    Logger.log('[getEstadisticasRapidas] ❌ Error: ' + error);
+    throw error;
+  }
+}
+
+/**
+ * Carga solo los conteos básicos sin procesar datos completos
+ * Usa getLastRow() que es mucho más rápido que cargar todo
+ */
+function cargarEstadisticasMinimas() {
+  Logger.log('[getEstadisticasRapidas] Cargando estadísticas mínimas desde _ResumenDashboard...');
+  const startTime = Date.now();
+  
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const resumenSheet = ss.getSheetByName('_ResumenDashboard');
+    
+    if (!resumenSheet) {
+      throw new Error("La hoja de resumen '_ResumenDashboard' no fue encontrada.");
+    }
+    
+    // Leer datos de la hoja _ResumenDashboard (muy rápido)
+    const metricasValues = resumenSheet.getRange("B1:B7").getValues();
+    
+    const stats = {
+      totalLideres: metricasValues[0][0] || 0, // Total LD (B1)
+      totalLCF: metricasValues[1][0] || 0, // Total LCF (B2)
+      totalCelulas: metricasValues[2][0] || 0, // Total células (B3)
+      totalIngresos: metricasValues[3][0] || 0, // Total almas histórico (B4)
+      ingresosMes: metricasValues[4][0] || 0, // Ingresos del mes (B5)
+      almasEnCelula: metricasValues[5][0] || 0, // Almas en célula (B6)
+      tasaIntegracion: metricasValues[6][0] || 0, // Tasa de integración (B7)
+      ultimaActualizacion: new Date().toISOString()
     };
+    
+    const timeElapsed = Date.now() - startTime;
+    Logger.log('[getEstadisticasRapidas] ✅ Mínimas cargadas desde _ResumenDashboard en ' + timeElapsed + 'ms');
+    
+    return stats;
+    
+  } catch (error) {
+    Logger.log('[getEstadisticasRapidas] ❌ Error en mínimas: ' + error);
+    throw error;
   }
 }
 

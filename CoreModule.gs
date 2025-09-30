@@ -47,14 +47,16 @@ function construirEstructuraLD(idLD, data) {
  * @param {Object} dataCompleta - Datos completos del directorio
  * @returns {Object} Estructura completa del LD
  */
-function construirEstructuraCompleta(idLD, lideres, dataCompleta) {
-  const { celulas, ingresos } = dataCompleta;
+function construirEstructuraCompleta(idLD, lideres, dataCompleta, ingresosIndex) {
+  const { celulas } = dataCompleta;
   
   const lcfBajoLD = lideres.filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LCF');
   
   const estructuraCompleta = lcfBajoLD.map(lcf => {
     const celulasDelLCF = celulas.filter(c => c.ID_LCF_Responsable === lcf.ID_Lider);
-    const ingresosDelLCF = ingresos.filter(i => i.ID_LCF === lcf.ID_Lider);
+    const data = ingresosIndex[lcf.ID_Lider] || { ingresos: [], total: 0, cantidad: 0 };
+    const ingresosAsignados = data.ingresos.filter(i => i.Estado_Asignacion === 'Asignado').length;
+    const ingresosEnCelula = data.ingresos.filter(i => i.En_Celula).length;
     
     return {
       ID_Lider: lcf.ID_Lider,
@@ -63,9 +65,9 @@ function construirEstructuraCompleta(idLD, lideres, dataCompleta) {
       Estado_Actividad: lcf.Estado_Actividad,
       Celulas: celulasDelLCF.length,
       Miembros: celulasDelLCF.reduce((sum, c) => sum + obtenerTotalMiembros(c), 0),
-      Ingresos: ingresosDelLCF.length,
-      Ingresos_Asignados: ingresosDelLCF.filter(i => i.Estado_Asignacion === 'Asignado').length,
-      Ingresos_En_Celula: ingresosDelLCF.filter(i => i.En_Celula).length
+      Ingresos: data.cantidad,
+      Ingresos_Asignados: ingresosAsignados,
+      Ingresos_En_Celula: ingresosEnCelula
     };
   });
   
@@ -130,22 +132,25 @@ function cargarDirectorioCompleto(forceReload = false) {
   console.log('[CoreModule] Cargando datos de DIRECTORIO desde Google Sheets...');
   try {
     checkTimeout();
+    
+    // ✅ OPTIMIZACIÓN: Abrir spreadsheet UNA SOLA VEZ
     const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    console.log('[CoreModule] Spreadsheet abierto correctamente');
+    const ssOpenTime = Date.now() - startTime;
+    console.log(`[CoreModule] Spreadsheet abierto en ${ssOpenTime}ms`);
     
     // USAR FUNCIONES OPTIMIZADAS
     const lideresStart = Date.now();
-    const lideres = cargarLideresOptimizado();
+    const lideres = cargarLideresOptimizado(spreadsheet);
     const lideresTime = Date.now() - lideresStart;
     console.log(`[CoreModule] ✅ Líderes cargados: ${lideres ? lideres.length : 0} en ${lideresTime}ms`);
     
     const celulasStart = Date.now();
-    const celulas = cargarCelulasOptimizado();
+    const celulas = cargarCelulasOptimizado(spreadsheet);
     const celulasTime = Date.now() - celulasStart;
     console.log(`[CoreModule] ✅ Células cargadas: ${celulas ? celulas.length : 0} en ${celulasTime}ms`);
     
     const ingresosStart = Date.now();
-    const ingresos = cargarIngresosOptimizado();
+    const ingresos = cargarIngresosOptimizado(spreadsheet);
     const ingresosTime = Date.now() - ingresosStart;
     console.log(`[CoreModule] ✅ Ingresos cargados: ${ingresos ? ingresos.length : 0} en ${ingresosTime}ms`);
 
@@ -205,31 +210,31 @@ function cargarDirectorioCompleto(forceReload = false) {
  */
 function getListaDeLideres() {
   try {
-    console.log('[CoreModule] Obteniendo lista de líderes para selector...');
-    const spreadsheetId = (typeof CONFIG !== 'undefined' && CONFIG.SHEETS && CONFIG.SHEETS.DIRECTORIO) ? CONFIG.SHEETS.DIRECTORIO : '1dwuqpyMXWHJvnJHwDHCqFMvgdYhypE2W1giH6bRZMKc';
-    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    const sheetName = (typeof CONFIG !== 'undefined' && CONFIG.TABS && CONFIG.TABS.LIDERES) ? CONFIG.TABS.LIDERES : 'Líderes';
-    const sheetLideres = spreadsheet.getSheetByName(sheetName);
-    if (!sheetLideres) {
-      return { success: false, error: 'Hoja de líderes no encontrada', data: [] };
-    }
-
-    // Validar que hay al menos 2 filas (header + datos)
-    const lastRow = sheetLideres.getLastRow();
-    if (lastRow < 2) {
-      console.log('[CoreModule] Hoja de líderes vacía o solo con headers');
+    console.log('[CoreModule] 🚀 Obteniendo lista de líderes OPTIMIZADA...');
+    const startTime = Date.now();
+    
+    // ✅ OPTIMIZACIÓN: Usar cargarLideresOptimizado en lugar de abrir spreadsheet directamente
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const lideres = cargarLideresOptimizado(spreadsheet);
+    
+    if (!lideres || lideres.length === 0) {
+      console.log('[CoreModule] No se encontraron líderes');
       return { success: true, data: [] };
     }
+    
+    // Filtrar solo líderes LD para el selector
+    const lideresParaSelector = lideres
+      .filter(lider => lider.Rol === 'LD' && lider.ID_Lider)
+      .map(lider => ({ 
+        ID_Lider: String(lider.ID_Lider).trim(), 
+        Nombre_Lider: String(lider.Nombre_Lider).trim() 
+      }));
 
-    const dataLideres = sheetLideres.getRange(2, 1, lastRow - 1, 3).getValues();
-    const lideresParaSelector = dataLideres
-      .filter(row => row[2] === 'LD' && row[0])
-      .map(row => ({ ID_Lider: String(row[0]).trim(), Nombre_Lider: String(row[1]).trim() }));
-
-    console.log(`[CoreModule] ${lideresParaSelector.length} líderes LD encontrados.`);
+    const timeElapsed = Date.now() - startTime;
+    console.log(`[CoreModule] ✅ ${lideresParaSelector.length} líderes LD encontrados en ${timeElapsed}ms`);
     return { success: true, data: lideresParaSelector };
   } catch (error) {
-    console.error(`[CoreModule] Error en getListaDeLideres: ${error}`);
+    console.error(`[CoreModule] ❌ Error en getListaDeLideres: ${error}`);
     return { success: false, error: error.toString(), data: [] };
   }
 }
@@ -654,9 +659,12 @@ function getDatosLDCompleto(idLD) {
   const totalIngresosAsignados = lcfBajoLD.reduce((sum, lcf) => sum + lcf.Ingresos_Asignados, 0);
   const totalIngresosEnCelula = lcfBajoLD.reduce((sum, lcf) => sum + lcf.Ingresos_En_Celula, 0);
 
+  // Crear índice de ingresos para optimización
+  const ingresosIndex = indexarIngresosPorLCF(ingresos);
+  
   // Construir estructuras jerárquicas para modales
-  const cadenasLM = construirCadenasLM(idLD, lideres, celulas, ingresos);
-  const smallGroupsDirectos = construirSmallGroupsDirectos(idLD, lideres, celulas, ingresos);
+  const cadenasLM = construirCadenasLM(idLD, lideres, ingresosIndex);
+  const smallGroupsDirectos = construirSmallGroupsDirectos(idLD, lideres, ingresosIndex);
   
   // Devolver estructura compatible con Dashboard
   return {
@@ -689,7 +697,7 @@ function getDatosLDCompleto(idLD) {
 /**
  * Construye las cadenas LM para los modales
  */
-function construirCadenasLM(idLD, lideres, celulas, ingresos) {
+function construirCadenasLM(idLD, lideres, ingresosIndex) {
   const misLM = lideres.filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LM');
   
   return misLM.map(lm => {
@@ -701,10 +709,10 @@ function construirCadenasLM(idLD, lideres, celulas, ingresos) {
       lcfsEnCadena.push(...lcfs);
     });
     
-    // Calcular métricas
+    // Calcular métricas usando el índice
     const totalAlmas = lcfsEnCadena.reduce((sum, lcf) => {
-      const almasLcf = ingresos.filter(i => i.ID_LCF === lcf.ID_Lider);
-      return sum + almasLcf.length;
+      const data = ingresosIndex[lcf.ID_Lider] || { cantidad: 0 };
+      return sum + data.cantidad;
     }, 0);
     
     return {
@@ -717,33 +725,45 @@ function construirCadenasLM(idLD, lideres, celulas, ingresos) {
         Nombre_Lider: sg.Nombre_Lider,
         Rol: sg.Rol,
         Estado_Actividad: sg.Estado_Actividad,
-        lcfs: lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF').map(lcf => ({
+        lcfs: lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF').map(lcf => {
+          const data = ingresosIndex[lcf.ID_Lider] || { ingresos: [], total: 0, cantidad: 0 };
+          const almasEnCelula = data.ingresos.filter(i => i.En_Celula).length;
+          const almasSinCelula = data.cantidad - almasEnCelula;
+          
+          return {
+            ID_Lider: lcf.ID_Lider,
+            Nombre_Lider: lcf.Nombre_Lider,
+            Rol: lcf.Rol,
+            Estado_Actividad: lcf.Estado_Actividad,
+            metricas: {
+              total_almas: data.cantidad,
+              almas_en_celula: almasEnCelula,
+              almas_sin_celula: almasSinCelula,
+              tasa_integracion: data.cantidad > 0 ? ((almasEnCelula / data.cantidad) * 100).toFixed(1) : 0,
+              carga_trabajo: data.cantidad > 0 ? (data.cantidad > 10 ? 'Alta' : data.cantidad > 5 ? 'Media' : 'Baja') : 'Sin Datos'
+            }
+          };
+        })
+      })),
+      lcfDirectos: lideres.filter(l => l.ID_Lider_Directo === lm.ID_Lider && l.Rol === 'LCF').map(lcf => {
+        const data = ingresosIndex[lcf.ID_Lider] || { ingresos: [], total: 0, cantidad: 0 };
+        const almasEnCelula = data.ingresos.filter(i => i.En_Celula).length;
+        const almasSinCelula = data.cantidad - almasEnCelula;
+        
+        return {
           ID_Lider: lcf.ID_Lider,
           Nombre_Lider: lcf.Nombre_Lider,
           Rol: lcf.Rol,
           Estado_Actividad: lcf.Estado_Actividad,
           metricas: {
-            total_almas: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider).length,
-            almas_en_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && i.En_Celula).length,
-            almas_sin_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && !i.En_Celula).length,
-            tasa_integracion: 0,
-            carga_trabajo: 'Sin Datos'
+            total_almas: data.cantidad,
+            almas_en_celula: almasEnCelula,
+            almas_sin_celula: almasSinCelula,
+            tasa_integracion: data.cantidad > 0 ? ((almasEnCelula / data.cantidad) * 100).toFixed(1) : 0,
+            carga_trabajo: data.cantidad > 0 ? (data.cantidad > 10 ? 'Alta' : data.cantidad > 5 ? 'Media' : 'Baja') : 'Sin Datos'
           }
-        }))
-      })),
-      lcfDirectos: lideres.filter(l => l.ID_Lider_Directo === lm.ID_Lider && l.Rol === 'LCF').map(lcf => ({
-        ID_Lider: lcf.ID_Lider,
-        Nombre_Lider: lcf.Nombre_Lider,
-        Rol: lcf.Rol,
-        Estado_Actividad: lcf.Estado_Actividad,
-        metricas: {
-          total_almas: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider).length,
-          almas_en_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && i.En_Celula).length,
-          almas_sin_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && !i.En_Celula).length,
-          tasa_integracion: 0,
-          carga_trabajo: 'Sin Datos'
-        }
-      })),
+        };
+      }),
       metricas: {
         total_small_groups: smallGroups.length,
         total_lcf_en_cadena: lcfsEnCadena.length,
@@ -758,7 +778,7 @@ function construirCadenasLM(idLD, lideres, celulas, ingresos) {
 /**
  * Construye los Small Groups directos para los modales
  */
-function construirSmallGroupsDirectos(idLD, lideres, celulas, ingresos) {
+function construirSmallGroupsDirectos(idLD, lideres, ingresosIndex) {
   const misSG = lideres.filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'SMALL GROUP');
   
   return misSG.map(sg => ({
@@ -766,19 +786,25 @@ function construirSmallGroupsDirectos(idLD, lideres, celulas, ingresos) {
     Nombre_Lider: sg.Nombre_Lider,
     Rol: sg.Rol,
     Estado_Actividad: sg.Estado_Actividad,
-    lcfs: lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF').map(lcf => ({
-      ID_Lider: lcf.ID_Lider,
-      Nombre_Lider: lcf.Nombre_Lider,
-      Rol: lcf.Rol,
-      Estado_Actividad: lcf.Estado_Actividad,
-      metricas: {
-        total_almas: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider).length,
-        almas_en_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && i.En_Celula).length,
-        almas_sin_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && !i.En_Celula).length,
-        tasa_integracion: 0,
-        carga_trabajo: 'Sin Datos'
-      }
-    }))
+    lcfs: lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF').map(lcf => {
+      const data = ingresosIndex[lcf.ID_Lider] || { ingresos: [], total: 0, cantidad: 0 };
+      const almasEnCelula = data.ingresos.filter(i => i.En_Celula).length;
+      const almasSinCelula = data.cantidad - almasEnCelula;
+      
+      return {
+        ID_Lider: lcf.ID_Lider,
+        Nombre_Lider: lcf.Nombre_Lider,
+        Rol: lcf.Rol,
+        Estado_Actividad: lcf.Estado_Actividad,
+        metricas: {
+          total_almas: data.cantidad,
+          almas_en_celula: almasEnCelula,
+          almas_sin_celula: almasSinCelula,
+          tasa_integracion: data.cantidad > 0 ? ((almasEnCelula / data.cantidad) * 100).toFixed(1) : 0,
+          carga_trabajo: data.cantidad > 0 ? (data.cantidad > 10 ? 'Alta' : data.cantidad > 5 ? 'Media' : 'Baja') : 'Sin Datos'
+        }
+      };
+    })
   }));
 }
 

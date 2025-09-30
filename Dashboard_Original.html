@@ -527,7 +527,7 @@ function actualizarEstadisticas(stats) {
         <div class="stat-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Equipo Base (LCF)</p>
+                    <p class="text-gray-500 text-sm">Casas de FE</p>
                     <p class="text-3xl font-bold text-gray-800">${valores.total_LCF}</p>
                 </div>
                 <i class="fas fa-home text-blue-500 text-3xl"></i>
@@ -558,7 +558,7 @@ function actualizarEstadisticas(stats) {
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-gray-500 text-sm">Tasa Integración</p>
-                    <p class="text-3xl font-bold text-gray-800">${valores.tasa_integracion_celula}%</p>
+                    <p class="text-3xl font-bold text-gray-800">${(valores.tasa_integracion_celula * 100).toFixed(1)}%</p>
                      <p class="text-xs text-blue-600">Almas en célula</p>
                 </div>
                 <i class="fas fa-link text-blue-500 text-3xl"></i>

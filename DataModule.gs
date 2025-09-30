@@ -274,12 +274,16 @@ function cargarHojaIngresos(spreadsheet) {
 /**
  * Carga optimizada de líderes usando rangos específicos
  */
-function cargarLideresOptimizado() {
+function cargarLideresOptimizado(spreadsheet) {
   console.log('[DataModule] Cargando líderes OPTIMIZADO...');
   const startTime = Date.now();
   
+  if (!spreadsheet) {
+    console.log('[DataModule] ADVERTENCIA: Spreadsheet no recibido, abriendo nuevo');
+    spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+  }
+  
   try {
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
     const sheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
     
     if (!sheet) {
@@ -325,12 +329,16 @@ function cargarLideresOptimizado() {
  * Carga optimizada de células usando rangos específicos
  * VERSIÓN CORREGIDA - Compatible con mapearAlmasACelulas
  */
-function cargarCelulasOptimizado() {
+function cargarCelulasOptimizado(spreadsheet) {
   console.log('[DataModule] Cargando células OPTIMIZADO...');
   const startTime = Date.now();
   
+  if (!spreadsheet) {
+    console.log('[DataModule] ADVERTENCIA: Spreadsheet no recibido, abriendo nuevo');
+    spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+  }
+  
   try {
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
     const sheet = spreadsheet.getSheetByName(CONFIG.TABS.CELULAS);
     
     if (!sheet) {
@@ -433,12 +441,16 @@ function cargarCelulasOptimizado() {
 /**
  * Carga optimizada de ingresos usando rangos específicos
  */
-function cargarIngresosOptimizado() {
+function cargarIngresosOptimizado(spreadsheet) {
   console.log('[DataModule] Cargando ingresos OPTIMIZADO...');
   const startTime = Date.now();
   
+  if (!spreadsheet) {
+    console.log('[DataModule] ADVERTENCIA: Spreadsheet no recibido, abriendo nuevo');
+    spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+  }
+  
   try {
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
     const sheet = spreadsheet.getSheetByName(CONFIG.TABS.INGRESOS);
     
     if (!sheet) {
@@ -480,6 +492,43 @@ function cargarIngresosOptimizado() {
     console.error('[DataModule] Error cargando ingresos:', error);
     return [];
   }
+}
+
+/**
+ * Crea un índice de ingresos agrupados por LCF para acceso O(1)
+ * Esto elimina la necesidad de filtrar el array completo para cada LCF
+ * 
+ * @param {Array} ingresos - Array de todos los ingresos
+ * @returns {Object} Índice con estructura: { lcfId: { ingresos: [], total: 0, cantidad: 0 } }
+ */
+function indexarIngresosPorLCF(ingresos) {
+  console.log('[DataModule] 📊 Indexando ' + ingresos.length + ' ingresos por LCF...');
+  const startTime = Date.now();
+  
+  const index = {};
+  
+  ingresos.forEach(function(ingreso) {
+    const lcfId = ingreso.ID_LCF; // Usar ID_LCF en lugar de lcf_id
+    if (!lcfId) return;
+    
+    if (!index[lcfId]) {
+      index[lcfId] = {
+        ingresos: [],
+        total: 0,
+        cantidad: 0
+      };
+    }
+    
+    index[lcfId].ingresos.push(ingreso);
+    index[lcfId].total += ingreso.monto || 0;
+    index[lcfId].cantidad++;
+  });
+  
+  const timeElapsed = Date.now() - startTime;
+  console.log('[DataModule] ✅ Índice creado: ' + Object.keys(index).length + 
+    ' LCFs únicos en ' + timeElapsed + 'ms');
+  
+  return index;
 }
 
 // ==================== FUNCIONES DE CARGA POR FILTROS ====================

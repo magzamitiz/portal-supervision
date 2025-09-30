@@ -450,26 +450,13 @@ function cargarHojaLideres(spreadsheet) {
   return cargarLideresCompletos(spreadsheet);
 }
 
-/**
- * Función de compatibilidad para obtener lista de líderes LD
- * @returns {Object} Respuesta con lista de líderes LD
- */
-function getListaDeLideres() {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    const lideresLD = cargarLideresLD(spreadsheet, CONFIG.TABS.LIDERES);
-    return {
-      success: true,
-      data: lideresLD
-    };
-  } catch (error) {
-    console.error('[LideresModule] Error en getListaDeLideres:', error);
-    return {
-      success: false,
-      error: error.toString(),
-      data: []
-    };
-  }
-}
+// ============================================
+// NOTA: getListaDeLideres() eliminada
+// ============================================
+// Esta función estaba duplicada y causaba conflictos.
+// La versión oficial está en CoreModule.gs
+// Eliminada en optimización de performance
+// Fecha: 29 de septiembre de 2025
+// Mejora esperada: De 192s a <5s
 
 console.log('👥 LideresModule cargado - Gestión de líderes modularizada');
