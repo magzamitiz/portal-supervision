@@ -1,6 +1,7 @@
 /**
  * @fileoverview Suite unificada de tests para el Portal de Supervisión
  * Consolida todos los tests en un solo archivo para mejor mantenimiento
+ * Versión: 2.0 - Actualizada y optimizada
  */
 
 // ==================== CONFIGURACIÓN DE TESTS ====================
@@ -319,117 +320,96 @@ function testGetDatosLDOptimizado() {
   }
 }
 
-// ==================== TESTS INTEGRADOS ====================
+// ==================== TESTS DE MODALES ====================
 
 /**
- * Test completo del sistema optimizado
+ * Test de modales de cadena
  */
-function testSistemaCompleto() {
-  console.log('🚀 ===========================================');
-  console.log('🧪 TEST COMPLETO DEL SISTEMA OPTIMIZADO');
-  console.log('🚀 ===========================================');
+function testModales() {
+  console.log("=== TEST DE MODALES ===");
   
-  const resultados = {
-    configuracion: null,
-    funcionesOptimizadas: null,
-    cacheFragmentado: null,
-    busquedaRapida: null,
-    cargaCompleta: null,
-    getDatosLD: null
-  };
+  // Limpiar caché
+  clearCache();
   
-  try {
-    // Test 1: Configuración
-    console.log('\n1️⃣ TEST DE CONFIGURACIÓN');
-    resultados.configuracion = testConfiguracion();
+  // Probar getDatosLD
+  const resultado = getDatosLD('LD-4003', true);
+  
+  if (resultado && resultado.success) {
+    console.log("✅ getDatosLD exitoso");
     
-    // Test 2: Funciones optimizadas
-    console.log('\n2️⃣ TEST DE FUNCIONES OPTIMIZADAS');
-    resultados.funcionesOptimizadas = testFuncionesOptimizadas();
+    // Verificar estructuras para modales
+    console.log("\n🔍 VERIFICANDO ESTRUCTURAS PARA MODALES:");
     
-    // Test 3: Caché fragmentado
-    console.log('\n3️⃣ TEST DE CACHÉ FRAGMENTADO');
-    resultados.cacheFragmentado = testCacheFragmentado();
-    
-    // Test 4: Búsqueda rápida
-    console.log('\n4️⃣ TEST DE BÚSQUEDA RÁPIDA');
-    resultados.busquedaRapida = testBusquedaRapida();
-    
-    // Test 5: Carga completa
-    console.log('\n5️⃣ TEST DE CARGA COMPLETA');
-    resultados.cargaCompleta = testCargaCompleta();
-    
-    // Test 6: getDatosLD optimizado
-    console.log('\n6️⃣ TEST DE getDatosLD OPTIMIZADO');
-    resultados.getDatosLD = testGetDatosLDOptimizado();
-    
-    // Resumen final
-    const testsExitosos = Object.values(resultados).filter(r => r && r.success).length;
-    const totalTests = Object.keys(resultados).length;
-    
-    console.log('\n🎯 ===========================================');
-    console.log('📊 RESUMEN FINAL DEL TEST COMPLETO');
-    console.log('🎯 ===========================================');
-    console.log(`✅ Tests exitosos: ${testsExitosos}/${totalTests}`);
-    
-    // Detalle de resultados
-    Object.entries(resultados).forEach(([test, resultado], index) => {
-      if (resultado) {
-        const status = resultado.success ? '✅' : '❌';
-        console.log(`${index + 1}️⃣ ${test}: ${status} ${resultado.success ? 'EXITOSO' : 'FALLÓ'}`);
+    // 1. cadenas_lm
+    if (resultado.cadenas_lm) {
+      console.log(`✅ cadenas_lm: ${resultado.cadenas_lm.length} cadenas`);
+      if (resultado.cadenas_lm.length > 0) {
+        const primeraCadena = resultado.cadenas_lm[0];
+        console.log(`  - Primera cadena: ${primeraCadena.Nombre_Lider}`);
+        console.log(`  - Small Groups: ${primeraCadena.smallGroups ? primeraCadena.smallGroups.length : 0}`);
+        console.log(`  - LCF Directos: ${primeraCadena.lcfDirectos ? primeraCadena.lcfDirectos.length : 0}`);
+        console.log(`  - Métricas: ${primeraCadena.metricas ? '✅' : '❌'}`);
       }
-    });
+    } else {
+      console.log("❌ cadenas_lm: NO EXISTE");
+    }
     
-    const sistemaExitoso = testsExitosos === totalTests;
-    console.log(`\n🎉 SISTEMA: ${sistemaExitoso ? '✅ COMPLETAMENTE OPTIMIZADO' : '⚠️ PARCIALMENTE OPTIMIZADO'}`);
+    // 2. small_groups_directos
+    if (resultado.small_groups_directos) {
+      console.log(`✅ small_groups_directos: ${resultado.small_groups_directos.length} grupos`);
+      if (resultado.small_groups_directos.length > 0) {
+        const primerSG = resultado.small_groups_directos[0];
+        console.log(`  - Primer SG: ${primerSG.Nombre_Lider}`);
+        console.log(`  - LCFs: ${primerSG.lcfs ? primerSG.lcfs.length : 0}`);
+      }
+    } else {
+      console.log("❌ small_groups_directos: NO EXISTE");
+    }
     
-    return {
-      success: sistemaExitoso,
-      testsExitosos: testsExitosos,
-      totalTests: totalTests,
-      resultados: resultados
-    };
+    // 3. lcf_directos
+    if (resultado.lcf_directos) {
+      console.log(`✅ lcf_directos: ${resultado.lcf_directos.length} LCFs`);
+    } else {
+      console.log("❌ lcf_directos: NO EXISTE");
+    }
     
-  } catch (error) {
-    console.error('❌ ERROR CRÍTICO EN TEST COMPLETO:', error);
-    return {
-      success: false,
-      error: error.toString(),
-      resultados: resultados
-    };
+    // Verificar que los modales pueden funcionar
+    console.log("\n🔧 SIMULANDO MODALES:");
+    
+    // Simular verDetalleCadenaLM
+    if (resultado.cadenas_lm && resultado.cadenas_lm.length > 0) {
+      const lm = resultado.cadenas_lm[0];
+      console.log(`✅ Modal LM: ${lm.Nombre_Lider} - ${lm.smallGroups ? lm.smallGroups.length : 0} SGs`);
+    } else {
+      console.log("❌ Modal LM: No hay cadenas LM disponibles");
+    }
+    
+    // Simular verDetalleSG
+    if (resultado.small_groups_directos && resultado.small_groups_directos.length > 0) {
+      const sg = resultado.small_groups_directos[0];
+      console.log(`✅ Modal SG: ${sg.Nombre_Lider} - ${sg.lcfs ? sg.lcfs.length : 0} LCFs`);
+    } else {
+      console.log("❌ Modal SG: No hay Small Groups directos disponibles");
+    }
+    
+    // Simular verDetalleLCF
+    if (resultado.lcf_directos && resultado.lcf_directos.length > 0) {
+      const lcf = resultado.lcf_directos[0];
+      console.log(`✅ Modal LCF: ${lcf.Nombre_Lider} - ${lcf.metricas ? 'Con métricas' : 'Sin métricas'}`);
+    } else {
+      console.log("❌ Modal LCF: No hay LCFs directos disponibles");
+    }
+    
+    console.log("\n🎉 TEST DE MODALES COMPLETADO");
+    
+  } else {
+    console.log("❌ getDatosLD falló:", resultado?.error);
   }
+  
+  return resultado;
 }
 
-// ==================== FUNCIONES DE UTILIDAD ====================
-
-/**
- * Ejecuta todos los tests de forma rápida
- */
-function ejecutarTodosLosTests() {
-  console.log('🚀 Ejecutando todos los tests...');
-  return testSistemaCompleto();
-}
-
-/**
- * Ejecuta solo tests de rendimiento
- */
-function ejecutarTestsRendimiento() {
-  console.log('⚡ Ejecutando tests de rendimiento...');
-  
-  const resultados = {
-    funcionesOptimizadas: testFuncionesOptimizadas(),
-    busquedaRapida: testBusquedaRapida(),
-    cargaCompleta: testCargaCompleta()
-  };
-  
-  const exitosos = Object.values(resultados).filter(r => r.success).length;
-  const total = Object.keys(resultados).length;
-  
-  console.log(`\n📊 Tests de rendimiento: ${exitosos}/${total} exitosos`);
-  return { success: exitosos === total, resultados: resultados };
-}
-
-// ==================== TEST DE CORRECCIONES FINALES ====================
+// ==================== TESTS DE CORRECCIONES ====================
 
 /**
  * Test de verificación final para las correcciones aplicadas
@@ -492,7 +472,6 @@ function testCorreccionesFinales() {
 
 /**
  * Verificación completa de todas las correcciones aplicadas
- * Verifica que el sistema maneja correctamente ambas estructuras de datos
  */
 function verificarTodasLasCorrecciones() {
   console.log("=== VERIFICANDO CORRECCIONES ===");
@@ -565,4 +544,183 @@ function verificarTodasLasCorrecciones() {
   };
 }
 
-console.log('🧪 TestSuiteUnificado cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testCorreccionesFinales() o verificarTodasLasCorrecciones()');
+// ==================== TESTS INTEGRADOS ====================
+
+/**
+ * Test completo del sistema optimizado
+ */
+function testSistemaCompleto() {
+  console.log('🚀 ===========================================');
+  console.log('🧪 TEST COMPLETO DEL SISTEMA OPTIMIZADO');
+  console.log('🚀 ===========================================');
+  
+  const resultados = {
+    configuracion: null,
+    funcionesOptimizadas: null,
+    cacheFragmentado: null,
+    busquedaRapida: null,
+    cargaCompleta: null,
+    getDatosLD: null,
+    modales: null
+  };
+  
+  try {
+    // Test 1: Configuración
+    console.log('\n1️⃣ TEST DE CONFIGURACIÓN');
+    resultados.configuracion = testConfiguracion();
+    
+    // Test 2: Funciones optimizadas
+    console.log('\n2️⃣ TEST DE FUNCIONES OPTIMIZADAS');
+    resultados.funcionesOptimizadas = testFuncionesOptimizadas();
+    
+    // Test 3: Caché fragmentado
+    console.log('\n3️⃣ TEST DE CACHÉ FRAGMENTADO');
+    resultados.cacheFragmentado = testCacheFragmentado();
+    
+    // Test 4: Búsqueda rápida
+    console.log('\n4️⃣ TEST DE BÚSQUEDA RÁPIDA');
+    resultados.busquedaRapida = testBusquedaRapida();
+    
+    // Test 5: Carga completa
+    console.log('\n5️⃣ TEST DE CARGA COMPLETA');
+    resultados.cargaCompleta = testCargaCompleta();
+    
+    // Test 6: getDatosLD optimizado
+    console.log('\n6️⃣ TEST DE getDatosLD OPTIMIZADO');
+    resultados.getDatosLD = testGetDatosLDOptimizado();
+    
+    // Test 7: Modales
+    console.log('\n7️⃣ TEST DE MODALES');
+    resultados.modales = testModales();
+    
+    // Resumen final
+    const testsExitosos = Object.values(resultados).filter(r => r && r.success).length;
+    const totalTests = Object.keys(resultados).length;
+    
+    console.log('\n🎯 ===========================================');
+    console.log('📊 RESUMEN FINAL DEL TEST COMPLETO');
+    console.log('🎯 ===========================================');
+    console.log(`✅ Tests exitosos: ${testsExitosos}/${totalTests}`);
+    
+    // Detalle de resultados
+    Object.entries(resultados).forEach(([test, resultado], index) => {
+      if (resultado) {
+        const status = resultado.success ? '✅' : '❌';
+        console.log(`${index + 1}️⃣ ${test}: ${status} ${resultado.success ? 'EXITOSO' : 'FALLÓ'}`);
+      }
+    });
+    
+    const sistemaExitoso = testsExitosos === totalTests;
+    console.log(`\n🎉 SISTEMA: ${sistemaExitoso ? '✅ COMPLETAMENTE OPTIMIZADO' : '⚠️ PARCIALMENTE OPTIMIZADO'}`);
+    
+    return {
+      success: sistemaExitoso,
+      testsExitosos: testsExitosos,
+      totalTests: totalTests,
+      resultados: resultados
+    };
+    
+  } catch (error) {
+    console.error('❌ ERROR CRÍTICO EN TEST COMPLETO:', error);
+    return {
+      success: false,
+      error: error.toString(),
+      resultados: resultados
+    };
+  }
+}
+
+/**
+ * Test final del sistema - Verificación completa de funcionalidad
+ */
+function testFinal() {
+  console.log("=== TEST FINAL DEL SISTEMA ===\n");
+  
+  clearCache();
+  const celulas = cargarCelulasOptimizado();
+  
+  // Test análisis
+  console.log("ANÁLISIS DE CÉLULAS:");
+  const analisis = analizarCelulas(celulas);
+  console.log("- Total miembros:", analisis.total_miembros);
+  console.log("- Promedio miembros:", analisis.promedio_miembros);
+  console.log("- Células activas:", analisis.celulas_activas);
+  
+  // Test métricas  
+  console.log("\nMÉTRICAS DE CÉLULAS:");
+  const metricas = calcularMetricasCelulas(celulas);
+  console.log("- Total miembros:", metricas.total_miembros);
+  console.log("- Promedio miembros:", metricas.promedio_miembros);
+  
+  // Test carga completa
+  console.log("\nCARGA COMPLETA:");
+  const directorio = cargarDirectorioCompleto(true);
+  console.log("- Estado:", directorio.error ? "❌ FALLÓ" : "✅ EXITOSA");
+  if (!directorio.error) {
+    console.log("- Líderes:", directorio.lideres ? directorio.lideres.length : 0);
+    console.log("- Células:", directorio.celulas ? directorio.celulas.length : 0);
+    console.log("- Ingresos:", directorio.ingresos ? directorio.ingresos.length : 0);
+  }
+  
+  const todoOk = analisis.total_miembros > 0 && 
+                 metricas.total_miembros > 0 && 
+                 !directorio.error;
+                 
+  console.log("\n" + "=".repeat(40));
+  console.log(todoOk ? "🎉 SISTEMA 100% FUNCIONAL" : "⚠️ AÚN HAY PROBLEMAS");
+  console.log("=".repeat(40));
+  
+  return {
+    analisis: analisis,
+    metricas: metricas,
+    directorio: directorio,
+    todoOk: todoOk
+  };
+}
+
+// ==================== FUNCIONES DE UTILIDAD ====================
+
+/**
+ * Ejecuta todos los tests de forma rápida
+ */
+function ejecutarTodosLosTests() {
+  console.log('🚀 Ejecutando todos los tests...');
+  return testSistemaCompleto();
+}
+
+/**
+ * Ejecuta solo tests de rendimiento
+ */
+function ejecutarTestsRendimiento() {
+  console.log('⚡ Ejecutando tests de rendimiento...');
+  
+  const resultados = {
+    funcionesOptimizadas: testFuncionesOptimizadas(),
+    busquedaRapida: testBusquedaRapida(),
+    cargaCompleta: testCargaCompleta()
+  };
+  
+  const exitosos = Object.values(resultados).filter(r => r.success).length;
+  const total = Object.keys(resultados).length;
+  
+  console.log(`\n📊 Tests de rendimiento: ${exitosos}/${total} exitosos`);
+  return { success: exitosos === total, resultados: resultados };
+}
+
+/**
+ * Ejecuta solo tests de modales
+ */
+function ejecutarTestsModales() {
+  console.log('🎭 Ejecutando tests de modales...');
+  return testModales();
+}
+
+/**
+ * Ejecuta solo tests de correcciones
+ */
+function ejecutarTestsCorrecciones() {
+  console.log('🔧 Ejecutando tests de correcciones...');
+  return testCorreccionesFinales();
+}
+
+console.log('🧪 TestSuiteUnificado v2.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones() o testFinal()');

@@ -18,23 +18,23 @@ function construirEstructuraLD(idLD, data) {
   
   const lm = misLM.map(lmRow => ({
     ID_Lider: lmRow[0],
-    Nombre_Lider: lmRow[1],
+    Nombre_Lider: lmRow[1] || 'Sin Nombre',  // Validación para evitar undefined
     Rol: lmRow[2],
     Estado_Actividad: lmRow[4] || 'Sin Datos'
   }));
   
   const smallGroups = misSG.map(sgRow => ({
     ID_Lider: sgRow[0],
-    Nombre_Lider: sgRow[1],
+    Nombre_Lider: sgRow[1] || 'Sin Nombre',  // Validación para evitar undefined
     Rol: sgRow[2],
     Estado_Actividad: sgRow[4] || 'Sin Datos'
   }));
   
   const lcfDirectos = misLCF.map(lcfRow => ({
     ID_Lider: lcfRow[0],
-    Nombre_Lider: lcfRow[1],
+    Nombre_Lider: lcfRow[1] || 'Sin Nombre',  // Validación para evitar undefined
     Rol: lcfRow[2],
-    Estado_Actividad: lcfRow[4] || 'Sin Datos'
+    Estado_Actividad: 'Activo'  // No hay columna de estado en la hoja de líderes
   }));
   
   return { lm, smallGroups, lcfDirectos };
@@ -575,7 +575,7 @@ function getDatosLDCompleto(idLD) {
   console.log('[CoreModule] Debug - Llamando a cargarDirectorioCompleto...');
   const dataCompleta = cargarDirectorioCompleto();
   console.log('[CoreModule] Debug - cargarDirectorioCompleto retornó:', dataCompleta ? 'datos' : 'null/undefined');
-  if (!dataCompleta || !dataCompleta.lideres || dataCompleta.success === false) {
+  if (!dataCompleta || !dataCompleta.lideres) {
     return { success: false, error: 'Datos del directorio no válidos o error en carga' };
   }
   
@@ -621,14 +621,22 @@ function getDatosLDCompleto(idLD) {
       const susIngresos = almasPorLCF.get(lcf.ID_Lider) || [];
       
       return {
-        ID: lcf.ID_Lider,
-        Nombre: lcf.Nombre_Lider,
-        Estado: lcf.Estado_Actividad,
+        ID_Lider: lcf.ID_Lider,
+        Nombre_Lider: lcf.Nombre_Lider || 'Sin Nombre',  // Validación para evitar undefined
+        Rol: lcf.Rol,
+        Estado_Actividad: (lcf.Estado_Actividad && lcf.Estado_Actividad !== '-') ? lcf.Estado_Actividad : 'Activo',  // Validación para evitar undefined y guiones
         Celulas: susCelulas.length,
         Miembros: susCelulas.reduce((sum, c) => sum + obtenerTotalMiembros(c), 0),
         Ingresos: susIngresos.length,
         Ingresos_Asignados: susIngresos.filter(i => i.Estado_Asignacion === 'Asignado').length,
-        Ingresos_En_Celula: susIngresos.filter(i => i.En_Celula).length
+        Ingresos_En_Celula: susIngresos.filter(i => i.En_Celula).length,
+        metricas: {
+          total_almas: susIngresos.length,
+          almas_en_celula: susIngresos.filter(i => i.En_Celula).length,
+          almas_sin_celula: susIngresos.filter(i => !i.En_Celula).length,
+          tasa_integracion: susIngresos.length > 0 ? ((susIngresos.filter(i => i.En_Celula).length / susIngresos.length) * 100).toFixed(1) : 0,
+          carga_trabajo: susIngresos.length > 50 ? 'Alta' : susIngresos.length > 20 ? 'Media' : 'Baja'
+        }
       };
     });
 
@@ -639,6 +647,10 @@ function getDatosLDCompleto(idLD) {
   const totalIngresosAsignados = lcfBajoLD.reduce((sum, lcf) => sum + lcf.Ingresos_Asignados, 0);
   const totalIngresosEnCelula = lcfBajoLD.reduce((sum, lcf) => sum + lcf.Ingresos_En_Celula, 0);
 
+  // Construir estructuras jerárquicas para modales
+  const cadenasLM = construirCadenasLM(idLD, lideres, celulas, ingresos);
+  const smallGroupsDirectos = construirSmallGroupsDirectos(idLD, lideres, celulas, ingresos);
+  
   // Devolver estructura compatible con Dashboard
   return {
     success: true,
@@ -661,8 +673,106 @@ function getDatosLDCompleto(idLD) {
     },
     lcf_directos: lcfBajoLD,
     equipo: lcfBajoLD, // Por compatibilidad
+    cadenas_lm: cadenasLM, // Para modales
+    small_groups_directos: smallGroupsDirectos, // Para modales
     modo: 'completo'
   };
+}
+
+/**
+ * Construye las cadenas LM para los modales
+ */
+function construirCadenasLM(idLD, lideres, celulas, ingresos) {
+  const misLM = lideres.filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LM');
+  
+  return misLM.map(lm => {
+    const smallGroups = lideres.filter(l => l.ID_Lider_Directo === lm.ID_Lider && l.Rol === 'SMALL GROUP');
+    
+    const lcfsEnCadena = [];
+    smallGroups.forEach(sg => {
+      const lcfs = lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF');
+      lcfsEnCadena.push(...lcfs);
+    });
+    
+    // Calcular métricas
+    const totalAlmas = lcfsEnCadena.reduce((sum, lcf) => {
+      const almasLcf = ingresos.filter(i => i.ID_LCF === lcf.ID_Lider);
+      return sum + almasLcf.length;
+    }, 0);
+    
+    return {
+      ID_Lider: lm.ID_Lider,
+      Nombre_Lider: lm.Nombre_Lider,
+      Rol: lm.Rol,
+      Estado_Actividad: lm.Estado_Actividad,
+      smallGroups: smallGroups.map(sg => ({
+        ID_Lider: sg.ID_Lider,
+        Nombre_Lider: sg.Nombre_Lider,
+        Rol: sg.Rol,
+        Estado_Actividad: sg.Estado_Actividad,
+        lcfs: lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF').map(lcf => ({
+          ID_Lider: lcf.ID_Lider,
+          Nombre_Lider: lcf.Nombre_Lider,
+          Rol: lcf.Rol,
+          Estado_Actividad: lcf.Estado_Actividad,
+          metricas: {
+            total_almas: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider).length,
+            almas_en_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && i.En_Celula).length,
+            almas_sin_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && !i.En_Celula).length,
+            tasa_integracion: 0,
+            carga_trabajo: 'Sin Datos'
+          }
+        }))
+      })),
+      lcfDirectos: lideres.filter(l => l.ID_Lider_Directo === lm.ID_Lider && l.Rol === 'LCF').map(lcf => ({
+        ID_Lider: lcf.ID_Lider,
+        Nombre_Lider: lcf.Nombre_Lider,
+        Rol: lcf.Rol,
+        Estado_Actividad: lcf.Estado_Actividad,
+        metricas: {
+          total_almas: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider).length,
+          almas_en_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && i.En_Celula).length,
+          almas_sin_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && !i.En_Celula).length,
+          tasa_integracion: 0,
+          carga_trabajo: 'Sin Datos'
+        }
+      })),
+      metricas: {
+        total_small_groups: smallGroups.length,
+        total_lcf_en_cadena: lcfsEnCadena.length,
+        total_almas_en_cadena: totalAlmas,
+        small_groups_activos: smallGroups.filter(sg => sg.Estado_Actividad === 'Activo').length,
+        salud_cadena: 'Sin Datos'
+      }
+    };
+  });
+}
+
+/**
+ * Construye los Small Groups directos para los modales
+ */
+function construirSmallGroupsDirectos(idLD, lideres, celulas, ingresos) {
+  const misSG = lideres.filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'SMALL GROUP');
+  
+  return misSG.map(sg => ({
+    ID_Lider: sg.ID_Lider,
+    Nombre_Lider: sg.Nombre_Lider,
+    Rol: sg.Rol,
+    Estado_Actividad: sg.Estado_Actividad,
+    lcfs: lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF').map(lcf => ({
+      ID_Lider: lcf.ID_Lider,
+      Nombre_Lider: lcf.Nombre_Lider,
+      Rol: lcf.Rol,
+      Estado_Actividad: lcf.Estado_Actividad,
+      metricas: {
+        total_almas: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider).length,
+        almas_en_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && i.En_Celula).length,
+        almas_sin_celula: ingresos.filter(i => i.ID_LCF === lcf.ID_Lider && !i.En_Celula).length,
+        tasa_integracion: 0,
+        carga_trabajo: 'Sin Datos'
+      }
+    }))
+  }));
 }
 
 // ==================== OPERACIONES ADMINISTRATIVAS OPTIMIZADAS ====================

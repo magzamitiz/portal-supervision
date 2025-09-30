@@ -298,12 +298,17 @@ function cargarLideresOptimizado() {
       const row = data[i];
       if (!row[0]) continue; // Saltar filas vacías
       
+      // Debug para LCF bajo LD-4003
+      if (String(row[0]).trim().startsWith('LCF-') && String(row[3]).trim() === 'LD-4003') {
+        console.log(`[DataModule] Debug LCF: ${String(row[0]).trim()}, Estado original: "${row[4]}", Tipo: ${typeof row[4]}`);
+      }
+      
       lideres.push({
         ID_Lider: String(row[0] || '').trim(),
-        Nombre_Lider: String(row[1] || '').trim(),
+        Nombre_Lider: String(row[1] || 'Sin Nombre').trim(),
         Rol: String(row[2] || '').trim(),
         ID_Lider_Directo: String(row[3] || '').trim(),
-        Estado_Actividad: String(row[4] || 'Activo').trim()
+        Estado_Actividad: 'Activo'  // No hay columna de estado, usar valor por defecto
       });
     }
     

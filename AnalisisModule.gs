@@ -75,35 +75,53 @@ function analizarLideres(lideres) {
  */
 function analizarCelulas(celulas) {
   const analisis = {
-    total_celulas: 0, celulas_activas: 0, celulas_vacias: 0, celulas_en_riesgo: 0,
-    celulas_saludables: 0, celulas_para_multiplicar: 0, total_miembros: 0,
-    promedio_miembros: 0, celulas_por_LCF: {}
+    total_celulas: 0, 
+    celulas_activas: 0, 
+    celulas_vacias: 0, 
+    celulas_en_riesgo: 0,
+    celulas_saludables: 0, 
+    celulas_para_multiplicar: 0, 
+    total_miembros: 0,
+    promedio_miembros: 0, 
+    celulas_por_LCF: {}
   };
 
-  if (!celulas.length) return analisis;
+  if (!celulas || !celulas.length) return analisis;
 
   analisis.total_celulas = celulas.length;
 
   celulas.forEach(celula => {
+    // Contar células por estado
     if (celula.Estado !== 'Vacía') {
-        analisis.celulas_activas++;
+      analisis.celulas_activas++;
     }
 
     switch(celula.Estado) {
-      case 'Vacía': analisis.celulas_vacias++; break;
-      case 'En Riesgo': analisis.celulas_en_riesgo++; break;
-      case 'Saludable': analisis.celulas_saludables++; break;
-      case 'Lista para Multiplicar': analisis.celulas_para_multiplicar++; break;
+      case 'Vacía': 
+        analisis.celulas_vacias++; 
+        break;
+      case 'En Riesgo': 
+        analisis.celulas_en_riesgo++; 
+        break;
+      case 'Saludable': 
+        analisis.celulas_saludables++; 
+        break;
+      case 'Lista para Multiplicar': 
+        analisis.celulas_para_multiplicar++; 
+        break;
     }
 
+    // IMPORTANTE: Obtener total de miembros usando la función helper
     const totalMiembrosEnCelula = obtenerTotalMiembros(celula);
     analisis.total_miembros += totalMiembrosEnCelula;
 
-    // Por LCF
+    // Analizar por LCF
     if (celula.ID_LCF_Responsable) {
       if (!analisis.celulas_por_LCF[celula.ID_LCF_Responsable]) {
         analisis.celulas_por_LCF[celula.ID_LCF_Responsable] = {
-          nombre: celula.Nombre_LCF_Responsable, total_celulas: 0, total_miembros: 0
+          nombre: celula.Nombre_LCF_Responsable || '', 
+          total_celulas: 0, 
+          total_miembros: 0
         };
       }
       analisis.celulas_por_LCF[celula.ID_LCF_Responsable].total_celulas++;
@@ -111,7 +129,7 @@ function analizarCelulas(celulas) {
     }
   });
 
-  // Promedio se calcula sobre células activas
+  // Calcular promedio sobre células activas
   if (analisis.celulas_activas > 0) {
     analisis.promedio_miembros = (analisis.total_miembros / analisis.celulas_activas).toFixed(1);
   }
