@@ -6,35 +6,17 @@
 // ==================== FUNCIONES DE CÁLCULO DE ACTIVIDAD ====================
 
 /**
- * Calcula la actividad de líderes con mapeo de células (implementación exacta del original).
- * @param {Array<Object>} celulas - Array de células
+ * Calcula la actividad de líderes usando _SeguimientoConsolidado (versión optimizada).
+ * @param {Array<Object>} celulas - Array de células (no se usa en esta versión)
  * @returns {Map<string, Date>} Mapa de ID_Lider a última fecha de actividad
  */
 function calcularActividadLideres(celulas) {
-  console.log('Calculando actividad de líderes con mapeo de células...');
-  
-  // Si no hay células, retornar mapas vacíos inmediatamente
-  if (!celulas || celulas.length === 0) {
-    return new Map();
-  }
+  console.log('Calculando actividad de líderes desde _SeguimientoConsolidado...');
   
   const actividadMap = new Map();
   
-  // OPTIMIZACIÓN: Crear mapa en una sola expresión
-  const celulaLiderMap = new Map(
-    celulas
-      .filter(c => c?.ID_Celula && c?.ID_LCF_Responsable)
-      .map(c => [c.ID_Celula, c.ID_LCF_Responsable])
-  );
-  console.log(`Mapa Célula->Líder creado con ${celulaLiderMap.size} registros.`);
-  
-  // OPTIMIZACIÓN: Solo procesar sheets externos si hay células
-  if (celulaLiderMap.size === 0) {
-    return actividadMap;
-  }
-  
-  // Cache de resultados de sheets externos
-  const cacheKey = 'ACTIVIDAD_CACHE';
+  // Cache de resultados
+  const cacheKey = 'ACTIVIDAD_CACHE_SEGUIMIENTO';
   const cache = CacheService.getScriptCache();
   const cached = cache.get(cacheKey);
   
@@ -43,117 +25,59 @@ function calcularActividadLideres(celulas) {
     return new Map(JSON.parse(cached));
   }
   
-  // 2. Procesar Reportes de Células
-  if (CONFIG.SHEETS.REPORTE_CELULAS) {
-    try {
-      procesarHojaActividad(
-        CONFIG.SHEETS.REPORTE_CELULAS,
-        CONFIG.TABS.ACTIVIDAD_CELULAS,
-        ['Timestamp', 'Fecha', 'Marca temporal'],
-        ['ID Célula', 'ID_Celula', 'Id de la célula'],
-        actividadMap,
-        celulaLiderMap
-      );
-    } catch(e) {
-      console.warn('Error procesando reportes de células:', e);
-    }
-  }
-  
-  // 3. Procesar Visitas de Bendición
-  if (CONFIG.SHEETS.VISITAS_BENDICION) {
-    try {
-      procesarHojaActividad(
-        CONFIG.SHEETS.VISITAS_BENDICION,
-        CONFIG.TABS.ACTIVIDAD_VISITAS,
-        ['Timestamp', 'Fecha', 'Marca temporal'],
-        ['ID Célula', 'ID_Celula', 'Id de la célula'],
-        actividadMap,
-        celulaLiderMap
-      );
-    } catch(e) {
-      console.warn('Error procesando visitas de bendición:', e);
-    }
-  }
-  
-  // 4. Procesar Registro de Interacciones
-  if (CONFIG.SHEETS.REGISTRO_INTERACCIONES) {
-    try {
-      procesarHojaActividad(
-        CONFIG.SHEETS.REGISTRO_INTERACCIONES,
-        null, // Usar primera hoja
-        ['Timestamp', 'Fecha', 'Marca temporal'],
-        ['ID LCF', 'ID_LCF', 'ID Líder'],
-        actividadMap
-      );
-    } catch(e) {
-      console.warn('Error procesando registro de interacciones:', e);
-    }
-  }
-  
-  // 5. Guardar en caché (convertir Map a Array para serialización)
   try {
+    // Acceder a la hoja _SeguimientoConsolidado
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const sheet = spreadsheet.getSheetByName('_SeguimientoConsolidado');
+    
+    if (!sheet) {
+      console.warn('Hoja _SeguimientoConsolidado no encontrada');
+      return actividadMap;
+    }
+    
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+      console.log('Hoja _SeguimientoConsolidado vacía o solo con headers');
+      return actividadMap;
+    }
+    
+    // Leer datos: A2:J (ID_Alma, Nombre, ID_LCF, ..., Dias_Sin_Seguimiento)
+    const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
+    console.log(`Procesando ${data.length} registros de seguimiento`);
+    
+    data.forEach(row => {
+      const idLCF = String(row[2] || '').trim(); // Columna C: ID_LCF
+      const diasSinSeguimiento = parseInt(row[9]) || 0; // Columna J: Dias_Sin_Seguimiento
+      
+      if (idLCF && diasSinSeguimiento >= 0) {
+        // Calcular última actividad basada en días sin seguimiento
+        const hoy = new Date();
+        const ultimaActividad = new Date(hoy);
+        ultimaActividad.setDate(hoy.getDate() - diasSinSeguimiento);
+        
+        // Solo actualizar si es más reciente o no existe
+        const actividadExistente = actividadMap.get(idLCF);
+        if (!actividadExistente || ultimaActividad > actividadExistente) {
+          actividadMap.set(idLCF, ultimaActividad);
+        }
+      }
+    });
+    
+    console.log(`Actividad calculada para ${actividadMap.size} líderes desde _SeguimientoConsolidado`);
+    
+    // Guardar en caché (convertir Map a Array para serialización)
     const actividadArray = Array.from(actividadMap.entries());
     cache.put(cacheKey, JSON.stringify(actividadArray), 300); // 5 minutos
-    console.log(`Actividad calculada y guardada en caché: ${actividadMap.size} líderes`);
-  } catch(e) {
-    console.warn('Error guardando actividad en caché:', e);
+    
+  } catch (error) {
+    console.error('Error calculando actividad desde _SeguimientoConsolidado:', error);
   }
   
   return actividadMap;
 }
 
-/**
- * Procesa una hoja de actividad externa (implementación exacta del original).
- * @param {string} sheetId - ID de la hoja
- * @param {string} tabName - Nombre de la pestaña
- * @param {Array<string>} timestampCols - Nombres de columnas de timestamp
- * @param {Array<string>} idCols - Nombres de columnas de ID
- * @param {Map} actividadMap - Mapa de actividad a actualizar
- * @param {Map} idLookupMap - Mapa de búsqueda de IDs (opcional)
- */
-function procesarHojaActividad(sheetId, tabName, timestampCols, idCols, actividadMap, idLookupMap = null) {
-  try {
-    const ss = SpreadsheetApp.openById(sheetId);
-    const sheet = tabName ? ss.getSheetByName(tabName) : ss.getSheets()[0];
-    if (!sheet) return;
-
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return;
-    const headers = data[0].map(h => h.toString().trim());
-
-    const timestampIndex = headers.findIndex(h => timestampCols.includes(h));
-    const idIndex = headers.findIndex(h => idCols.includes(h));
-
-    if (timestampIndex === -1 || idIndex === -1) {
-      console.warn(`En la hoja "${sheet.getName()}", no se encontró una de las columnas requeridas (Timestamp o ID). Se buscaba Timestamp en [${timestampCols.join(', ')}] e ID en [${idCols.join(', ')}]`);
-      return;
-    }
-
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      let idInicial = String(row[idIndex] || '').trim();
-      const timestamp = row[timestampIndex];
-      
-      // Si se proporcionó un mapa de búsqueda, lo usamos para encontrar el ID del líder.
-      const leaderId = idLookupMap ? idLookupMap.get(idInicial) : idInicial;
-
-      // Verificar que el ID del LÍDER exista (después del lookup) y la fecha sea válida
-      if (leaderId && timestamp instanceof Date && !isNaN(timestamp.getTime())) {
-        const currentDate = timestamp;
-        const existingDate = actividadMap.get(leaderId);
-
-        // Solo actualizar si la fecha es más reciente
-        if (!existingDate || currentDate > existingDate) {
-          actividadMap.set(leaderId, currentDate);
-        }
-      }
-    }
-
-    console.log(`Procesada hoja "${sheet.getName()}": ${actividadMap.size} líderes con actividad`);
-  } catch (error) {
-    console.error(`Error procesando hoja de actividad ${sheetId}:`, error);
-  }
-}
+// Función procesarHojaActividad eliminada - ya no se necesita
+// Ahora usamos _SeguimientoConsolidado directamente
 
 /**
  * Integra la información de actividad calculada en la lista de líderes (implementación exacta del original).
@@ -224,4 +148,4 @@ function integrarAlmasACelulas(ingresos, almasEnCelulasMap) {
   });
 }
 
-console.log('📊 ActividadModule cargado - Funciones de cálculo de actividad disponibles');
+console.log('📊 ActividadModule cargado - Usando _SeguimientoConsolidado para cálculo de actividad');
