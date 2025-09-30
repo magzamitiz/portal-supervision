@@ -157,11 +157,11 @@ function cargarDirectorioCompleto(forceReload = false) {
     // OPTIMIZACIÓN 2: Procesamiento mínimo y eficiente
     const procesamientoStart = Date.now();
     
-    // Solo procesar si hay datos
-    let lideresConActividad = lideres || [];
-    if (celulas && celulas.length > 0) {
-      const actividadMap = calcularActividadLideres(celulas);
-      lideresConActividad = integrarActividadLideres(lideres, actividadMap);
+    // ✅ NUEVO: Cargar estados y perfiles de líderes desde _EstadoLideres
+    let lideresConPerfil = lideres || [];
+    if (lideres && lideres.length > 0) {
+      const estadosMap = cargarEstadoLideres(spreadsheet);
+      lideresConPerfil = integrarPerfilesLideres(lideres, estadosMap);
     }
     
     if (celulas && ingresos && celulas.length > 0 && ingresos.length > 0) {
@@ -173,7 +173,7 @@ function cargarDirectorioCompleto(forceReload = false) {
     console.log(`[CoreModule] ✅ Procesamiento completado en ${procesamientoTime}ms`);
 
     const data = {
-      lideres: lideresConActividad,
+      lideres: lideresConPerfil,
       celulas: celulas || [],
       ingresos: ingresos || [],
       timestamp: new Date().toISOString()
@@ -366,108 +366,116 @@ function cargarVisitasBendicionSelectivo(idsAlmas) {
  * @param {Array<Object>} celulas - Array de células (no se usa en esta versión)
  * @returns {Map<string, Date>} Mapa de ID_Lider a última fecha de actividad
  */
-function calcularActividadLideres(celulas) {
-  console.log('[CoreModule] Calculando actividad de líderes desde _SeguimientoConsolidado...');
+/**
+ * Carga los estados y perfiles de líderes desde la hoja _EstadoLideres
+ * ✅ OPTIMIZADO: Lee datos pre-calculados, sin procesamiento en tiempo real
+ * @param {Object} spreadsheet - (Opcional) Objeto spreadsheet ya abierto
+ * @returns {Map<string, Object>} Mapa de ID_Lider a datos de perfil
+ */
+function cargarEstadoLideres(spreadsheet) {
+  console.log('[CoreModule] Cargando estados de líderes desde _EstadoLideres...');
   
-  const actividadMap = new Map();
+  const estadosMap = new Map();
   
   // Cache de resultados
-  const cacheKey = 'ACTIVIDAD_CACHE_SEGUIMIENTO';
+  const cacheKey = 'ESTADO_LIDERES_CACHE';
   const cache = CacheService.getScriptCache();
   const cached = cache.get(cacheKey);
   
   if (cached) {
-    console.log('[CoreModule] Usando actividad desde caché');
-    return new Map(JSON.parse(cached));
+    console.log('[CoreModule] ✅ Usando estados desde caché');
+    const data = JSON.parse(cached);
+    return new Map(data);
   }
   
   try {
-    // Acceder a la hoja _SeguimientoConsolidado
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    const sheet = spreadsheet.getSheetByName('_SeguimientoConsolidado');
+    // Reutilizar spreadsheet si se proporcionó, sino abrir uno nuevo
+    if (!spreadsheet) {
+      spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    }
+    
+    const sheet = spreadsheet.getSheetByName(CONFIG.TABS.ESTADO_LIDERES);
     
     if (!sheet) {
-      console.warn('[CoreModule] Hoja _SeguimientoConsolidado no encontrada');
-      return actividadMap;
+      console.warn('[CoreModule] ⚠️ Hoja _EstadoLideres no encontrada');
+      return estadosMap;
     }
     
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) {
-      console.log('[CoreModule] Hoja _SeguimientoConsolidado vacía o solo con headers');
-      return actividadMap;
+      console.log('[CoreModule] ⚠️ Hoja _EstadoLideres vacía');
+      return estadosMap;
     }
     
-    // Leer datos: A2:J (ID_Alma, Nombre, ID_LCF, ..., Dias_Sin_Seguimiento)
-    const data = sheet.getRange(2, 1, lastRow - 1, 10).getValues();
-    console.log(`[CoreModule] Procesando ${data.length} registros de seguimiento`);
+    // Leer datos: A2:H (ID_Lider a Perfil_Lider)
+    const data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    console.log(`[CoreModule] 📊 Procesando ${data.length} líderes de _EstadoLideres`);
     
     data.forEach(row => {
-      const idLCF = String(row[2] || '').trim(); // Columna C: ID_LCF
-      const diasSinSeguimiento = parseInt(row[9]) || 0; // Columna J: Dias_Sin_Seguimiento
+      const idLider = String(row[0] || '').trim(); // Columna A: ID_Lider
       
-      if (idLCF && diasSinSeguimiento >= 0) {
-        // Calcular última actividad basada en días sin seguimiento
-        const hoy = new Date();
-        const ultimaActividad = new Date(hoy);
-        ultimaActividad.setDate(hoy.getDate() - diasSinSeguimiento);
-        
-        // Solo actualizar si es más reciente o no existe
-        const actividadExistente = actividadMap.get(idLCF);
-        if (!actividadExistente || ultimaActividad > actividadExistente) {
-          actividadMap.set(idLCF, ultimaActividad);
-        }
+      if (idLider) {
+        estadosMap.set(idLider, {
+          ID_Lider: idLider,
+          Nombre_Lider: String(row[1] || '').trim(),
+          Celulas_Activas: parseInt(row[2]) || 0,
+          Visitas_Positivas: parseInt(row[3]) || 0,
+          Visitas_No_Positivas: parseInt(row[4]) || 0,
+          Llamadas_Realizadas: parseInt(row[5]) || 0,
+          IDP: parseInt(row[6]) || 0,
+          Perfil_Lider: String(row[7] || '🌱 EN DESARROLLO').trim()
+        });
       }
     });
     
-    console.log(`[CoreModule] Actividad calculada para ${actividadMap.size} líderes desde _SeguimientoConsolidado`);
+    console.log(`[CoreModule] ✅ Estados cargados para ${estadosMap.size} líderes`);
     
     // Guardar en caché (convertir Map a Array para serialización)
-    const actividadArray = Array.from(actividadMap.entries());
-    cache.put(cacheKey, JSON.stringify(actividadArray), 300); // 5 minutos
+    const estadosArray = Array.from(estadosMap.entries());
+    cache.put(cacheKey, JSON.stringify(estadosArray), 600); // 10 minutos
     
   } catch (error) {
-    console.error('[CoreModule] Error calculando actividad desde _SeguimientoConsolidado:', error);
+    console.error('[CoreModule] ❌ Error cargando estados de líderes:', error);
   }
   
-  return actividadMap;
+  return estadosMap;
 }
 
 /**
- * Integra la información de actividad calculada en la lista de líderes.
+ * Integra los perfiles de líderes en la lista de líderes
+ * ✅ OPTIMIZADO: Usa datos pre-calculados de _EstadoLideres
  * @param {Array<Object>} lideres - Array de líderes
- * @param {Map<string, Date>} actividadMap - Mapa de ID_Lider a última fecha de actividad
- * @returns {Array<Object>} Array de líderes con información de actividad integrada
+ * @param {Map<string, Object>} estadosMap - Mapa de estados de líderes
+ * @returns {Array<Object>} Array de líderes con perfiles integrados
  */
-function integrarActividadLideres(lideres, actividadMap) {
-  const hoy = new Date();
-
+function integrarPerfilesLideres(lideres, estadosMap) {
   return lideres.map(lider => {
-    const ultimaActividad = actividadMap.get(lider.ID_Lider);
-    let diasInactivo = null;
-    let estadoActividad = 'Sin Datos';
-
-    if (ultimaActividad) {
-      // Convertir la fecha (puede venir serializada desde caché)
-      const fechaActividad = new Date(ultimaActividad);
-      diasInactivo = Math.floor((hoy - fechaActividad) / (1000 * 60 * 60 * 24));
-
-      // Aplicar reglas del semáforo
-      if (diasInactivo <= CONFIG.DIAS_INACTIVO.ACTIVO) {
-        estadoActividad = 'Activo';
-      } else if (diasInactivo <= CONFIG.DIAS_INACTIVO.ALERTA) {
-        estadoActividad = 'Alerta';
-      } else {
-        estadoActividad = 'Inactivo';
-      }
+    const estadoData = estadosMap.get(lider.ID_Lider);
+    
+    if (estadoData) {
+      return {
+        ...lider,
+        Celulas_Activas: estadoData.Celulas_Activas,
+        Visitas_Positivas: estadoData.Visitas_Positivas,
+        Visitas_No_Positivas: estadoData.Visitas_No_Positivas,
+        Llamadas_Realizadas: estadoData.Llamadas_Realizadas,
+        IDP: estadoData.IDP,
+        Perfil_Lider: estadoData.Perfil_Lider,
+        Estado_Actividad: estadoData.Perfil_Lider // Compatibilidad con código existente
+      };
+    } else {
+      // Si no hay datos en _EstadoLideres, asignar perfil por defecto
+      return {
+        ...lider,
+        Celulas_Activas: 0,
+        Visitas_Positivas: 0,
+        Visitas_No_Positivas: 0,
+        Llamadas_Realizadas: 0,
+        IDP: 0,
+        Perfil_Lider: '🌱 EN DESARROLLO',
+        Estado_Actividad: '🌱 EN DESARROLLO'
+      };
     }
-
-    return {
-      ...lider,
-      // Guardar como ISO String para caché
-      Ultima_Actividad: ultimaActividad ? new Date(ultimaActividad).toISOString() : null,
-      Dias_Inactivo: diasInactivo,
-      Estado_Actividad: estadoActividad
-    };
   });
 }
 

@@ -24,16 +24,16 @@ function testPrincipal() {
   try {
     // Test 1: Configuración
     console.log('--- Test 1: Configuración ---');
-    const config = CONFIG.DIAS_INACTIVO;
-    resultados.configuracion = config.ACTIVO === 7 && config.ALERTA === 14 && config.INACTIVO === 30;
-    console.log(`✅ Configuración: ${resultados.configuracion ? 'OK' : 'ERROR'}`);
+    const config = CONFIG.PERFILES_LIDERES;
+    resultados.configuracion = config.EN_DESARROLLO && config.ESTRATEGA_CRECIMIENTO;
+    console.log(`✅ Configuración de perfiles: ${resultados.configuracion ? 'OK' : 'ERROR'}`);
     
-    // Test 2: Semáforo
+    // Test 2: Perfiles de líderes
     console.log('');
-    console.log('--- Test 2: Semáforo ---');
-    const funcionesDisponibles = typeof calcularActividadLideres === 'function' && typeof integrarActividadLideres === 'function';
+    console.log('--- Test 2: Perfiles de líderes ---');
+    const funcionesDisponibles = typeof cargarEstadoLideres === 'function' && typeof integrarPerfilesLideres === 'function';
     resultados.semaforo = funcionesDisponibles;
-    console.log(`✅ Semáforo: ${resultados.semaforo ? 'OK' : 'ERROR'}`);
+    console.log(`✅ Perfiles: ${resultados.semaforo ? 'OK' : 'ERROR'}`);
     
     // Test 3: Funciones principales
     console.log('');
@@ -59,13 +59,13 @@ function testPrincipal() {
     const todoOK = resultados.configuracion && resultados.semaforo && resultados.funciones;
     
     console.log(`✅ Configuración: ${resultados.configuracion ? 'OK' : 'ERROR'}`);
-    console.log(`✅ Semáforo: ${resultados.semaforo ? 'OK' : 'ERROR'}`);
+    console.log(`✅ Perfiles: ${resultados.semaforo ? 'OK' : 'ERROR'}`);
     console.log(`✅ Funciones: ${resultados.funciones ? 'OK' : 'ERROR'}`);
     
     if (todoOK) {
       console.log('');
       console.log('🎉 ¡SISTEMA FUNCIONANDO!');
-      console.log('🚀 Listo para usar');
+      console.log('🚀 Sistema de perfiles activo - Listo para usar');
     } else {
       console.log('');
       console.log('⚠️ SISTEMA CON PROBLEMAS');
@@ -88,66 +88,72 @@ function testPrincipal() {
 }
 
 /**
- * 🚦 TEST SEMÁFORO - Verifica el semáforo de líderes
+ * 🎯 TEST PERFILES - Verifica los perfiles de líderes desde _EstadoLideres
  */
-function testSemaforo() {
+function testPerfiles() {
   console.log('');
   console.log('========================================');
-  console.log('🚦 TEST SEMÁFORO DE LÍDERES');
+  console.log('🎯 TEST PERFILES DE LÍDERES');
   console.log('========================================');
   console.log('');
   
   try {
     // Verificar funciones
-    const funcionesOK = typeof calcularActividadLideres === 'function' && typeof integrarActividadLideres === 'function';
+    const funcionesOK = typeof cargarEstadoLideres === 'function' && typeof integrarPerfilesLideres === 'function';
     console.log(`✅ Funciones disponibles: ${funcionesOK ? 'SÍ' : 'NO'}`);
     
     if (!funcionesOK) {
-      console.log('❌ Funciones del semáforo no disponibles');
+      console.log('❌ Funciones de perfiles no disponibles');
       return { exitoso: false };
     }
     
-    // Probar cálculo de actividad
+    // Probar carga de estados
     const start = Date.now();
-    const actividadMap = calcularActividadLideres([]);
+    const estadosMap = cargarEstadoLideres();
     const time = Date.now() - start;
     
-    console.log(`✅ Cálculo de actividad: OK (${time}ms)`);
-    console.log(`📊 Líderes con actividad: ${actividadMap.size}`);
+    console.log(`✅ Carga de estados: OK (${time}ms)`);
+    console.log(`📊 Líderes con perfil: ${estadosMap.size}`);
     
     // Probar integración
     const lideresTest = [
-      { ID_Lider: 'LCF-001', Nombre_Lider: 'Test LCF', Rol: 'LCF' }
+      { ID_Lider: 'LCF-1010', Nombre_Lider: 'Test LCF 1', Rol: 'LCF' },
+      { ID_Lider: 'LCF-1014', Nombre_Lider: 'Test LCF 2', Rol: 'LCF' }
     ];
     
-    const lideresConActividad = integrarActividadLideres(lideresTest, actividadMap);
-    const todosConEstado = lideresConActividad.every(l => l.Estado_Actividad);
+    const lideresConPerfil = integrarPerfilesLideres(lideresTest, estadosMap);
+    const todosConPerfil = lideresConPerfil.every(l => l.Perfil_Lider);
     
-    console.log(`✅ Integración de estados: ${todosConEstado ? 'OK' : 'ERROR'}`);
+    console.log(`✅ Integración de perfiles: ${todosConPerfil ? 'OK' : 'ERROR'}`);
     
-    // Mostrar ejemplo
-    lideresConActividad.forEach(lider => {
-      const emoji = lider.Estado_Actividad === 'Activo' ? '🟢' : 
-                   lider.Estado_Actividad === 'Alerta' ? '🟡' : 
-                   lider.Estado_Actividad === 'Inactivo' ? '🔴' : '⚪';
-      console.log(`  ${emoji} ${lider.Nombre_Lider}: ${lider.Estado_Actividad}`);
+    // Mostrar ejemplos con IDP y perfil
+    console.log('');
+    console.log('📊 EJEMPLOS DE PERFILES:');
+    lideresConPerfil.slice(0, 5).forEach(lider => {
+      const emoji = lider.Perfil_Lider.includes('ESTRATEGA') ? '🚀' : 
+                   lider.Perfil_Lider.includes('CONECTOR') ? '🎯' : 
+                   lider.Perfil_Lider.includes('ACTIVADOR') ? '⚡' : '🌱';
+      console.log(`  ${emoji} ${lider.Nombre_Lider}`);
+      console.log(`     IDP: ${lider.IDP || 0} | Perfil: ${lider.Perfil_Lider}`);
+      console.log(`     Células: ${lider.Celulas_Activas || 0} | Visitas: ${lider.Visitas_Positivas || 0}`);
     });
     
     console.log('');
-    console.log('🎉 ¡SEMÁFORO FUNCIONANDO!');
-    console.log('🟢 Activo: ≤ 7 días');
-    console.log('🟡 Alerta: 8-14 días');
-    console.log('🔴 Inactivo: > 14 días');
-    console.log('⚪ Sin Datos: Nunca reportó');
+    console.log('🎉 ¡SISTEMA DE PERFILES FUNCIONANDO!');
+    console.log('🚀 ESTRATEGA DE CRECIMIENTO: IDP ≥ 36');
+    console.log('🎯 CONECTOR EFICAZ: IDP 16-35');
+    console.log('⚡ ACTIVADOR INICIAL: IDP 6-15');
+    console.log('🌱 EN DESARROLLO: IDP 0-5');
     
     return {
       exitoso: true,
       tiempo_ms: time,
-      lideres_procesados: lideresConActividad.length
+      lideres_procesados: lideresConPerfil.length,
+      lideres_con_perfil: estadosMap.size
     };
     
   } catch (error) {
-    console.error('❌ Error en test semáforo:', error);
+    console.error('❌ Error en test de perfiles:', error);
     return { exitoso: false, error: error.toString() };
   }
 }

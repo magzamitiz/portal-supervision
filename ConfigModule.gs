@@ -22,16 +22,18 @@ const CONFIG = {
     LIDERES: 'Directorio de Líderes',
     CELULAS: 'Directorio de Células',
     INGRESOS: 'Ingresos',
+    ESTADO_LIDERES: '_EstadoLideres', // ✅ Nueva: Estados y perfiles de líderes
     // Nombres de las pestañas en los archivos de actividad. Si es NULL, se usa la primera hoja (ideal para formularios).
     ACTIVIDAD_CELULAS: 'Reportes_Celulas',
     ACTIVIDAD_VISITAS: 'Registro de Visitas',
   },
 
-  // Configuración de actividad
-  DIAS_INACTIVO: {
-    ACTIVO: 7,
-    ALERTA: 14,
-    INACTIVO: 30
+  // Configuración de perfiles de líderes (basado en IDP)
+  PERFILES_LIDERES: {
+    EN_DESARROLLO: { nombre: '🌱 EN DESARROLLO', idp_min: 0, idp_max: 5, color: 'gray' },
+    ACTIVADOR_INICIAL: { nombre: '⚡ ACTIVADOR INICIAL', idp_min: 6, idp_max: 15, color: 'yellow' },
+    CONECTOR_EFICAZ: { nombre: '🎯 CONECTOR EFICAZ', idp_min: 16, idp_max: 35, color: 'lightgreen' },
+    ESTRATEGA_CRECIMIENTO: { nombre: '🚀 ESTRATEGA DE CRECIMIENTO', idp_min: 36, idp_max: 999, color: 'green' }
   },
 
   // Configuración de células y carga

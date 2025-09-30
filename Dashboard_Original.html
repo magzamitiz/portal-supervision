@@ -42,10 +42,17 @@
             font-weight: 600;
         }
         
-        .status-activo { background: #d1fae5; color: #065f46; }
+        /* ✅ NUEVO: Estilos para perfiles de líderes basados en IDP */
+        .status-estratega { background: #10b981; color: #ffffff; font-weight: 600; } /* 🚀 Verde oscuro */
+        .status-conector { background: #86efac; color: #065f46; font-weight: 600; } /* 🎯 Verde claro */
+        .status-activador { background: #fef3c7; color: #92400e; font-weight: 600; } /* ⚡ Amarillo */
+        .status-desarrollo { background: #e5e7eb; color: #6b7280; font-weight: 600; } /* 🌱 Gris */
+        
+        /* Compatibilidad con código antiguo */
+        .status-activo { background: #10b981; color: #ffffff; }
         .status-alerta { background: #fef3c7; color: #92400e; }
-        .status-inactivo { background: #fee2e2; color: #991b1b; }
-        .status-sindatos { background: #e5e7eb; color: #4b5563; } /* Gris para Sin Datos */
+        .status-inactivo { background: #e5e7eb; color: #6b7280; }
+        .status-sindatos { background: #e5e7eb; color: #6b7280; }
 
         .carga-optima { background: #d1fae5; color: #065f46; }
         .carga-moderada { background: #dbeafe; color: #1e40af; }
@@ -291,12 +298,19 @@ function navegarDesdeModalA(funcionDestino, ...parametros) {
         
         // Helper para obtener el color del estado (V2.0)
         function getEstadoColor(estado) {
+            // ✅ NUEVO: Usar perfiles de líderes basados en IDP
+            if (estado && estado.includes('ESTRATEGA')) return 'status-estratega';
+            if (estado && estado.includes('CONECTOR')) return 'status-conector';
+            if (estado && estado.includes('ACTIVADOR')) return 'status-activador';
+            if (estado && estado.includes('DESARROLLO')) return 'status-desarrollo';
+            
+            // Fallback para compatibilidad con código antiguo
             switch (estado) {
-                case 'Activo': return 'status-activo';
-                case 'Alerta': return 'status-alerta';
-                case 'Inactivo': return 'status-inactivo';
-                case 'Sin Datos': return 'status-sindatos';
-                default: return 'status-sindatos';
+                case 'Activo': return 'status-estratega';
+                case 'Alerta': return 'status-activador';
+                case 'Inactivo': return 'status-desarrollo';
+                case 'Sin Datos': return 'status-desarrollo';
+                default: return 'status-desarrollo';
             }
         }
 
@@ -2646,10 +2660,17 @@ function exportarSeguimientoExcel(idLCF) {
         font-weight: 600;
     }
     
-    .status-activo { background: #d1fae5; color: #065f46; }
+    /* ✅ NUEVO: Estilos para perfiles de líderes basados en IDP */
+    .status-estratega { background: #10b981; color: #ffffff; font-weight: 600; } /* 🚀 Verde oscuro */
+    .status-conector { background: #86efac; color: #065f46; font-weight: 600; } /* 🎯 Verde claro */
+    .status-activador { background: #fef3c7; color: #92400e; font-weight: 600; } /* ⚡ Amarillo */
+    .status-desarrollo { background: #e5e7eb; color: #6b7280; font-weight: 600; } /* 🌱 Gris */
+    
+    /* Compatibilidad con código antiguo */
+    .status-activo { background: #10b981; color: #ffffff; }
     .status-alerta { background: #fef3c7; color: #92400e; }
-    .status-inactivo { background: #fee2e2; color: #991b1b; }
-    .status-sindatos { background: #e5e7eb; color: #4b5563; }
+    .status-inactivo { background: #e5e7eb; color: #6b7280; }
+    .status-sindatos { background: #e5e7eb; color: #6b7280; }
 
     .carga-optima { background: #d1fae5; color: #065f46; }
     .carga-moderada { background: #dbeafe; color: #1e40af; }
