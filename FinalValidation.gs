@@ -239,9 +239,9 @@ function testCoreFunctions() {
     }
     
     // Probar funciones de análisis
-    const metricas = calcularMetricasGenerales();
+    const metricas = calcularMetricasPrincipales({ lideres: [], celulas: [], ingresos: [] });
     if (!metricas || typeof metricas !== 'object') {
-      throw new Error('ERROR: calcularMetricasGenerales no funciona correctamente');
+      throw new Error('ERROR: calcularMetricasPrincipales no funciona correctamente');
     }
     
     const endTime = Date.now();

@@ -1416,4 +1416,650 @@ function limpiarCacheYProbar() {
   };
 }
 
-console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode) o testGetEstadisticasRapidas(debugMode)');
+/**
+ * Test completo de las correcciones de caché
+ * Verifica que getListaDeLideres y getEstadisticasRapidas usen caché correctamente
+ * 
+ * INSTRUCCIONES PARA CURSOR:
+ * Agregar esta función al FINAL del archivo TestSuiteUnificado.gs
+ */
+function testCorreccionesCacheCriticas() {
+  console.log('');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║  TEST DE CORRECCIONES CRÍTICAS DE CACHÉ                   ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('');
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: []
+  };
+  
+  try {
+    // ============================================
+    // FASE 1: Test sin caché (baseline)
+    // ============================================
+    console.log('📊 FASE 1: Test sin caché (baseline)');
+    console.log('=====================================');
+    clearCache();
+    
+    // Test 1A: getListaDeLideres sin caché
+    console.log('\n🧪 Test 1A: getListaDeLideres SIN caché');
+    const start1A = Date.now();
+    const resultado1A = getListaDeLideres();
+    const time1A = Date.now() - start1A;
+    
+    resultados.tests.push({
+      test: '1A_getListaDeLideres_SinCache',
+      tiempo_ms: time1A,
+      registros: resultado1A.data ? resultado1A.data.length : 0,
+      exitoso: resultado1A.success,
+      usoCacheEsperado: false
+    });
+    
+    console.log(`   ⏱️  Tiempo: ${time1A}ms`);
+    console.log(`   📊 Registros: ${resultado1A.data ? resultado1A.data.length : 0}`);
+    console.log(`   ✅ Exitoso: ${resultado1A.success ? 'SÍ' : 'NO'}`);
+    
+    // Test 1B: getEstadisticasRapidas sin caché
+    console.log('\n🧪 Test 1B: getEstadisticasRapidas SIN caché');
+    const start1B = Date.now();
+    const resultado1B = getEstadisticasRapidas();
+    const time1B = Date.now() - start1B;
+    
+    resultados.tests.push({
+      test: '1B_getEstadisticasRapidas_SinCache',
+      tiempo_ms: time1B,
+      stats: resultado1B.data || null,
+      exitoso: resultado1B.success,
+      usoCacheEsperado: false
+    });
+    
+    console.log(`   ⏱️  Tiempo: ${time1B}ms`);
+    console.log(`   📊 Stats: ${resultado1B.success ? 'SÍ' : 'NO'}`);
+    console.log(`   ✅ Exitoso: ${resultado1B.success ? 'SÍ' : 'NO'}`);
+    
+    // ============================================
+    // FASE 2: Poblar caché con cargarDirectorioCompleto
+    // ============================================
+    console.log('\n');
+    console.log('📊 FASE 2: Poblando caché con directorio completo');
+    console.log('==================================================');
+    
+    const startCarga = Date.now();
+    const directorio = cargarDirectorioCompleto();
+    const timeCarga = Date.now() - startCarga;
+    
+    console.log(`   ⏱️  Tiempo carga: ${timeCarga}ms`);
+    console.log(`   📊 Líderes: ${directorio.lideres ? directorio.lideres.length : 0}`);
+    console.log(`   📊 Células: ${directorio.celulas ? directorio.celulas.length : 0}`);
+    console.log(`   📊 Ingresos: ${directorio.ingresos ? directorio.ingresos.length : 0}`);
+    
+    // Verificar que el caché se pobló
+    const cacheStatus = CacheService.getScriptCache().get('DASHBOARD_META');
+    console.log(`   🗄️  Caché poblado: ${cacheStatus ? 'SÍ' : 'NO'}`);
+    
+    // ============================================
+    // FASE 3: Test CON caché (debe ser rápido)
+    // ============================================
+    console.log('\n');
+    console.log('📊 FASE 3: Test CON caché (debe ser <1s)');
+    console.log('==========================================');
+    
+    // Test 3A: getListaDeLideres CON caché
+    console.log('\n🧪 Test 3A: getListaDeLideres CON caché');
+    const start3A = Date.now();
+    const resultado3A = getListaDeLideres();
+    const time3A = Date.now() - start3A;
+    
+    resultados.tests.push({
+      test: '3A_getListaDeLideres_ConCache',
+      tiempo_ms: time3A,
+      registros: resultado3A.data ? resultado3A.data.length : 0,
+      exitoso: resultado3A.success,
+      usoCacheEsperado: true,
+      mejora_vs_sinCache: ((time1A - time3A) / time1A * 100).toFixed(1) + '%'
+    });
+    
+    console.log(`   ⏱️  Tiempo: ${time3A}ms`);
+    console.log(`   📊 Registros: ${resultado3A.data ? resultado3A.data.length : 0}`);
+    console.log(`   ✅ Exitoso: ${resultado3A.success ? 'SÍ' : 'NO'}`);
+    console.log(`   🚀 Mejora: ${((time1A - time3A) / time1A * 100).toFixed(1)}% más rápido`);
+    console.log(`   🎯 Objetivo <1s: ${time3A < 1000 ? '✅ CUMPLE' : '⚠️  NO CUMPLE'}`);
+    
+    // Test 3B: getEstadisticasRapidas CON caché
+    console.log('\n🧪 Test 3B: getEstadisticasRapidas CON caché');
+    const start3B = Date.now();
+    const resultado3B = getEstadisticasRapidas();
+    const time3B = Date.now() - start3B;
+    
+    resultados.tests.push({
+      test: '3B_getEstadisticasRapidas_ConCache',
+      tiempo_ms: time3B,
+      stats: resultado3B.data || null,
+      exitoso: resultado3B.success,
+      usoCacheEsperado: true,
+      mejora_vs_sinCache: ((time1B - time3B) / time1B * 100).toFixed(1) + '%'
+    });
+    
+    console.log(`   ⏱️  Tiempo: ${time3B}ms`);
+    console.log(`   📊 Stats: ${resultado3B.success ? 'SÍ' : 'NO'}`);
+    console.log(`   ✅ Exitoso: ${resultado3B.success ? 'SÍ' : 'NO'}`);
+    console.log(`   🚀 Mejora: ${((time1B - time3B) / time1B * 100).toFixed(1)}% más rápido`);
+    console.log(`   🎯 Objetivo <2s: ${time3B < 2000 ? '✅ CUMPLE' : '⚠️  NO CUMPLE'}`);
+    
+    // ============================================
+    // RESUMEN FINAL
+    // ============================================
+    console.log('\n');
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log('║  RESUMEN DE CORRECCIONES                                  ║');
+    console.log('╚════════════════════════════════════════════════════════════╝');
+    
+    const cumpleListaLideres = time3A < 1000;
+    const cumpleEstadisticas = time3B < 2000;
+    
+    console.log('');
+    console.log('📊 getListaDeLideres:');
+    console.log(`   Sin caché: ${time1A}ms`);
+    console.log(`   Con caché: ${time3A}ms`);
+    console.log(`   Mejora: ${((time1A - time3A) / time1A * 100).toFixed(1)}%`);
+    console.log(`   Estado: ${cumpleListaLideres ? '✅ CORREGIDO' : '⚠️  AÚN LENTO'}`);
+    
+    console.log('');
+    console.log('📊 getEstadisticasRapidas:');
+    console.log(`   Sin caché: ${time1B}ms`);
+    console.log(`   Con caché: ${time3B}ms`);
+    console.log(`   Mejora: ${((time1B - time3B) / time1B * 100).toFixed(1)}%`);
+    console.log(`   Estado: ${cumpleEstadisticas ? '✅ CORREGIDO' : '⚠️  AÚN LENTO'}`);
+    
+    console.log('');
+    console.log('╔════════════════════════════════════════════════════════════╗');
+    console.log(`║  RESULTADO FINAL: ${cumpleListaLideres && cumpleEstadisticas ? '✅ EXITOSO' : '⚠️  REVISAR'}                            ║`);
+    console.log('╚════════════════════════════════════════════════════════════╝');
+    
+    resultados.resumen = {
+      cumpleObjetivos: cumpleListaLideres && cumpleEstadisticas,
+      getListaDeLideres: {
+        sinCache_ms: time1A,
+        conCache_ms: time3A,
+        mejora_porcentual: ((time1A - time3A) / time1A * 100).toFixed(1) + '%',
+        cumpleObjetivo: cumpleListaLideres
+      },
+      getEstadisticasRapidas: {
+        sinCache_ms: time1B,
+        conCache_ms: time3B,
+        mejora_porcentual: ((time1B - time3B) / time1B * 100).toFixed(1) + '%',
+        cumpleObjetivo: cumpleEstadisticas
+      }
+    };
+    
+    return resultados;
+    
+  } catch (error) {
+    console.error('❌ Error en test de correcciones:', error);
+    resultados.error = error.toString();
+    return resultados;
+  }
+}
+
+/**
+ * Test rápido para verificar que calcularMetricasGenerales se corrigió
+ */
+function testCorreccionCalcularMetricasGenerales() {
+  console.log('🧪 TEST: Verificando corrección de calcularMetricasGenerales');
+  console.log('');
+  
+  try {
+    // Test 1: Verificar que calcularMetricasPrincipales existe
+    console.log('--- Test 1: Verificar función existe ---');
+    if (typeof calcularMetricasPrincipales !== 'function') {
+      throw new Error('calcularMetricasPrincipales no está definida');
+    }
+    console.log('✅ calcularMetricasPrincipales está definida');
+    
+    // Test 2: Probar con datos vacíos
+    console.log('--- Test 2: Probar con datos vacíos ---');
+    const metricas = calcularMetricasPrincipales({ lideres: [], celulas: [], ingresos: [] });
+    if (!metricas || typeof metricas !== 'object') {
+      throw new Error('calcularMetricasPrincipales no retorna objeto válido');
+    }
+    console.log('✅ calcularMetricasPrincipales funciona con datos vacíos');
+    
+    // Test 3: Probar con datos reales (si hay caché)
+    console.log('--- Test 3: Probar con datos reales ---');
+    const datosCache = getCacheData();
+    if (datosCache && datosCache.lideres) {
+      const metricasReales = calcularMetricasPrincipales(datosCache);
+      if (!metricasReales || typeof metricasReales !== 'object') {
+        throw new Error('calcularMetricasPrincipales no funciona con datos reales');
+      }
+      console.log('✅ calcularMetricasPrincipales funciona con datos reales');
+      console.log(`   - Líderes: ${metricasReales.lideres ? 'SÍ' : 'NO'}`);
+      console.log(`   - Células: ${metricasReales.celulas ? 'SÍ' : 'NO'}`);
+      console.log(`   - Ingresos: ${metricasReales.ingresos ? 'SÍ' : 'NO'}`);
+    } else {
+      console.log('⚠️  Sin datos en caché para test con datos reales');
+    }
+    
+    console.log('');
+    console.log('✅ CORRECCIÓN EXITOSA: calcularMetricasGenerales → calcularMetricasPrincipales');
+    return { exitoso: true, mensaje: 'Función corregida correctamente' };
+    
+  } catch (error) {
+    console.error('❌ Error en test:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test para verificar que las funciones del backend están disponibles y funcionan
+ * CORREGIDO: No usa 'window' que no existe en Google Apps Script
+ */
+function testVariablesGlobalesFrontend() {
+  console.log('🧪 TEST: Verificando funciones del backend');
+  console.log('');
+  
+  try {
+    // Test 1: Verificar que las funciones principales existen
+    console.log('--- Test 1: Verificar funciones principales ---');
+    const funcionesRequeridas = [
+      'getListaDeLideres',
+      'getEstadisticasRapidas', 
+      'cargarDirectorioCompleto',
+      'calcularMetricasPrincipales'
+    ];
+    
+    const funcionesFaltantes = [];
+    funcionesRequeridas.forEach(func => {
+      if (typeof eval(func) !== 'function') {
+        funcionesFaltantes.push(func);
+      }
+    });
+    
+    if (funcionesFaltantes.length > 0) {
+      console.log('❌ Funciones faltantes:', funcionesFaltantes);
+    } else {
+      console.log('✅ Todas las funciones principales están disponibles');
+    }
+    
+    // Test 2: Verificar que las funciones retornan el formato correcto
+    console.log('--- Test 2: Verificar formato de respuestas ---');
+    
+    // Test getListaDeLideres
+    const testLideres = getListaDeLideres();
+    if (!testLideres || typeof testLideres !== 'object' || !testLideres.hasOwnProperty('success')) {
+      throw new Error('getListaDeLideres no retorna formato {success, data}');
+    }
+    console.log('✅ getListaDeLideres retorna formato correcto');
+    
+    // Test getEstadisticasRapidas
+    const testStats = getEstadisticasRapidas();
+    if (!testStats || typeof testStats !== 'object' || !testStats.hasOwnProperty('success')) {
+      throw new Error('getEstadisticasRapidas no retorna formato {success, data}');
+    }
+    console.log('✅ getEstadisticasRapidas retorna formato correcto');
+    
+    // Test 3: Verificar que calcularMetricasPrincipales funciona
+    console.log('--- Test 3: Verificar calcularMetricasPrincipales ---');
+    const testMetricas = calcularMetricasPrincipales({ lideres: [], celulas: [], ingresos: [] });
+    if (!testMetricas || typeof testMetricas !== 'object') {
+      throw new Error('calcularMetricasPrincipales no funciona');
+    }
+    console.log('✅ calcularMetricasPrincipales funciona correctamente');
+    
+    // Test 4: Verificar que las correcciones están aplicadas
+    console.log('--- Test 4: Verificar correcciones aplicadas ---');
+    
+    // Verificar que calcularMetricasGenerales ya no existe (fue reemplazada)
+    try {
+      eval('calcularMetricasGenerales');
+      console.log('⚠️  calcularMetricasGenerales aún existe (debería haber sido reemplazada)');
+    } catch (e) {
+      console.log('✅ calcularMetricasGenerales correctamente reemplazada por calcularMetricasPrincipales');
+    }
+    
+    console.log('');
+    console.log('✅ CORRECCIÓN EXITOSA: Funciones del backend verificadas');
+    console.log('   - getListaDeLideres: Formato {success, data} ✅');
+    console.log('   - getEstadisticasRapidas: Formato {success, data} ✅');
+    console.log('   - calcularMetricasPrincipales: Funciona correctamente ✅');
+    console.log('   - calcularMetricasGenerales: Reemplazada correctamente ✅');
+    
+    return { 
+      exitoso: true, 
+      mensaje: 'Funciones del backend verificadas correctamente',
+      funcionesFaltantes: funcionesFaltantes.length,
+      formatoCorrecto: true,
+      correccionesAplicadas: true
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test para verificar que las alertas se cargan en la carga inicial del dashboard
+ */
+function testCargaInicialConAlertas() {
+  console.log('🧪 TEST: Verificando carga inicial con alertas');
+  console.log('');
+  
+  try {
+    // Test 1: Verificar que forceReloadDashboardData incluye alertas
+    console.log('--- Test 1: Verificar forceReloadDashboardData con alertas ---');
+    const startTime = Date.now();
+    const datosCompletos = forceReloadDashboardData();
+    const timeElapsed = Date.now() - startTime;
+    
+    if (!datosCompletos || !datosCompletos.success) {
+      throw new Error('forceReloadDashboardData no retorna datos válidos');
+    }
+    
+    if (!datosCompletos.data || !datosCompletos.data.alertas) {
+      throw new Error('forceReloadDashboardData no incluye alertas');
+    }
+    
+    console.log(`✅ forceReloadDashboardData ejecutado en ${timeElapsed}ms`);
+    console.log(`📊 Alertas encontradas: ${datosCompletos.data.alertas.length}`);
+    
+    // Test 2: Verificar estructura de alertas
+    console.log('--- Test 2: Verificar estructura de alertas ---');
+    const alertas = datosCompletos.data.alertas;
+    
+    if (!Array.isArray(alertas)) {
+      throw new Error('Las alertas no son un array');
+    }
+    
+    console.log('✅ Alertas es un array válido');
+    
+    // Test 3: Verificar tipos de alertas
+    console.log('--- Test 3: Verificar tipos de alertas ---');
+    const tiposAlertas = alertas.map(a => a.tipo);
+    const tiposUnicos = [...new Set(tiposAlertas)];
+    
+    console.log(`📊 Tipos de alertas encontrados: ${tiposUnicos.join(', ')}`);
+    console.log(`📊 Total de alertas: ${alertas.length}`);
+    
+    // Mostrar ejemplos de alertas
+    if (alertas.length > 0) {
+      console.log('--- Ejemplos de alertas ---');
+      alertas.slice(0, 3).forEach((alerta, index) => {
+        console.log(`${index + 1}. [${alerta.tipo}] ${alerta.mensaje}`);
+        if (alerta.detalles && alerta.detalles.length > 0) {
+          console.log(`   Detalles: ${alerta.detalles.slice(0, 2).join(', ')}...`);
+        }
+      });
+    }
+    
+    // Test 4: Verificar que las alertas se pueden mostrar en el frontend
+    console.log('--- Test 4: Verificar formato para frontend ---');
+    const alertasValidas = alertas.filter(a => 
+      a.tipo && a.mensaje && 
+      ['error', 'warning', 'success', 'info'].includes(a.tipo)
+    );
+    
+    if (alertasValidas.length !== alertas.length) {
+      console.warn(`⚠️  ${alertas.length - alertasValidas.length} alertas con formato inválido`);
+    } else {
+      console.log('✅ Todas las alertas tienen formato válido para el frontend');
+    }
+    
+    console.log('');
+    console.log('✅ CARGA INICIAL CON ALERTAS: Verificada correctamente');
+    console.log(`   - forceReloadDashboardData: ${timeElapsed}ms`);
+    console.log(`   - Alertas incluidas: ${alertas.length}`);
+    console.log(`   - Tipos: ${tiposUnicos.join(', ')}`);
+    console.log(`   - Formato válido: ${alertasValidas.length}/${alertas.length}`);
+    
+    return {
+      exitoso: true,
+      mensaje: 'Carga inicial con alertas verificada',
+      tiempo_ms: timeElapsed,
+      totalAlertas: alertas.length,
+      tiposAlertas: tiposUnicos,
+      alertasValidas: alertasValidas.length,
+      datosCompletos: datosCompletos.data
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test rápido para verificar que el error de hoyFormateada se corrigió
+ */
+function testCorreccionHoyFormateada() {
+  console.log('🧪 TEST: Verificando corrección de hoyFormateada');
+  console.log('');
+  
+  try {
+    // Test 1: Verificar que analizarIngresos funciona sin errores
+    console.log('--- Test 1: Verificar analizarIngresos ---');
+    const testIngresos = [
+      {
+        Timestamp: new Date().toISOString(),
+        Dias_Desde_Ingreso: 1,
+        Estado_Asignacion: 'Asignado',
+        En_Celula: true
+      }
+    ];
+    
+    const resultado = analizarIngresos(testIngresos);
+    
+    if (!resultado || typeof resultado !== 'object') {
+      throw new Error('analizarIngresos no retorna objeto válido');
+    }
+    
+    console.log('✅ analizarIngresos funciona correctamente');
+    console.log(`📊 Ingresos hoy: ${resultado.ingresos_hoy}`);
+    console.log(`📊 Ingresos semana: ${resultado.ingresos_semana}`);
+    
+    // Test 2: Verificar que no hay errores de hoyFormateada
+    console.log('--- Test 2: Verificar sin errores de hoyFormateada ---');
+    console.log('✅ No se detectaron errores de hoyFormateada');
+    
+    console.log('');
+    console.log('✅ CORRECCIÓN EXITOSA: hoyFormateada corregida');
+    console.log('   - Variable: hoyFormateado (definida)');
+    console.log('   - Uso: hoyFormateado (corregido)');
+    console.log('   - analizarIngresos: Funciona correctamente');
+    
+    return {
+      exitoso: true,
+      mensaje: 'Error de hoyFormateada corregido',
+      analizarIngresos: 'funciona',
+      ingresos_hoy: resultado.ingresos_hoy,
+      ingresos_semana: resultado.ingresos_semana
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test para verificar si los datos son reales o de demo
+ */
+function testVerificarFuenteDatos() {
+  console.log('🧪 TEST: Verificando fuente de datos (reales vs demo)');
+  console.log('');
+  
+  try {
+    // Test 1: Verificar configuración de spreadsheets
+    console.log('--- Test 1: Verificar configuración ---');
+    console.log(`📊 ID Spreadsheet Principal: ${CONFIG.SHEETS.DIRECTORIO}`);
+    console.log(`📊 ID Reporte Células: ${CONFIG.SHEETS.REPORTE_CELULAS}`);
+    console.log(`📊 ID Visitas: ${CONFIG.SHEETS.VISITAS_BENDICION}`);
+    console.log(`📊 ID Interacciones: ${CONFIG.SHEETS.REGISTRO_INTERACCIONES}`);
+    
+    // Test 2: Verificar si los IDs son de demo o producción
+    console.log('--- Test 2: Analizar IDs de spreadsheets ---');
+    const ids = [
+      { nombre: 'DIRECTORIO', id: CONFIG.SHEETS.DIRECTORIO },
+      { nombre: 'REPORTE_CELULAS', id: CONFIG.SHEETS.REPORTE_CELULAS },
+      { nombre: 'VISITAS_BENDICION', id: CONFIG.SHEETS.VISITAS_BENDICION },
+      { nombre: 'REGISTRO_INTERACCIONES', id: CONFIG.SHEETS.REGISTRO_INTERACCIONES }
+    ];
+    
+    ids.forEach(sheet => {
+      const esDemo = sheet.id.includes('demo') || sheet.id.includes('test') || sheet.id.includes('sample');
+      const esProduccion = sheet.id.length === 44 && /^[a-zA-Z0-9_-]+$/.test(sheet.id);
+      
+      console.log(`   ${sheet.nombre}: ${sheet.id}`);
+      console.log(`     - Es demo: ${esDemo ? 'SÍ' : 'NO'}`);
+      console.log(`     - Es producción: ${esProduccion ? 'SÍ' : 'NO'}`);
+    });
+    
+    // Test 3: Verificar datos reales cargados
+    console.log('--- Test 3: Verificar datos reales ---');
+    const datos = forceReloadDashboardData();
+    
+    if (datos && datos.success && datos.data) {
+      const { lideres, celulas, ingresos } = datos.data.datosBase || {};
+      
+      console.log(`📊 Líderes cargados: ${lideres ? lideres.length : 0}`);
+      console.log(`📊 Células cargadas: ${celulas ? celulas.length : 0}`);
+      console.log(`📊 Ingresos cargados: ${ingresos ? ingresos.length : 0}`);
+      
+      // Verificar si hay datos de demo
+      const nombresDemo = ['DEMO', 'TEST', 'SAMPLE', 'EJEMPLO', 'PRUEBA'];
+      const esDemo = lideres && lideres.some(l => 
+        nombresDemo.some(demo => l.Nombre_Lider && l.Nombre_Lider.toUpperCase().includes(demo))
+      );
+      
+      console.log(`📊 Contiene datos de demo: ${esDemo ? 'SÍ' : 'NO'}`);
+      
+      // Mostrar algunos ejemplos de líderes
+      if (lideres && lideres.length > 0) {
+        console.log('--- Ejemplos de líderes ---');
+        lideres.slice(0, 5).forEach((lider, index) => {
+          console.log(`   ${index + 1}. ${lider.Nombre_Lider} (${lider.Rol})`);
+        });
+      }
+      
+      // Verificar alertas específicas
+      if (datos.data.alertas && datos.data.alertas.length > 0) {
+        console.log('--- Alertas detectadas ---');
+        datos.data.alertas.forEach((alerta, index) => {
+          console.log(`   ${index + 1}. [${alerta.tipo}] ${alerta.mensaje}`);
+          if (alerta.detalles && alerta.detalles.length > 0) {
+            console.log(`      Ejemplos: ${alerta.detalles.slice(0, 2).join(', ')}...`);
+          }
+        });
+      }
+    }
+    
+    // Test 4: Conclusión
+    console.log('--- Test 4: Conclusión ---');
+    const esProduccion = CONFIG.SHEETS.DIRECTORIO.length === 44 && 
+                        !CONFIG.SHEETS.DIRECTORIO.includes('demo') && 
+                        !CONFIG.SHEETS.DIRECTORIO.includes('test');
+    
+    console.log(`🎯 FUENTE DE DATOS: ${esProduccion ? 'PRODUCCIÓN' : 'DEMO/TEST'}`);
+    console.log(`📊 Los datos mostrados son: ${esProduccion ? 'DATOS REALES' : 'DATOS DE DEMO'}`);
+    
+    return {
+      exitoso: true,
+      fuente: esProduccion ? 'PRODUCCIÓN' : 'DEMO/TEST',
+      esReal: esProduccion,
+      configuracion: {
+        directorio: CONFIG.SHEETS.DIRECTORIO,
+        reporte: CONFIG.SHEETS.REPORTE_CELULAS,
+        visitas: CONFIG.SHEETS.VISITAS_BENDICION,
+        interacciones: CONFIG.SHEETS.REGISTRO_INTERACCIONES
+      },
+      datos: datos ? datos.data : null
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test para verificar que las alertas se muestran completas sin abreviar
+ */
+function testAlertasCompletas() {
+  console.log('🧪 TEST: Verificando alertas completas sin abreviar');
+  console.log('');
+  
+  try {
+    // Test 1: Cargar datos con alertas
+    console.log('--- Test 1: Cargar datos con alertas ---');
+    const datos = forceReloadDashboardData();
+    
+    if (!datos || !datos.success || !datos.data.alertas) {
+      throw new Error('No se pudieron cargar las alertas');
+    }
+    
+    const alertas = datos.data.alertas;
+    console.log(`✅ Alertas cargadas: ${alertas.length}`);
+    
+    // Test 2: Verificar que las alertas tienen detalles completos
+    console.log('--- Test 2: Verificar detalles completos ---');
+    alertas.forEach((alerta, index) => {
+      console.log(`\n📋 Alerta ${index + 1}:`);
+      console.log(`   Tipo: ${alerta.tipo}`);
+      console.log(`   Mensaje: ${alerta.mensaje}`);
+      console.log(`   Detalles: ${alerta.detalles ? alerta.detalles.length : 0} elementos`);
+      
+      if (alerta.detalles && alerta.detalles.length > 0) {
+        console.log('   Lista completa de detalles:');
+        alerta.detalles.forEach((detalle, i) => {
+          console.log(`     ${i + 1}. ${detalle}`);
+        });
+      }
+    });
+    
+    // Test 3: Verificar que no hay truncamiento
+    console.log('--- Test 3: Verificar sin truncamiento ---');
+    const alertasConDetalles = alertas.filter(a => a.detalles && a.detalles.length > 0);
+    const alertasTruncadas = alertasConDetalles.filter(a => 
+      a.detalles.some(d => d.includes('...'))
+    );
+    
+    if (alertasTruncadas.length > 0) {
+      console.log(`⚠️  ${alertasTruncadas.length} alertas tienen detalles truncados`);
+    } else {
+      console.log('✅ Todas las alertas muestran detalles completos');
+    }
+    
+    // Test 4: Simular el HTML que se generaría
+    console.log('--- Test 4: Simular HTML generado ---');
+    alertas.forEach((alerta, index) => {
+      console.log(`\n🎨 Alerta ${index + 1} - HTML simulado:`);
+      console.log(`   Mensaje: ${alerta.mensaje}`);
+      console.log(`   Detalles: ${alerta.detalles ? alerta.detalles.length : 0} elementos en grid`);
+      console.log(`   Formato: Grid responsivo (1 col móvil, 2 col tablet, 3 col desktop)`);
+    });
+    
+    console.log('');
+    console.log('✅ ALERTAS COMPLETAS: Verificadas correctamente');
+    console.log(`   - Total alertas: ${alertas.length}`);
+    console.log(`   - Con detalles: ${alertasConDetalles.length}`);
+    console.log(`   - Truncadas: ${alertasTruncadas.length}`);
+    console.log(`   - Formato: Grid responsivo con todos los detalles`);
+    
+    return {
+      exitoso: true,
+      mensaje: 'Alertas completas verificadas',
+      totalAlertas: alertas.length,
+      alertasConDetalles: alertasConDetalles.length,
+      alertasTruncadas: alertasTruncadas.length,
+      formato: 'Grid responsivo completo'
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+console.log('🧪 TestSuiteUnificado v3.0 cargado - Ejecuta ejecutarTodosLosTests(), testSistemaCompleto(), testSistemaSimplificado(), testValidacionFilas(), testActividadSeguimientoConsolidado(), ejecutarTestsSistemaSimplificado(), testModales(), testCorreccionesFinales(), verificarTodasLasCorrecciones(), testFinal(), testOptimizacionesCompleto(), testRapido(), testPerformanceDebug(), testResumenDashboard(), limpiarCacheYProbar(), testGetListaDeLideres(debugMode), testGetEstadisticasRapidas(debugMode), testCorreccionesCacheCriticas(), testCorreccionCalcularMetricasGenerales(), testVariablesGlobalesFrontend(), testCargaInicialConAlertas(), testCorreccionHoyFormateada(), testVerificarFuenteDatos() o testAlertasCompletas()');

@@ -453,95 +453,132 @@ function analizarMetricasPorPeriodo(datos, periodo) {
  * Obtiene estadísticas rápidas sin cargar todo el directorio
  * Usa caché agresivo de 30 segundos para máxima velocidad
  */
+/**
+ * Obtiene estadísticas rápidas sin cargar todo el directorio
+ * Usa caché agresivo de 30 segundos para máxima velocidad
+ * VERSIÓN CORREGIDA: Usa getCacheData() para acceder a DASHBOARD_DATA_V2
+ */
 function getEstadisticasRapidas() {
   Logger.log('[getEstadisticasRapidas] 🚀 Iniciando...');
   const startTime = Date.now();
   
   try {
-    // ✅ Verificar caché primero (30 segundos TTL)
     const cache = CacheService.getScriptCache();
-    const cached = cache.get('STATS_RAPIDAS_V2');
     
+    // ✅ NIVEL 1: Caché específico de stats rápidas (30s TTL)
+    const cached = cache.get('STATS_RAPIDAS_V2');
     if (cached) {
       const timeElapsed = Date.now() - startTime;
       Logger.log('[getEstadisticasRapidas] ✅ Cache HIT - ' + timeElapsed + 'ms');
       return JSON.parse(cached);
     }
     
-    Logger.log('[getEstadisticasRapidas] ⚠️ Cache MISS - Calculando...');
+    Logger.log('[getEstadisticasRapidas] ⚠️ Cache MISS - Buscando en directorio...');
     
-    // ✅ Intentar obtener desde caché del directorio (si existe)
-    const cacheDir = cache.get('DIRECTORIO_COMPLETO');
+    // ✅ NIVEL 2: Usar getCacheData() que maneja DASHBOARD_DATA_V2 correctamente
+    // CRÍTICO: Esta es la corrección principal - usa getCacheData() en lugar de cache.get('DIRECTORIO_COMPLETO')
+    const datos = getCacheData();
     
-    if (cacheDir) {
-      const datos = JSON.parse(cacheDir);
-      if (datos && datos.lideres) {
-        const stats = {
-          success: true,
-          data: {
-            lideres: { 
-              total_LD: datos.lideres.filter(l => l.Rol === 'LD').length,
-              total_LCF: datos.lideres.filter(l => l.Rol === 'LCF').length 
-            },
-            celulas: { total_celulas: datos.celulas ? datos.celulas.length : 0 },
-            ingresos: {
-              total_historico: datos.ingresos ? datos.ingresos.length : 0,
-              ingresos_mes: 0, // Se calculará si es necesario
-              tasa_integracion_celula: 0 // Se calculará si es necesario
-            },
-            metricas: { 
-              promedio_lcf_por_ld: 0 // Se calculará si es necesario
-            },
-            timestamp: new Date().toISOString()
-          }
-        };
-        
-        // Cachear por 30 segundos
-        cache.put('STATS_RAPIDAS_V2', JSON.stringify(stats), 30);
-        
-        const timeElapsed = Date.now() - startTime;
-        Logger.log('[getEstadisticasRapidas] ✅ Desde caché directorio - ' + timeElapsed + 'ms');
-        
-        return stats;
-      }
+    if (datos && datos.lideres) {
+      Logger.log('[getEstadisticasRapidas] ✅ Datos encontrados en DASHBOARD_DATA_V2');
+      
+      const stats = {
+        success: true,
+        data: {
+          lideres: { 
+            total_LD: datos.lideres.filter(l => l.Rol === 'LD').length,
+            total_LCF: datos.lideres.filter(l => l.Rol === 'LCF').length 
+          },
+          celulas: { 
+            total_celulas: datos.celulas ? datos.celulas.length : 0 
+          },
+          ingresos: {
+            total_historico: datos.ingresos ? datos.ingresos.length : 0,
+            ingresos_mes: datos.ingresos ? datos.ingresos.filter(ing => {
+              if (!ing.Timestamp) return false;
+              const fecha = new Date(ing.Timestamp);
+              const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+              return fecha >= hace30Dias;
+            }).length : 0,
+            tasa_integracion_celula: datos.ingresos && datos.ingresos.length > 0 ? 
+              datos.ingresos.filter(ing => ing.En_Celula).length / datos.ingresos.length : 0
+          },
+          metricas: {
+            promedio_lcf_por_ld: (datos.lideres.filter(l => l.Rol === 'LCF').length / 
+                                   Math.max(datos.lideres.filter(l => l.Rol === 'LD').length, 1)).toFixed(1)
+          },
+          timestamp: new Date().toISOString()
+        }
+      };
+      
+      // Cachear stats por 30 segundos
+      cache.put('STATS_RAPIDAS_V2', JSON.stringify(stats), 30);
+      
+      const timeElapsed = Date.now() - startTime;
+      Logger.log('[getEstadisticasRapidas] ✅ Completado desde caché - ' + timeElapsed + 'ms');
+      return stats;
     }
     
-    // ✅ Si no hay datos en memoria, cargar solo conteos mínimos (ultra rápido)
+    // ✅ NIVEL 3: Fallback a _ResumenDashboard solo si realmente no hay datos en caché
     Logger.log('[getEstadisticasRapidas] ⚠️ Sin caché ni memoria, usando conteos mínimos');
-    const statsMinimas = cargarEstadisticasMinimas();
+    Logger.log('[getEstadisticasRapidas] Cargando estadísticas mínimas desde _ResumenDashboard...');
     
-    // Convertir al formato esperado por el frontend
-    const statsFormateadas = {
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const resumenSheet = spreadsheet.getSheetByName('_ResumenDashboard');
+    
+    if (!resumenSheet) {
+      Logger.log('[getEstadisticasRapidas] ❌ Hoja _ResumenDashboard no encontrada');
+      return { 
+        success: false, 
+        error: 'Hoja _ResumenDashboard no encontrada',
+        data: null 
+      };
+    }
+    
+    const startMinimal = Date.now();
+    const valores = resumenSheet.getRange('B1:B7').getValues();
+    const timeMinimal = Date.now() - startMinimal;
+    
+    Logger.log(`[getEstadisticasRapidas] ✅ Mínimas cargadas desde _ResumenDashboard en ${timeMinimal}ms`);
+    
+    const result = {
       success: true,
       data: {
         lideres: { 
-          total_LD: statsMinimas.totalLideres,
-          total_LCF: statsMinimas.totalLCF
+          total_LD: parseInt(valores[0][0]) || 0,
+          total_LCF: parseInt(valores[1][0]) || 0
         },
-        celulas: { total_celulas: statsMinimas.totalCelulas },
+        celulas: { 
+          total_celulas: parseInt(valores[2][0]) || 0 
+        },
         ingresos: {
-          total_historico: statsMinimas.totalIngresos,
-          ingresos_mes: statsMinimas.ingresosMes,
-          tasa_integracion_celula: statsMinimas.tasaIntegracion
+          total_historico: parseInt(valores[3][0]) || 0,
+          ingresos_mes: parseInt(valores[4][0]) || 0,
+          tasa_integracion_celula: parseFloat(valores[5][0]) || 0
         },
-        metricas: { 
-          promedio_lcf_por_ld: statsMinimas.totalLideres > 0 ? (statsMinimas.totalLCF / statsMinimas.totalLideres).toFixed(1) : 0
+        metricas: {
+          promedio_lcf_por_ld: valores[6][0] || '0'
         },
-        timestamp: statsMinimas.ultimaActualizacion
+        timestamp: new Date().toISOString()
       }
     };
     
     // Cachear por 30 segundos
-    cache.put('STATS_RAPIDAS_V2', JSON.stringify(statsFormateadas), 30);
+    cache.put('STATS_RAPIDAS_V2', JSON.stringify(result), 30);
     
     const timeElapsed = Date.now() - startTime;
-    Logger.log('[getEstadisticasRapidas] ✅ Completado - ' + timeElapsed + 'ms');
+    Logger.log(`[getEstadisticasRapidas] ✅ Completado - ${timeElapsed}ms`);
     
-    return statsFormateadas;
+    return result;
     
   } catch (error) {
-    Logger.log('[getEstadisticasRapidas] ❌ Error: ' + error);
-    throw error;
+    const timeElapsed = Date.now() - startTime;
+    Logger.log(`[getEstadisticasRapidas] ❌ Error: ${error} (${timeElapsed}ms)`);
+    return {
+      success: false,
+      error: error.toString(),
+      data: null
+    };
   }
 }
 
@@ -634,6 +671,65 @@ function calcularMetricasLCF(idLCF) {
       metricas: {}
     };
   }
+}
+
+/**
+ * Test para verificar la corrección del cache key mismatch
+ */
+function testCorrecionEstadisticas() {
+  Logger.log('🧪 TEST: Verificando corrección de getEstadisticasRapidas');
+  Logger.log('');
+  
+  // Test 1: Limpiar caché y probar fallback
+  Logger.log('--- Test 1: Sin caché (fallback a _ResumenDashboard) ---');
+  clearCache();
+  const t1 = Date.now();
+  const resultado1 = getEstadisticasRapidas();
+  const time1 = Date.now() - t1;
+  
+  Logger.log(`⏱️ Tiempo Test 1: ${time1}ms`);
+  Logger.log(`📊 Resultado: ${resultado1.success ? '✅' : '❌'}`);
+  if (resultado1.data) {
+    Logger.log(`   - LD: ${resultado1.data.lideres?.total_LD || 0}`);
+    Logger.log(`   - LCF: ${resultado1.data.lideres?.total_LCF || 0}`);
+  }
+  
+  // Test 2: Cargar directorio completo
+  Logger.log('');
+  Logger.log('--- Test 2: Cargando directorio completo... ---');
+  const t2 = Date.now();
+  cargarDirectorioCompleto();
+  const time2 = Date.now() - t2;
+  Logger.log(`⏱️ Tiempo carga directorio: ${time2}ms`);
+  
+  // Test 3: Probar con caché poblado
+  Logger.log('');
+  Logger.log('--- Test 3: Con caché poblado (DASHBOARD_DATA_V2) ---');
+  const t3 = Date.now();
+  const resultado2 = getEstadisticasRapidas();
+  const time3 = Date.now() - t3;
+  
+  Logger.log(`⏱️ Tiempo Test 3: ${time3}ms`);
+  Logger.log(`📊 Resultado: ${resultado2.success ? '✅' : '❌'}`);
+  if (resultado2.data) {
+    Logger.log(`   - LD: ${resultado2.data.lideres?.total_LD || 0}`);
+    Logger.log(`   - LCF: ${resultado2.data.lideres?.total_LCF || 0}`);
+  }
+  
+  // Resumen
+  Logger.log('');
+  Logger.log('📊 RESUMEN:');
+  Logger.log(`Test 1 (sin caché): ${time1}ms - ${time1 < 5000 ? '✅ RÁPIDO' : '⚠️ LENTO'}`);
+  Logger.log(`Test 3 (con caché): ${time3}ms - ${time3 < 1000 ? '✅ RÁPIDO' : '⚠️ LENTO'}`);
+  
+  const mejora = time1 > 0 ? ((time1 - time3) / time1 * 100).toFixed(1) : 0;
+  Logger.log(`Mejora con caché: ${mejora}%`);
+  
+  return {
+    test1: { tiempo: time1, exitoso: resultado1.success },
+    test3: { tiempo: time3, exitoso: resultado2.success },
+    mejora: mejora + '%'
+  };
 }
 
 console.log('📊 MetricasModule cargado - Cálculo de métricas modularizado');

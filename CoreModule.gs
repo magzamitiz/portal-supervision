@@ -206,15 +206,46 @@ function cargarDirectorioCompleto(forceReload = false) {
 
 /**
  * Obtiene una lista de líderes (solo LDs) para selectores de UI.
+ * VERSIÓN OPTIMIZADA: Intenta usar caché antes de abrir spreadsheet
+ * @param {Object} spreadsheet - (Opcional) Objeto spreadsheet ya abierto para reutilizar
  * @returns {Object} Objeto con éxito y datos de líderes
  */
-function getListaDeLideres() {
+function getListaDeLideres(spreadsheet) {
   try {
     console.log('[CoreModule] 🚀 Obteniendo lista de líderes OPTIMIZADA...');
     const startTime = Date.now();
     
-    // ✅ OPTIMIZACIÓN: Usar cargarLideresOptimizado en lugar de abrir spreadsheet directamente
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    // ✅ NIVEL 1: Intentar obtener desde caché primero (más rápido)
+    // CRÍTICO: Esta es la corrección principal - verifica caché ANTES de abrir spreadsheet
+    const datosCache = getCacheData();
+    
+    if (datosCache && datosCache.lideres && datosCache.lideres.length > 0) {
+      console.log('[CoreModule] ✅ Líderes obtenidos desde caché DASHBOARD_DATA_V2');
+      
+      // Filtrar solo líderes LD para el selector
+      const lideresParaSelector = datosCache.lideres
+        .filter(lider => lider.Rol === 'LD' && lider.ID_Lider)
+        .map(lider => ({ 
+          ID_Lider: String(lider.ID_Lider).trim(), 
+          Nombre_Lider: String(lider.Nombre_Lider).trim() 
+        }));
+
+      const timeElapsed = Date.now() - startTime;
+      console.log(`[CoreModule] ✅ ${lideresParaSelector.length} líderes LD desde caché en ${timeElapsed}ms`);
+      return { success: true, data: lideresParaSelector };
+    }
+    
+    // ✅ NIVEL 2: Si no hay caché, cargar desde spreadsheet
+    console.log('[CoreModule] ⚠️ Sin caché, cargando desde spreadsheet...');
+    
+    // Reutilizar spreadsheet si se proporcionó, sino abrir uno nuevo
+    if (!spreadsheet) {
+      console.log('[CoreModule] Abriendo spreadsheet...');
+      spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    } else {
+      console.log('[CoreModule] Reutilizando spreadsheet proporcionado');
+    }
+    
     const lideres = cargarLideresOptimizado(spreadsheet);
     
     if (!lideres || lideres.length === 0) {
@@ -233,6 +264,7 @@ function getListaDeLideres() {
     const timeElapsed = Date.now() - startTime;
     console.log(`[CoreModule] ✅ ${lideresParaSelector.length} líderes LD encontrados en ${timeElapsed}ms`);
     return { success: true, data: lideresParaSelector };
+    
   } catch (error) {
     console.error(`[CoreModule] ❌ Error en getListaDeLideres: ${error}`);
     return { success: false, error: error.toString(), data: [] };
@@ -1007,6 +1039,76 @@ function buscarLDRapido(idLD) {
       tiempo: tiempo
     };
   }
+}
+
+/**
+ * Test para verificar la corrección de getListaDeLideres con caché
+ */
+function testCorrecionListaLideres() {
+  console.log('🧪 TEST: Verificando corrección de getListaDeLideres');
+  console.log('');
+  
+  // Test 1: Sin caché (debe abrir spreadsheet)
+  console.log('=== TEST 1: Sin caché ===');
+  clearCache();
+  const t1 = Date.now();
+  const resultado1 = getListaDeLideres();
+  const time1 = Date.now() - t1;
+  
+  console.log(`⏱️ Tiempo Test 1: ${time1}ms`);
+  console.log(`📊 Resultado: ${resultado1.success ? '✅' : '❌'}`);
+  console.log(`📊 Líderes: ${resultado1.data ? resultado1.data.length : 0}`);
+  console.log('Tiempo esperado: ~117s');
+  
+  // Test 2: Poblar caché
+  console.log('');
+  console.log('=== Poblando caché ===');
+  const t2 = Date.now();
+  cargarDirectorioCompleto();
+  const time2 = Date.now() - t2;
+  console.log(`⏱️ Tiempo carga directorio: ${time2}ms`);
+  
+  // Test 3: Con caché (debe ser instantáneo)
+  console.log('');
+  console.log('=== TEST 2: Con caché ===');
+  const t3 = Date.now();
+  const resultado2 = getListaDeLideres();
+  const time3 = Date.now() - t3;
+  
+  console.log(`⏱️ Tiempo Test 2: ${time3}ms`);
+  console.log(`📊 Resultado: ${resultado2.success ? '✅' : '❌'}`);
+  console.log(`📊 Líderes: ${resultado2.data ? resultado2.data.length : 0}`);
+  console.log('Tiempo esperado: <1s');
+  
+  // Test 4: Reutilizando spreadsheet
+  console.log('');
+  console.log('=== TEST 3: Reutilizando spreadsheet ===');
+  clearCache();
+  const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+  const t4 = Date.now();
+  const resultado3 = getListaDeLideres(ss);
+  const time4 = Date.now() - t4;
+  
+  console.log(`⏱️ Tiempo Test 3: ${time4}ms`);
+  console.log(`📊 Resultado: ${resultado3.success ? '✅' : '❌'}`);
+  console.log(`📊 Líderes: ${resultado3.data ? resultado3.data.length : 0}`);
+  
+  // Resumen
+  console.log('');
+  console.log('📊 RESUMEN:');
+  console.log(`Test 1 (sin caché): ${time1}ms - ${time1 < 5000 ? '✅ RÁPIDO' : '⚠️ LENTO'}`);
+  console.log(`Test 2 (con caché): ${time3}ms - ${time3 < 1000 ? '✅ RÁPIDO' : '⚠️ LENTO'}`);
+  console.log(`Test 3 (reuso): ${time4}ms - ${time4 < 5000 ? '✅ RÁPIDO' : '⚠️ LENTO'}`);
+  
+  const mejora = time1 > 0 ? ((time1 - time3) / time1 * 100).toFixed(1) : 0;
+  console.log(`Mejora con caché: ${mejora}%`);
+  
+  return {
+    test1: { tiempo: time1, exitoso: resultado1.success, lideres: resultado1.data?.length || 0 },
+    test2: { tiempo: time3, exitoso: resultado2.success, lideres: resultado2.data?.length || 0 },
+    test3: { tiempo: time4, exitoso: resultado3.success, lideres: resultado3.data?.length || 0 },
+    mejora: mejora + '%'
+  };
 }
 
 console.log('🏗️ CoreModule cargado - Funciones críticas y estructuras centralizadas');

@@ -197,7 +197,7 @@ function getDashboardData(forceReload = false) {
       celulas: analizarCelulas(directorioData.celulas || []),
       ingresos: analizarIngresos(directorioData.ingresos || []),
       datosBase: directorioData,
-      metricas: calcularMetricasGenerales(directorioData),
+      metricas: calcularMetricasPrincipales(directorioData),
       alertas: generarAlertas(directorioData),
       timestamp: directorioData.timestamp 
     };
@@ -362,7 +362,7 @@ function forceReloadDashboardData() {
       celulas: analizarCelulas(directorioData.celulas || []),
       ingresos: analizarIngresos(directorioData.ingresos || []),
       datosBase: directorioData,
-      metricas: calcularMetricasGenerales(directorioData),
+      metricas: calcularMetricasPrincipales(directorioData),
       alertas: generarAlertas(directorioData),
       timestamp: directorioData.timestamp 
     };

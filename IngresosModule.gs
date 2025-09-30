@@ -311,7 +311,7 @@ function analizarIngresos(ingresos) {
         const fechaIngreso = new Date(ingreso.Timestamp);
         const fechaFormateada = Utilities.formatDate(fechaIngreso, CONFIG.TIMEZONE, 'yyyy-MM-dd');
         
-        if (fechaFormateada === hoyFormateada) {
+        if (fechaFormateada === hoyFormateado) {
           analisis.ingresos_hoy++;
         }
         
