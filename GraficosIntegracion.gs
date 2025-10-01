@@ -22,8 +22,12 @@ function actualizarGraficoActividadEquipo(idLD = null) {
     
     // Filtrar por LD si se especifica
     let lcfData = datosGraficos.data;
+    console.log(`📊 Datos originales: ${lcfData.length} LCF`);
     if (idLD) {
       lcfData = lcfData.filter(lcf => lcf.LD_ID === idLD);
+      console.log(`🔍 Filtrado por LD ${idLD}: ${lcfData.length} LCF`);
+    } else {
+      console.log('📊 Mostrando todos los LCF (sin filtro)');
     }
     
     // Preparar datos para Bubble Chart
@@ -161,6 +165,13 @@ function actualizarGraficoSaludCelulas(idLD = null) {
     const datosHistoricos = obtenerDatosHistoricos(6);
     if (!datosHistoricos.success) {
       throw new Error('No se pudieron obtener los datos históricos');
+    }
+    
+    console.log(`📈 Datos históricos: ${datosHistoricos.data.length} períodos`);
+    if (idLD) {
+      console.log(`🔍 NOTA: Gráfico de salud no filtra por LD (${idLD}) - muestra datos globales`);
+    } else {
+      console.log('📈 Mostrando datos históricos globales');
     }
     
     // Ordenar por fecha (más antiguo primero para el gráfico)

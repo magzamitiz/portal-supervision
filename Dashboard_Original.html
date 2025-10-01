@@ -195,19 +195,6 @@
         <div id="resumenLD" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
             </div>
         
-        <div id="alertasLD" class="hidden mb-6">
-            </div>
-        
-        <div id="panelLCFs" class="hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">
-                <i class="fas fa-home text-purple-600 mr-2"></i>
-                Equipo de Líderes de Casa de Fe (LCF)
-            </h2>
-            
-            <div id="gridLCFs" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                </div>
-        </div>
-        
         <div id="panelGraficos" class="hidden mt-8">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-lg shadow-md p-6 min-w-0 relative">
@@ -223,6 +210,19 @@
                     </div>
                 </div>
             </div>
+        </div>
+        
+        <div id="alertasLD" class="hidden mb-6">
+            </div>
+        
+        <div id="panelLCFs" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                <i class="fas fa-home text-purple-600 mr-2"></i>
+                Equipo de Líderes de Casa de Fe (LCF)
+            </h2>
+            
+            <div id="gridLCFs" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
         </div>
     </main>
     
@@ -923,6 +923,7 @@ function llenarSelectorLD(listaLDs) {
             
             if (!ldSeleccionado) {
                 // Limpiar vista si no hay selección
+                document.getElementById('estadisticasGenerales').classList.remove('hidden');
                 document.getElementById('resumenLD').classList.add('hidden');
                 document.getElementById('alertasLD').classList.add('hidden');
                 document.getElementById('panelLCFs').classList.add('hidden');
@@ -930,6 +931,9 @@ function llenarSelectorLD(listaLDs) {
                 document.getElementById('accionesLD').classList.add('hidden');
                 return;
             }
+            
+            // Ocultar estadísticas generales cuando hay LD seleccionado
+            document.getElementById('estadisticasGenerales').classList.add('hidden');
             
             // Mostrar loader (Solo si no es silencioso)
             if (!silent) {
@@ -2087,28 +2091,69 @@ function rehidratarConfigChart(config) {
     
     // Restaurar legend callbacks
     if (config.options.plugins && config.options.plugins.legend) {
-        // Obtener referencia a los defaults de legend
-        const defaultLegend = Chart.defaults.plugins.legend.labels;
+        // Obtener los defaults reales del plugin de legend
+        let legendPlugin, legendDefaults;
         
-        // Crear objeto de configuración con propiedades visuales
-        config.options.plugins.legend.labels = {
-            ...defaultLegend,
-            usePointStyle: true,
-            pointStyle: 'circle',
-            padding: 20,
-            font: { size: 12 }
+        try {
+            legendPlugin = Chart.registry.getPlugin('legend');
+            legendDefaults = legendPlugin?.defaults || Chart.defaults.plugins.legend;
+        } catch (error) {
+            console.warn('⚠️ No se pudo obtener el plugin de legend, usando defaults básicos');
+            legendDefaults = Chart.defaults.plugins.legend;
+        }
+        
+        console.log('🔧 Legend plugin encontrado:', !!legendPlugin);
+        console.log('🔧 Legend defaults disponibles:', Object.keys(legendDefaults?.labels || {}));
+        
+        // Crear objeto de configuración fusionando defaults reales con configuración
+        config.options.plugins.legend = {
+            ...legendDefaults,
+            ...config.options.plugins.legend,
+            labels: {
+                ...legendDefaults?.labels,
+                ...config.options.plugins.legend.labels,
+                usePointStyle: true,
+                pointStyle: 'circle',
+                padding: 20,
+                font: { size: 12 }
+            }
         };
         
-        // Restaurar métodos explícitamente (no se copian con spread)
-        if (defaultLegend.generateLabels) {
-            config.options.plugins.legend.labels.generateLabels = defaultLegend.generateLabels;
+        // Restaurar métodos explícitamente desde los defaults reales
+        if (legendDefaults?.labels) {
+            const methods = ['generateLabels', 'filter', 'sort', 'onClick', 'onHover', 'onLeave'];
+            methods.forEach(method => {
+                if (legendDefaults.labels[method]) {
+                    config.options.plugins.legend.labels[method] = legendDefaults.labels[method];
+                    console.log(`✅ Método ${method} restaurado`);
+                }
+            });
         }
-        if (defaultLegend.filter) {
-            config.options.plugins.legend.labels.filter = defaultLegend.filter;
+        
+        // Fallback: Crear métodos básicos si no están disponibles
+        if (!config.options.plugins.legend.labels.generateLabels) {
+            config.options.plugins.legend.labels.generateLabels = function(chart) {
+                return chart.data.datasets.map((dataset, i) => ({
+                    text: dataset.label || `Dataset ${i}`,
+                    fillStyle: dataset.backgroundColor || dataset.borderColor,
+                    strokeStyle: dataset.borderColor,
+                    lineWidth: dataset.borderWidth || 1,
+                    pointStyle: dataset.pointStyle || 'circle',
+                    hidden: !chart.isDatasetVisible(i),
+                    datasetIndex: i
+                }));
+            };
+            console.log('🔧 Método generateLabels creado como fallback');
         }
-        if (defaultLegend.sort) {
-            config.options.plugins.legend.labels.sort = defaultLegend.sort;
+        
+        if (!config.options.plugins.legend.labels.filter) {
+            config.options.plugins.legend.labels.filter = function(legendItem, chartData) {
+                return !legendItem.hidden;
+            };
+            console.log('🔧 Método filter creado como fallback');
         }
+        
+        console.log('🔧 Legend config final:', Object.keys(config.options.plugins.legend.labels));
     }
     
     return config;
@@ -2206,7 +2251,8 @@ function actualizarGraficos() {
     panel.classList.remove('hidden');
     
     // Obtener ID del LD seleccionado para filtrar datos
-    const idLD = ldSeleccionado ? ldSeleccionado.ID_Lider : null;
+    const idLD = ldSeleccionado || null;
+    console.log('🔍 Filtrando gráficos por LD:', idLD);
     
     // Llamar a la función optimizada del backend
     google.script.run
