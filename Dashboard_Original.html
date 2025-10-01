@@ -1985,7 +1985,7 @@ function cerrarModal() {
     modal.style.display = 'none'; 
 }
         
-        // Actualizar gráficos (CORREGIDA PARA USAR DATOS DEL LÍDER CARGADO)
+        // Actualizar gráficos (VERSIÓN OPTIMIZADA CON DATOS PRE-CALCULADOS)
 function actualizarGraficos() {
     const panel = document.getElementById('panelGraficos');
     
@@ -1996,6 +1996,62 @@ function actualizarGraficos() {
     }
 
     panel.classList.remove('hidden');
+    
+    // Obtener ID del LD seleccionado para filtrar datos
+    const idLD = ldSeleccionado ? ldSeleccionado.ID_Lider : null;
+    
+    // Llamar a la función optimizada del backend
+    google.script.run
+        .withSuccessHandler(function(resultado) {
+            if (resultado.success) {
+                // Gráfico de Actividad del Equipo (LCF) - Doughnut
+                const ctxEstados = document.getElementById('chartEstados').getContext('2d');
+                if (window.chartEstados instanceof Chart) {
+                    window.chartEstados.destroy();
+                }
+                window.chartEstados = new Chart(ctxEstados, {
+                    type: 'doughnut',
+                    data: resultado.graficos.actividadEquipo.chartData,
+                    options: { 
+                        responsive: true, 
+                        plugins: { legend: { position: 'bottom' } } 
+                    }
+                });
+                
+                // Gráfico de Salud de Células - Bar Horizontal
+                const ctxCelulas = document.getElementById('chartCelulas').getContext('2d');
+                if (window.chartCelulas instanceof Chart) {
+                    window.chartCelulas.destroy();
+                }
+                window.chartCelulas = new Chart(ctxCelulas, {
+                    type: 'bar',
+                    data: resultado.graficos.saludCelulas.chartData,
+                    options: {
+                        responsive: true,
+                        indexAxis: 'y',
+                        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+                
+                console.log('✅ Gráficos actualizados con datos optimizados');
+            } else {
+                console.error('Error actualizando gráficos:', resultado.error);
+                // Fallback a método anterior si hay error
+                actualizarGraficosFallback();
+            }
+        })
+        .withFailureHandler(function(error) {
+            console.error('Error de conexión actualizando gráficos:', error);
+            // Fallback a método anterior si hay error de conexión
+            actualizarGraficosFallback();
+        })
+        .actualizarTodosLosGraficos(idLD);
+}
+
+// Función de respaldo en caso de error con el sistema optimizado
+function actualizarGraficosFallback() {
+    console.log('🔄 Usando método de respaldo para gráficos...');
     
     // Preparar datos directamente del equipo del líder (datosLD)
     let activos = 0, alerta = 0, inactivos = 0, sinDatos = 0;
@@ -2009,11 +2065,6 @@ function actualizarGraficos() {
             case 'Inactivo': inactivos++; break;
             default: sinDatos++; break;
         }
-        
-        // 2. Contar estados de las células de cada LCF del equipo
-        // (La propiedad .celulas no estaba en el objeto LCF, la añadimos en el backend)
-        // Por ahora, asumimos que no tenemos los datos de las células y lo dejamos en 0.
-        // Si necesitas este gráfico, requerirá un pequeño ajuste en el backend.
     });
     
     // Gráfico de estados de LCF (Doughnut)
@@ -2033,7 +2084,7 @@ function actualizarGraficos() {
         options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
     });
     
-    // Gráfico de salud de células (Bar) - Se mostrará vacío por ahora
+    // Gráfico de salud de células (Bar) - Datos básicos
     const ctxCelulas = document.getElementById('chartCelulas').getContext('2d');
     if (window.chartCelulas instanceof Chart) {
         window.chartCelulas.destroy();
