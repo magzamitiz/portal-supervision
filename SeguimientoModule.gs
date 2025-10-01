@@ -527,18 +527,35 @@ function calcularPrioridadAlma(alma) {
  * @returns {Object} Seguimiento procesado
  */
 function getSeguimientoAlmasLCF_REAL(idLCF) {
+  console.log(`[SeguimientoModule] Cargando seguimiento para ${idLCF}...`);
+  const startTime = Date.now();
+  
   try {
+    // ✅ OPTIMIZACIÓN: Usar caché de directorio
     const directorios = cargarDirectorioCompleto();
     const lcfInfo = directorios.lideres.find(l => l.ID_Lider === idLCF);
     if (!lcfInfo) {
       return { success: false, error: `No se pudo encontrar la información del LCF con ID ${idLCF}` };
     }
 
-    const hojaMaestra = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO)
-                                      .getSheetByName('_SeguimientoConsolidado');
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const hojaMaestra = spreadsheet.getSheetByName('_SeguimientoConsolidado');
     
-    // ---- CAMBIO 1: El rango ahora es A:J para coincidir con tu hoja ----
-    const todosLosSeguimientos = hojaMaestra.getRange("A2:J" + hojaMaestra.getLastRow()).getValues();
+    if (!hojaMaestra) {
+      console.warn('[SeguimientoModule] Hoja _SeguimientoConsolidado no encontrada');
+      return { success: false, error: 'Hoja de seguimiento no encontrada' };
+    }
+    
+    const lastRow = hojaMaestra.getLastRow();
+    if (lastRow < 2) {
+      console.log('[SeguimientoModule] Hoja vacía');
+      return { success: true, lcf: { Nombre: lcfInfo.Nombre_Lider, ID: idLCF }, almas: [], resumen: {} };
+    }
+    
+    console.log(`[SeguimientoModule] Leyendo ${lastRow - 1} registros de seguimiento...`);
+    
+    // ✅ OPTIMIZACIÓN: Leer solo columnas necesarias
+    const todosLosSeguimientos = hojaMaestra.getRange(2, 1, lastRow - 1, 10).getValues();
 
     const getBienvenidaIcon = (resultado) => {
       const res = resultado || "";
@@ -556,9 +573,13 @@ function getSeguimientoAlmasLCF_REAL(idLCF) {
       return { simbolo: '✗', color: 'text-red-500', completado: false };
     };
 
+    console.log(`[SeguimientoModule] Filtrando almas del LCF ${idLCF}...`);
     const almasConSeguimiento = [];
+    
     for (const fila of todosLosSeguimientos) {
-      if (fila[2] === idLCF) {
+      const idLCFEnFila = String(fila[2] || '').trim(); // Columna C: ID_LCF
+      
+      if (idLCFEnFila === idLCF) {
         
         const bienvenidaData = getBienvenidaIcon(fila[6]); // Columna G
         const visitaData = getVisitaIcon(fila[7]);       // Columna H
@@ -592,6 +613,9 @@ function getSeguimientoAlmasLCF_REAL(idLCF) {
       }
     }
     
+    const timeElapsed = Date.now() - startTime;
+    console.log(`[SeguimientoModule] ✅ Seguimiento cargado: ${almasConSeguimiento.length} almas en ${timeElapsed}ms`);
+    
     const resumen = calcularResumenSeguimiento(almasConSeguimiento, lcfInfo);
 
     return {
@@ -599,7 +623,8 @@ function getSeguimientoAlmasLCF_REAL(idLCF) {
       lcf: { Nombre: lcfInfo.Nombre_Lider, ID: lcfInfo.ID_Lider },
       almas: almasConSeguimiento,
       resumen: resumen,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      tiempo_ms: timeElapsed
     };
     
   } catch (error) {

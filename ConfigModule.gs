@@ -85,14 +85,6 @@ function getTabsConfig() {
 }
 
 /**
- * Obtiene la configuración de días de inactividad
- * @returns {Object} Configuración de días de inactividad
- */
-function getDiasInactivoConfig() {
-  return CONFIG.DIAS_INACTIVO;
-}
-
-/**
  * Obtiene la configuración de células
  * @returns {Object} Configuración de células
  */

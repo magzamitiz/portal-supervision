@@ -1,88 +1,83 @@
-# 🏛️ Portal de Supervisión - Google Apps Script
+# 📊 Portal de Supervisión
 
-Sistema completo de supervisión y gestión para líderes de discípulos (LD) y líderes de células familiares (LCF) desarrollado en Google Apps Script.
+Sistema de gestión y supervisión de líderes, células e ingresos para organizaciones.
 
-## ✨ Características Principales
+## 🚀 Características
 
-- 🎯 **Dashboard Interactivo**: Vista completa del estado de líderes y células
-- 📊 **Análisis Avanzado**: Métricas detalladas y alertas inteligentes
-- 🔄 **Sistema de Caché Inteligente**: Optimización de rendimiento
-- 📈 **Monitoreo en Tiempo Real**: Métricas y alertas automáticas
-- 🛡️ **Manejo Robusto de Errores**: Recuperación automática
-- 🧪 **Pruebas de Integración**: Suite completa de validación
-- 📚 **Documentación Completa**: Guías técnicas y de usuario
+- **Dashboard interactivo** con visualización de métricas en tiempo real
+- **Sistema de perfiles de líderes** basado en IDP (Índice de Productividad)
+- **Seguimiento de almas** con historial completo
+- **Caché inteligente** para carga rápida (< 1 segundo)
+- **Estructura jerárquica** LD > LM > SG > LCF
 
-## 🚀 Instalación
+## 📋 Perfiles de Líderes
 
-1. **Clonar el repositorio**
-   ```bash
-   git clone https://github.com/tu-usuario/portal-supervision.git
-   ```
+El sistema clasifica automáticamente a los líderes en 4 perfiles basados en su IDP:
 
-2. **Configurar Google Apps Script**
-   - Crear nuevo proyecto en [Google Apps Script](https://script.google.com)
-   - Copiar archivos `.gs` al proyecto
-   - Configurar `CONFIG` con tus IDs de spreadsheets
+- 🚀 **ESTRATEGA DE CRECIMIENTO** (IDP ≥ 36) - Alto rendimiento
+- 🎯 **CONECTOR EFICAZ** (IDP 16-35) - Buen desempeño
+- 🟡 **RENDIMIENTO BÁSICO** (IDP 6-15) - En desarrollo
+- 🔴 **RENDIMIENTO BAJO** (IDP 1-5) - Necesita apoyo
+- ❄️ **INACTIVO** (IDP 0) - Sin actividad
 
-3. **Desplegar como Web App**
-   - Configurar permisos de ejecución
-   - Desplegar como aplicación web
+## 📊 Hojas de Datos
+
+### Hoja Principal: `DIRECTORIO`
+- **Directorio de Líderes** - Información de LD, LM, SG, LCF
+- **Directorio de Células** - Células activas y sus miembros
+- **Ingresos** - Almas registradas
+
+### Hojas Auxiliares:
+- **_EstadoLideres** - Perfiles, IDP y días de inactividad (pre-calculados)
+- **_SeguimientoConsolidado** - Seguimiento detallado de almas
+- **_ResumenDashboard** - Métricas rápidas para dashboard
+
+## ⚡ Rendimiento
+
+- **Carga inicial:** < 1 segundo (usando caché)
+- **Recarga forzada:** 2-3 segundos
+- **Seguimiento de LCF:** 1-2 segundos
+- **Caché:** 30 minutos (configurable)
+
+## 🧪 Tests
+
+### Test Principal
+```javascript
+testCompleto()
+```
+
+### Tests Específicos
+```javascript
+testEstadoLideres()      // Verificar _EstadoLideres
+testFuncionesPrincipales() // Verificar funciones básicas
+testSeguimiento()          // Verificar seguimiento
+limpiarCache()            // Limpiar y recargar
+verificarLCF('LCF-1010')  // Verificar LCF específico
+```
+
+## 🛠️ Configuración
+
+Ver `ConfigModule.gs` para ajustar:
+- IDs de spreadsheets
+- Nombres de pestañas
+- Configuración de caché
+- Perfiles de líderes
 
 ## 📖 Uso
 
-### APIs Principales
+1. Abrir la aplicación web
+2. Seleccionar un LD del selector
+3. Ver métricas, equipo y alertas
+4. Hacer clic en LCF para ver detalles
+5. Usar "Recargar Datos" si necesitas actualizar
 
-```javascript
-// Dashboard
-const dashboardData = getDashboardData(forceReload);
+## 🔧 Mantenimiento
 
-// Líderes
-const ldData = getDatosLD(idLD, modoCompleto);
-
-// Seguimiento
-const seguimiento = getSeguimientoAlmasLCF_REAL(idLCF);
-
-// Reportes
-const reporte = generarReporteLCF(idLCF);
-```
-
-## ⚡ Optimizaciones
-
-- **Singleton Pattern**: 70% reducción en tiempo de carga
-- **Query Optimizer**: 60% reducción en consultas
-- **Intelligent Cache**: 80% reducción en tiempo de respuesta
-- **Error Handler**: 90% reducción en errores
-
-## 📊 Rendimiento
-
-- Dashboard: < 15 segundos
-- Datos LD: < 8 segundos
-- Vista Rápida LCF: < 5 segundos
-- Caché Hit Rate: > 80%
-
-## 🧪 Testing
-
-```javascript
-// Pruebas de integración
-const tests = ejecutarTodasLasPruebas();
-
-// Monitoreo de producción
-const monitoreo = ejecutarMonitoreoProduccion();
-```
-
-## 📚 Documentación
-
-- [Documentación Técnica](DOCUMENTACION_TECNICA.md)
-- [Documentación de Usuario](DOCUMENTACION_USUARIO.md)
-
-## 🤝 Contribución
-
-1. Fork el repositorio
-2. Crear rama para feature
-3. Commit cambios
-4. Crear Pull Request
+- **Actualizar _EstadoLideres:** Ejecutar script de cálculo de IDP semanalmente
+- **Limpiar caché:** Usar función `limpiarCache()` si hay problemas
+- **Monitoreo:** Revisar logs en Google Apps Script
 
 ---
 
-**Portal de Supervisión v2.0 - Optimizado y Listo para Producción** 🚀# portal-supervision
-# portal-supervision
+**Versión:** 4.0 - Sistema simplificado con perfiles pre-calculados
+**Última actualización:** Octubre 2025

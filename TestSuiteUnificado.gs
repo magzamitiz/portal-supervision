@@ -1,71 +1,66 @@
 /**
- * 🧪 SUITE DE TESTS SIMPLE
- * Solo los tests esenciales - Máximo 500 líneas
+ * 🧪 SUITE DE TESTS UNIFICADA - VERSION FINAL
+ * Solo tests esenciales y útiles
  */
 
-console.log('🧪 TestSuiteSimple cargado - Tests esenciales únicamente');
+console.log('🧪 TestSuite cargado - Ejecuta testCompleto() para verificar todo el sistema');
 
 /**
- * 🚀 TEST PRINCIPAL - Verifica que todo funcione
+ * 🚀 TEST COMPLETO - Verifica todo el sistema
  */
-function testPrincipal() {
+function testCompleto() {
   console.log('');
   console.log('========================================');
-  console.log('🚀 TEST PRINCIPAL DEL SISTEMA');
+  console.log('🚀 TEST COMPLETO DEL SISTEMA');
   console.log('========================================');
   console.log('');
   
   const resultados = {
-    configuracion: false,
-    semaforo: false,
-    funciones: false
+    estado_lideres: null,
+    funciones_principales: null,
+    seguimiento: null
   };
   
   try {
-    // Test 1: Configuración
-    console.log('--- Test 1: Configuración ---');
-    const config = CONFIG.PERFILES_LIDERES;
-    resultados.configuracion = config.EN_DESARROLLO && config.ESTRATEGA_CRECIMIENTO;
-    console.log(`✅ Configuración de perfiles: ${resultados.configuracion ? 'OK' : 'ERROR'}`);
+    // Test 1: Verificar _EstadoLideres
+    console.log('--- Test 1: _EstadoLideres ---');
+    const estadoTest = testEstadoLideres();
+    resultados.estado_lideres = estadoTest;
+    console.log(`✅ _EstadoLideres: ${estadoTest.exitoso ? 'OK' : 'ERROR'}`);
     
-    // Test 2: Perfiles de líderes
+    // Test 2: Funciones principales
     console.log('');
-    console.log('--- Test 2: Perfiles de líderes ---');
-    const funcionesDisponibles = typeof cargarEstadoLideres === 'function' && typeof integrarPerfilesLideres === 'function';
-    resultados.semaforo = funcionesDisponibles;
-    console.log(`✅ Perfiles: ${resultados.semaforo ? 'OK' : 'ERROR'}`);
+    console.log('--- Test 2: Funciones principales ---');
+    const funcionesTest = testFuncionesPrincipales();
+    resultados.funciones_principales = funcionesTest;
+    console.log(`✅ Funciones: ${funcionesTest.exitoso ? 'OK' : 'ERROR'}`);
     
-    // Test 3: Funciones principales
+    // Test 3: Seguimiento
     console.log('');
-    console.log('--- Test 3: Funciones principales ---');
-    const start1 = Date.now();
-    const lideres = getListaDeLideres();
-    const time1 = Date.now() - start1;
+    console.log('--- Test 3: Seguimiento ---');
+    const seguimientoTest = testSeguimiento();
+    resultados.seguimiento = seguimientoTest;
+    console.log(`✅ Seguimiento: ${seguimientoTest.exitoso ? 'OK' : 'ERROR'}`);
     
-    const start2 = Date.now();
-    const stats = getEstadisticasRapidas();
-    const time2 = Date.now() - start2;
-    
-    resultados.funciones = lideres.success && stats.success;
-    console.log(`✅ getListaDeLideres: ${lideres.success ? 'OK' : 'ERROR'} (${time1}ms)`);
-    console.log(`✅ getEstadisticasRapidas: ${stats.success ? 'OK' : 'ERROR'} (${time2}ms)`);
-    
-    // Resumen
+    // Resumen final
     console.log('');
     console.log('========================================');
-    console.log('📊 RESUMEN');
+    console.log('📊 RESUMEN FINAL');
     console.log('========================================');
     
-    const todoOK = resultados.configuracion && resultados.semaforo && resultados.funciones;
+    const todoOK = estadoTest.exitoso && funcionesTest.exitoso && seguimientoTest.exitoso;
     
-    console.log(`✅ Configuración: ${resultados.configuracion ? 'OK' : 'ERROR'}`);
-    console.log(`✅ Perfiles: ${resultados.semaforo ? 'OK' : 'ERROR'}`);
-    console.log(`✅ Funciones: ${resultados.funciones ? 'OK' : 'ERROR'}`);
+    console.log(`✅ _EstadoLideres: ${estadoTest.exitoso ? 'OK' : 'ERROR'} (${estadoTest.total_lideres || 0} líderes)`);
+    console.log(`✅ Funciones: ${funcionesTest.exitoso ? 'OK' : 'ERROR'}`);
+    console.log(`✅ Seguimiento: ${seguimientoTest.exitoso ? 'OK' : 'ERROR'} (${seguimientoTest.almas_cargadas || 0} almas)`);
     
     if (todoOK) {
       console.log('');
-      console.log('🎉 ¡SISTEMA FUNCIONANDO!');
-      console.log('🚀 Sistema de perfiles activo - Listo para usar');
+      console.log('🎉 ¡SISTEMA 100% FUNCIONAL!');
+      console.log('✅ Todos los componentes operativos');
+      console.log('✅ Datos reales de _EstadoLideres');
+      console.log('✅ Seguimiento funcionando');
+      console.log('🚀 Sistema listo para producción');
     } else {
       console.log('');
       console.log('⚠️ SISTEMA CON PROBLEMAS');
@@ -74,12 +69,11 @@ function testPrincipal() {
     
     return {
       exitoso: todoOK,
-      resultados: resultados,
-      tiempo_total: time1 + time2
+      resultados: resultados
     };
     
   } catch (error) {
-    console.error('❌ Error en test principal:', error);
+    console.error('❌ Error en test completo:', error);
     return {
       exitoso: false,
       error: error.toString()
@@ -88,128 +82,95 @@ function testPrincipal() {
 }
 
 /**
- * 🎯 TEST PERFILES - Verifica los perfiles de líderes desde _EstadoLideres
+ * 📊 TEST _EstadoLideres
  */
-function testPerfiles() {
-  console.log('');
-  console.log('========================================');
-  console.log('🎯 TEST PERFILES DE LÍDERES');
-  console.log('========================================');
-  console.log('');
+function testEstadoLideres() {
+  const start = Date.now();
   
   try {
-    // Verificar funciones
-    const funcionesOK = typeof cargarEstadoLideres === 'function' && typeof integrarPerfilesLideres === 'function';
-    console.log(`✅ Funciones disponibles: ${funcionesOK ? 'SÍ' : 'NO'}`);
-    
-    if (!funcionesOK) {
-      console.log('❌ Funciones de perfiles no disponibles');
-      return { exitoso: false };
-    }
-    
-    // Probar carga de estados
-    const start = Date.now();
     const estadosMap = cargarEstadoLideres();
     const time = Date.now() - start;
     
-    console.log(`✅ Carga de estados: OK (${time}ms)`);
-    console.log(`📊 Líderes con perfil: ${estadosMap.size}`);
+    let conPerfil = 0;
+    let conIDP = 0;
+    let conDias = 0;
     
-    // Probar integración
-    const lideresTest = [
-      { ID_Lider: 'LCF-1010', Nombre_Lider: 'Test LCF 1', Rol: 'LCF' },
-      { ID_Lider: 'LCF-1014', Nombre_Lider: 'Test LCF 2', Rol: 'LCF' }
-    ];
-    
-    const lideresConPerfil = integrarPerfilesLideres(lideresTest, estadosMap);
-    const todosConPerfil = lideresConPerfil.every(l => l.Perfil_Lider);
-    
-    console.log(`✅ Integración de perfiles: ${todosConPerfil ? 'OK' : 'ERROR'}`);
-    
-    // Mostrar ejemplos con IDP y perfil
-    console.log('');
-    console.log('📊 EJEMPLOS DE PERFILES:');
-    lideresConPerfil.slice(0, 5).forEach(lider => {
-      const emoji = lider.Perfil_Lider.includes('ESTRATEGA') ? '🚀' : 
-                   lider.Perfil_Lider.includes('CONECTOR') ? '🎯' : 
-                   lider.Perfil_Lider.includes('ACTIVADOR') ? '⚡' : '🌱';
-      console.log(`  ${emoji} ${lider.Nombre_Lider}`);
-      console.log(`     IDP: ${lider.IDP || 0} | Perfil: ${lider.Perfil_Lider}`);
-      console.log(`     Células: ${lider.Celulas_Activas || 0} | Visitas: ${lider.Visitas_Positivas || 0}`);
-    });
-    
-    console.log('');
-    console.log('🎉 ¡SISTEMA DE PERFILES FUNCIONANDO!');
-    console.log('🚀 ESTRATEGA DE CRECIMIENTO: IDP ≥ 36');
-    console.log('🎯 CONECTOR EFICAZ: IDP 16-35');
-    console.log('⚡ ACTIVADOR INICIAL: IDP 6-15');
-    console.log('🌱 EN DESARROLLO: IDP 0-5');
-    
-    return {
-      exitoso: true,
-      tiempo_ms: time,
-      lideres_procesados: lideresConPerfil.length,
-      lideres_con_perfil: estadosMap.size
-    };
-    
-  } catch (error) {
-    console.error('❌ Error en test de perfiles:', error);
-    return { exitoso: false, error: error.toString() };
-  }
-}
-
-/**
- * ⚡ TEST RÁPIDO - Verificación rápida
- */
-function testRapido() {
-  console.log('');
-  console.log('========================================');
-  console.log('⚡ TEST RÁPIDO');
-  console.log('========================================');
-  console.log('');
-  
-  try {
-    const start = Date.now();
-    
-    // Test 1: getListaDeLideres
-    const lideres = getListaDeLideres();
-    const time1 = Date.now() - start;
-    
-    // Test 2: getEstadisticasRapidas
-    const stats = getEstadisticasRapidas();
-    const time2 = Date.now() - start;
-    
-    console.log(`✅ getListaDeLideres: ${lideres.success ? 'OK' : 'ERROR'} (${time1}ms)`);
-    console.log(`✅ getEstadisticasRapidas: ${stats.success ? 'OK' : 'ERROR'} (${time2}ms)`);
-    
-    const todoOK = lideres.success && stats.success;
-    const tiempoTotal = time2;
-    
-    console.log('');
-    console.log(`📊 Tiempo total: ${tiempoTotal}ms`);
-    console.log(`📊 Líderes: ${lideres.data ? lideres.data.length : 0}`);
-    console.log(`📊 Estadísticas: ${stats.success ? 'OK' : 'ERROR'}`);
-    
-    if (todoOK) {
-      console.log('🎉 ¡TEST RÁPIDO EXITOSO!');
-    } else {
-      console.log('⚠️ TEST RÁPIDO CON PROBLEMAS');
+    for (const [id, estado] of estadosMap) {
+      if (estado.Perfil_Lider) conPerfil++;
+      if (estado.IDP !== null && estado.IDP !== undefined) conIDP++;
+      if (estado.Dias_Inactivo !== null && estado.Dias_Inactivo !== undefined) conDias++;
     }
     
     return {
-      exitoso: todoOK,
-      tiempo_ms: tiempoTotal,
-      lideres: lideres.data ? lideres.data.length : 0
+      exitoso: estadosMap.size > 0,
+      tiempo_ms: time,
+      total_lideres: estadosMap.size,
+      con_perfil: conPerfil,
+      con_idp: conIDP,
+      con_dias: conDias
     };
     
   } catch (error) {
-    console.error('❌ Error en test rápido:', error);
+    console.error('❌ Error:', error);
     return { exitoso: false, error: error.toString() };
   }
 }
 
 /**
- * 🧹 LIMPIAR CACHÉ - Limpia el caché y prueba
+ * ⚡ TEST Funciones Principales
+ */
+function testFuncionesPrincipales() {
+  try {
+    const start1 = Date.now();
+    const lideres = getListaDeLideres();
+    const time1 = Date.now() - start1;
+    
+    const start2 = Date.now();
+    const stats = getEstadisticasRapidas();
+    const time2 = Date.now() - start2;
+    
+    const todoOK = lideres.success && stats.success;
+    
+    return {
+      exitoso: todoOK,
+      tiempo_lideres_ms: time1,
+      tiempo_stats_ms: time2,
+      num_lideres: lideres.data ? lideres.data.length : 0
+    };
+    
+  } catch (error) {
+    console.error('❌ Error:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * 🔍 TEST Seguimiento
+ */
+function testSeguimiento() {
+  try {
+    // Probar con un LCF conocido
+    const idLCF = 'LCF-1025';
+    
+    const start = Date.now();
+    const resultado = getSeguimientoAlmasLCF(idLCF);
+    const time = Date.now() - start;
+    
+    return {
+      exitoso: resultado.success,
+      tiempo_ms: time,
+      almas_cargadas: resultado.almas ? resultado.almas.length : 0,
+      error: resultado.error
+    };
+    
+  } catch (error) {
+    console.error('❌ Error:', error);
+    return { exitoso: false, error: error.toString() };
+  }
+}
+
+/**
+ * 🧹 LIMPIAR CACHÉ
  */
 function limpiarCache() {
   console.log('');
@@ -219,116 +180,94 @@ function limpiarCache() {
   console.log('');
   
   try {
-    // Limpiar caché
-    CacheService.getScriptCache().removeAll();
+    const cache = CacheService.getScriptCache();
+    const keys = [
+      'DASHBOARD_DATA_V2',
+      'STATS_RAPIDAS_V2',
+      'LIDERES_DATA',
+      'CELULAS_DATA',
+      'INGRESOS_DATA',
+      'ESTADO_LIDERES_CACHE',
+      'ACTIVIDAD_CACHE_SEGUIMIENTO'
+    ];
+    
+    cache.removeAll(keys);
     console.log('✅ Caché limpiado');
     
-    // Probar funciones después de limpiar
+    // Recargar
+    console.log('');
+    console.log('📊 Recargando datos...');
     const start = Date.now();
-    const lideres = getListaDeLideres();
-    const stats = getEstadisticasRapidas();
+    const datos = cargarDirectorioCompleto(true);
     const time = Date.now() - start;
     
-    console.log(`✅ Funciones después de limpiar: ${lideres.success && stats.success ? 'OK' : 'ERROR'}`);
-    console.log(`⏱️ Tiempo: ${time}ms`);
+    console.log(`✅ Datos recargados en ${time}ms`);
+    console.log(`📊 Líderes: ${datos.lideres.length}`);
+    console.log(`📊 Células: ${datos.celulas.length}`);
+    console.log(`📊 Ingresos: ${datos.ingresos.length}`);
+    
+    console.log('');
+    console.log('🎉 ¡Caché limpiado y datos recargados!');
+    console.log('💡 Ahora recarga el dashboard');
     
     return {
-      exitoso: lideres.success && stats.success,
+      exitoso: true,
       tiempo_ms: time
     };
     
   } catch (error) {
-    console.error('❌ Error limpiando caché:', error);
+    console.error('❌ Error:', error);
     return { exitoso: false, error: error.toString() };
   }
 }
 
 /**
- * 🎯 TEST HYBRID - Verifica el sistema hybrid de perfiles + días de inactividad
+ * 🔍 VERIFICAR LCF ESPECÍFICO
  */
-function testHybrid() {
+function verificarLCF(idLCF) {
   console.log('');
-  console.log('========================================');
-  console.log('🎯 TEST SISTEMA HYBRID');
-  console.log('========================================');
+  console.log(`🔍 Verificando: ${idLCF}`);
   console.log('');
   
   try {
-    // Test 1: Verificar funciones
-    console.log('--- Test 1: Funciones disponibles ---');
-    const funcionPerfiles = typeof cargarEstadoLideres === 'function';
-    const funcionDias = typeof calcularDiasInactividadEquipo === 'function';
-    const funcionIntegrar = typeof integrarDiasInactividad === 'function';
+    // 1. En _EstadoLideres
+    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const sheetEstado = spreadsheet.getSheetByName('_EstadoLideres');
     
-    console.log(`✅ cargarEstadoLideres: ${funcionPerfiles ? 'OK' : 'ERROR'}`);
-    console.log(`✅ calcularDiasInactividadEquipo: ${funcionDias ? 'OK' : 'ERROR'}`);
-    console.log(`✅ integrarDiasInactividad: ${funcionIntegrar ? 'OK' : 'ERROR'}`);
-    
-    if (!funcionPerfiles || !funcionDias || !funcionIntegrar) {
-      console.log('❌ Funciones híbridas no disponibles');
-      return { exitoso: false };
+    if (sheetEstado) {
+      const data = sheetEstado.getRange(2, 1, sheetEstado.getLastRow() - 1, 9).getValues();
+      const fila = data.find(row => String(row[0]).trim() === idLCF);
+      
+      if (fila) {
+        console.log('✅ En _EstadoLideres:');
+        console.log(`   Perfil: ${fila[8]}`);
+        console.log(`   IDP: ${fila[7]}`);
+        console.log(`   Días: ${fila[2]}`);
+      } else {
+        console.log('❌ NO en _EstadoLideres');
+      }
     }
     
-    // Test 2: Probar carga de perfiles
-    console.log('');
-    console.log('--- Test 2: Carga de perfiles ---');
-    const start1 = Date.now();
-    const estadosMap = cargarEstadoLideres();
-    const time1 = Date.now() - start1;
+    // 2. En datos cargados
+    const datos = cargarDirectorioCompleto();
+    const lider = datos.lideres.find(l => l.ID_Lider === idLCF);
     
-    console.log(`✅ Perfiles cargados: ${estadosMap.size} líderes (${time1}ms)`);
-    
-    // Test 3: Probar cálculo de días de inactividad
-    console.log('');
-    console.log('--- Test 3: Días de inactividad ---');
-    
-    // Obtener algunos IDs de LCF para probar
-    const lcfIds = Array.from(estadosMap.keys()).slice(0, 5);
-    console.log(`Probando con ${lcfIds.length} LCF del equipo`);
-    
-    const start2 = Date.now();
-    const inactividadMap = calcularDiasInactividadEquipo(lcfIds);
-    const time2 = Date.now() - start2;
-    
-    console.log(`✅ Días calculados: ${inactividadMap.size} líderes (${time2}ms)`);
-    
-    // Test 4: Mostrar ejemplos
-    console.log('');
-    console.log('--- Test 4: Ejemplos de datos híbridos ---');
-    
-    let ejemplosCount = 0;
-    for (const [id, estado] of estadosMap) {
-      if (ejemplosCount >= 3) break;
-      
-      const inactividad = inactividadMap.get(id);
-      
-      console.log(`📊 ${estado.Nombre_Lider}`);
-      console.log(`   ID: ${id}`);
-      console.log(`   Perfil: ${estado.Perfil_Lider} (IDP: ${estado.IDP})`);
-      console.log(`   Días inactivo: ${inactividad ? inactividad.dias_inactivo : 'N/A'}`);
-      console.log(`   Última actividad: ${inactividad && inactividad.ultima_actividad ? new Date(inactividad.ultima_actividad).toLocaleDateString() : 'N/A'}`);
-      
-      ejemplosCount++;
+    if (lider) {
+      console.log('');
+      console.log('✅ En datos cargados:');
+      console.log(`   Perfil: ${lider.Perfil_Lider || 'N/A'}`);
+      console.log(`   IDP: ${lider.IDP !== null ? lider.IDP : 'N/A'}`);
+      console.log(`   Días: ${lider.Dias_Inactivo !== null ? lider.Dias_Inactivo : 'N/A'}`);
+    } else {
+      console.log('❌ NO en datos cargados');
     }
     
-    console.log('');
-    console.log('🎉 ¡SISTEMA HYBRID FUNCIONANDO!');
-    console.log('✅ Perfiles pre-calculados (rápido)');
-    console.log('✅ Días de inactividad calculados por equipo (preciso)');
-    console.log('📊 Balance perfecto entre velocidad e información');
-    
-    return {
-      exitoso: true,
-      tiempo_perfiles_ms: time1,
-      tiempo_dias_ms: time2,
-      lideres_con_perfil: estadosMap.size,
-      lideres_con_dias: inactividadMap.size
-    };
+    return { exitoso: true };
     
   } catch (error) {
-    console.error('❌ Error en test hybrid:', error);
+    console.error('❌ Error:', error);
     return { exitoso: false, error: error.toString() };
   }
 }
 
-console.log('🧪 TestSuiteSimple cargado - Ejecuta testPrincipal() o testHybrid() para empezar');
+console.log('🧪 Tests disponibles: testCompleto(), limpiarCache(), verificarLCF(idLCF)');

@@ -1504,24 +1504,30 @@ function verDetalleCadenaLM(idLM) {
                         
                         <!-- LCF del Small Group -->
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 ml-4">
-                            ${sg.lcfs && sg.lcfs.length > 0 ? sg.lcfs.map(lcf => `
+                            ${sg.lcfs && sg.lcfs.length > 0 ? sg.lcfs.map(lcf => {
+                                const diasInactivo = lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo !== undefined ? lcf.Dias_Inactivo : null;
+                                const diasColor = diasInactivo !== null && diasInactivo <= 7 ? 'text-green-600' : 
+                                                 diasInactivo !== null && diasInactivo <= 14 ? 'text-yellow-600' : 
+                                                 diasInactivo !== null ? 'text-red-600' : 'text-gray-400';
+                                const estadoColor = getEstadoColor(lcf.Perfil_Lider || lcf.Estado_Actividad);
+                                return `
                                 <div class="bg-white border rounded p-2 text-sm">
                                     <div class="flex justify-between items-start">
                                         <div>
                                             <p class="font-medium text-gray-800">${lcf.Nombre_Lider}</p>
                                             <p class="text-xs text-gray-500">${lcf.ID_Lider}</p>
                                         </div>
-                                        <span class="text-xs px-2 py-1 rounded ${
-                                            lcf.Estado_Actividad === 'Activo' ? 'bg-green-100 text-green-700' :
-                                            lcf.Estado_Actividad === 'Alerta' ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-red-100 text-red-700'
-                                        }">
-                                            ${lcf.Estado_Actividad}
+                                        <span class="status-badge ${estadoColor} text-xs">
+                                            ${lcf.Perfil_Lider || lcf.Estado_Actividad}
                                         </span>
                                     </div>
                                     <div class="mt-1 text-xs text-gray-600">
                                         ${lcf.metricas?.total_almas || 0} almas | 
                                         ${lcf.metricas?.tasa_integracion || 0}% integración
+                                        ${diasInactivo !== null ? ` | <span class="${diasColor} font-semibold">📅 ${diasInactivo}d</span>` : ''}
+                                    </div>
+                                    <div class="mt-1 text-xs">
+                                        <span class="text-purple-600 font-semibold">IDP: ${lcf.IDP || 0}</span>
                                     </div>
                                     
                                     <div class="mt-2 grid grid-cols-3 gap-1">
@@ -1542,7 +1548,7 @@ function verDetalleCadenaLM(idLM) {
                                         </button>
                                     </div>
                                 </div>
-                            `).join('') : '<p class="text-gray-500 text-xs">Sin LCF asignados</p>'}
+                            `;}).join('') : '<p class="text-gray-500 text-xs">Sin LCF asignados</p>'}
                         </div>
                     </div>
                 `).join('') : '<p class="text-gray-500">No hay Small Groups en esta cadena</p>'}
@@ -1555,13 +1561,30 @@ function verDetalleCadenaLM(idLM) {
                             LCF reportando directamente (sin Small Group)
                         </h5>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            ${lm.lcfDirectos.map(lcf => `
+                            ${lm.lcfDirectos.map(lcf => {
+                                const diasInactivo = lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo !== undefined ? lcf.Dias_Inactivo : null;
+                                const diasColor = diasInactivo !== null && diasInactivo <= 7 ? 'text-green-600' : 
+                                                 diasInactivo !== null && diasInactivo <= 14 ? 'text-yellow-600' : 
+                                                 diasInactivo !== null ? 'text-red-600' : 'text-gray-400';
+                                const estadoColor = getEstadoColor(lcf.Perfil_Lider || lcf.Estado_Actividad);
+                                return `
                                 <div class="bg-orange-50 border border-orange-200 rounded p-2 text-sm">
-                                    <div>
-                                        <p class="font-medium">${lcf.Nombre_Lider}</p>
-                                        <p class="text-xs text-gray-600">
-                                            ${lcf.ID_Lider} | ${lcf.metricas?.total_almas || 0} almas | ${lcf.Estado_Actividad}
-                                        </p>
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p class="font-medium">${lcf.Nombre_Lider}</p>
+                                            <p class="text-xs text-gray-500">${lcf.ID_Lider}</p>
+                                        </div>
+                                        <span class="status-badge ${estadoColor} text-xs">
+                                            ${lcf.Perfil_Lider || lcf.Estado_Actividad}
+                                        </span>
+                                    </div>
+                                    <div class="text-xs text-gray-600">
+                                        ${lcf.metricas?.total_almas || 0} almas | 
+                                        ${lcf.metricas?.tasa_integracion || 0}% integración
+                                        ${diasInactivo !== null ? ` | <span class="${diasColor} font-semibold">📅 ${diasInactivo}d</span>` : ''}
+                                    </div>
+                                    <div class="mt-1 text-xs">
+                                        <span class="text-purple-600 font-semibold">IDP: ${lcf.IDP || 0}</span>
                                     </div>
                                     
                                     <div class="mt-2 grid grid-cols-3 gap-1">
@@ -1582,7 +1605,7 @@ function verDetalleCadenaLM(idLM) {
     </button>
 </div>
                                 </div>
-                            `).join('')}
+                            `;}).join('')}
                         </div>
                     </div>
                 ` : ''}
@@ -1683,30 +1706,46 @@ function verDetalleSG(idSG) {
             <div class="bg-white rounded-lg p-4">
                 <h4 class="font-bold text-gray-800 mb-3">LCF del Grupo (${sg.lcfs ? sg.lcfs.length : 0})</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    ${sg.lcfs && sg.lcfs.length > 0 ? sg.lcfs.map(lcf => `
+                    ${sg.lcfs && sg.lcfs.length > 0 ? sg.lcfs.map(lcf => {
+                        const diasInactivo = lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo !== undefined ? lcf.Dias_Inactivo : null;
+                        const diasColor = diasInactivo !== null && diasInactivo <= 7 ? 'text-green-600' : 
+                                         diasInactivo !== null && diasInactivo <= 14 ? 'text-yellow-600' : 
+                                         diasInactivo !== null ? 'text-red-600' : 'text-gray-400';
+                        const estadoColor = getEstadoColor(lcf.Perfil_Lider || lcf.Estado_Actividad);
+                        return `
                         <div class="bg-gray-50 border rounded-lg p-3">
                             <div class="flex justify-between items-start mb-2">
                                 <div>
                                     <p class="font-semibold">${lcf.Nombre_Lider}</p>
                                     <p class="text-xs text-gray-500">${lcf.ID_Lider}</p>
                                 </div>
-                                <span class="status-badge ${getEstadoColor(lcf.Estado_Actividad)} text-xs">
-                                    ${lcf.Estado_Actividad || 'Sin datos'}
+                                <span class="status-badge ${estadoColor} text-xs">
+                                    ${lcf.Perfil_Lider || lcf.Estado_Actividad || 'Sin datos'}
                                 </span>
                             </div>
                             
-                            <div class="grid grid-cols-3 gap-2 text-center text-xs mb-2">
+                            ${diasInactivo !== null ? `
+                            <div class="mb-2 text-xs">
+                                <span class="${diasColor} font-semibold">📅 ${diasInactivo} días sin actividad</span>
+                            </div>
+                            ` : ''}
+                            
+                            <div class="grid grid-cols-4 gap-2 text-center text-xs mb-2">
                                 <div>
                                     <div class="font-bold text-blue-600">${lcf.metricas?.total_almas || 0}</div>
                                     <div class="text-gray-500">Almas</div>
                                 </div>
                                 <div>
                                     <div class="font-bold text-green-600">${lcf.metricas?.almas_en_celula || 0}</div>
-                                    <div class="text-gray-500">En Célula</div>
+                                    <div class="text-gray-500">Célula</div>
                                 </div>
                                 <div>
-                                    <div class="font-bold text-purple-600">${lcf.metricas?.tasa_integracion || 0}%</div>
-                                    <div class="text-gray-500">Integración</div>
+                                    <div class="font-bold text-teal-600">${lcf.metricas?.tasa_integracion || 0}%</div>
+                                    <div class="text-gray-500">Integr.</div>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-purple-600">${lcf.IDP || 0}</div>
+                                    <div class="text-gray-500">IDP</div>
                                 </div>
                             </div>
                             
@@ -1729,7 +1768,7 @@ function verDetalleSG(idSG) {
     </button>
 </div>
                         </div>
-                    `).join('') : '<p class="text-center text-gray-500">No hay LCF en este grupo</p>'}
+                    `;}).join('') : '<p class="text-center text-gray-500">No hay LCF en este grupo</p>'}
                 </div>
             </div>
         </div>

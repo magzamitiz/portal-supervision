@@ -407,23 +407,35 @@ function cargarEstadoLideres(spreadsheet) {
       return estadosMap;
     }
     
-    // Leer datos: A2:H (ID_Lider a Perfil_Lider)
-    const data = sheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    // Leer datos: A2:I (ID_Lider a Perfil_Lider) - ✅ TODAS las columnas
+    const data = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
     console.log(`[CoreModule] 📊 Procesando ${data.length} líderes de _EstadoLideres`);
     
     data.forEach(row => {
       const idLider = String(row[0] || '').trim(); // Columna A: ID_Lider
       
       if (idLider) {
+        const diasSinActividad = parseInt(row[2]) || null; // Columna C: Días sin Actividad (REAL)
+        
+        // Calcular Ultima_Actividad basado en Días sin Actividad REALES
+        let ultimaActividad = null;
+        if (diasSinActividad !== null && diasSinActividad >= 0) {
+          const hoy = new Date();
+          ultimaActividad = new Date(hoy);
+          ultimaActividad.setDate(hoy.getDate() - diasSinActividad);
+        }
+        
         estadosMap.set(idLider, {
           ID_Lider: idLider,
           Nombre_Lider: String(row[1] || '').trim(),
-          Celulas_Activas: parseInt(row[2]) || 0,
-          Visitas_Positivas: parseInt(row[3]) || 0,
-          Visitas_No_Positivas: parseInt(row[4]) || 0,
-          Llamadas_Realizadas: parseInt(row[5]) || 0,
-          IDP: parseInt(row[6]) || 0,
-          Perfil_Lider: String(row[7] || '🌱 EN DESARROLLO').trim()
+          Dias_Inactivo: diasSinActividad, // ✅ Columna C - DATO REAL
+          Ultima_Actividad: ultimaActividad ? ultimaActividad.toISOString() : null,
+          Recibiendo_Celula: parseInt(row[3]) || 0, // Columna D
+          Visitas_Positivas: parseInt(row[4]) || 0, // Columna E
+          Visitas_No_Positivas: parseInt(row[5]) || 0, // Columna F
+          Llamadas_Realizadas: parseInt(row[6]) || 0, // Columna G
+          IDP: parseInt(row[7]) || 0, // Columna H
+          Perfil_Lider: String(row[8] || '🌱 EN DESARROLLO').trim() // Columna I
         });
       }
     });
@@ -455,7 +467,9 @@ function integrarPerfilesLideres(lideres, estadosMap) {
     if (estadoData) {
       return {
         ...lider,
-        Celulas_Activas: estadoData.Celulas_Activas,
+        Dias_Inactivo: estadoData.Dias_Inactivo, // ✅ Días sin actividad REALES
+        Ultima_Actividad: estadoData.Ultima_Actividad, // ✅ Calculado desde días reales
+        Recibiendo_Celula: estadoData.Recibiendo_Celula,
         Visitas_Positivas: estadoData.Visitas_Positivas,
         Visitas_No_Positivas: estadoData.Visitas_No_Positivas,
         Llamadas_Realizadas: estadoData.Llamadas_Realizadas,
@@ -467,7 +481,9 @@ function integrarPerfilesLideres(lideres, estadosMap) {
       // Si no hay datos en _EstadoLideres, asignar perfil por defecto
       return {
         ...lider,
-        Celulas_Activas: 0,
+        Dias_Inactivo: null,
+        Ultima_Actividad: null,
+        Recibiendo_Celula: 0,
         Visitas_Positivas: 0,
         Visitas_No_Positivas: 0,
         Llamadas_Realizadas: 0,
@@ -479,109 +495,8 @@ function integrarPerfilesLideres(lideres, estadosMap) {
   });
 }
 
-/**
- * Calcula días de inactividad solo para un equipo específico de LCF
- * ✅ OPTIMIZADO: Solo calcula para el equipo seleccionado, no todos los líderes
- * @param {Array<string>} lcfIds - Array de IDs de LCF del equipo
- * @param {Object} spreadsheet - (Opcional) Objeto spreadsheet ya abierto
- * @returns {Map<string, Object>} Mapa de ID_Lider a {dias_inactivo, ultima_actividad}
- */
-function calcularDiasInactividadEquipo(lcfIds, spreadsheet) {
-  console.log(`[CoreModule] Calculando días de inactividad para ${lcfIds.length} LCF...`);
-  
-  const inactividadMap = new Map();
-  
-  if (!lcfIds || lcfIds.length === 0) {
-    return inactividadMap;
-  }
-  
-  try {
-    // Reutilizar spreadsheet si se proporcionó
-    if (!spreadsheet) {
-      spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    }
-    
-    const sheet = spreadsheet.getSheetByName('_SeguimientoConsolidado');
-    
-    if (!sheet) {
-      console.warn('[CoreModule] ⚠️ Hoja _SeguimientoConsolidado no encontrada');
-      return inactividadMap;
-    }
-    
-    const lastRow = sheet.getLastRow();
-    if (lastRow < 2) {
-      console.log('[CoreModule] ⚠️ Hoja _SeguimientoConsolidado vacía');
-      return inactividadMap;
-    }
-    
-    // Leer datos: solo columnas necesarias (ID_LCF y Dias_Sin_Seguimiento)
-    const data = sheet.getRange(2, 3, lastRow - 1, 8).getValues(); // C:J
-    console.log(`[CoreModule] 📊 Procesando ${data.length} registros de seguimiento`);
-    
-    const hoy = new Date();
-    const lcfSet = new Set(lcfIds); // Para búsqueda rápida
-    
-    data.forEach(row => {
-      const idLCF = String(row[0] || '').trim(); // Columna C (índice 0 en el rango)
-      const diasSinSeguimiento = parseInt(row[7]) || null; // Columna J (índice 7 en el rango)
-      
-      // Solo procesar si el LCF está en el equipo
-      if (idLCF && lcfSet.has(idLCF)) {
-        // Calcular última actividad basada en días sin seguimiento
-        let ultimaActividad = null;
-        let diasInactivo = null;
-        
-        if (diasSinSeguimiento !== null && diasSinSeguimiento >= 0) {
-          ultimaActividad = new Date(hoy);
-          ultimaActividad.setDate(hoy.getDate() - diasSinSeguimiento);
-          diasInactivo = diasSinSeguimiento;
-        }
-        
-        // Solo actualizar si es más reciente o no existe
-        const existente = inactividadMap.get(idLCF);
-        if (!existente || (ultimaActividad && ultimaActividad > existente.ultima_actividad)) {
-          inactividadMap.set(idLCF, {
-            dias_inactivo: diasInactivo,
-            ultima_actividad: ultimaActividad ? ultimaActividad.toISOString() : null
-          });
-        }
-      }
-    });
-    
-    console.log(`[CoreModule] ✅ Días de inactividad calculados para ${inactividadMap.size} LCF del equipo`);
-    
-  } catch (error) {
-    console.error('[CoreModule] ❌ Error calculando días de inactividad:', error);
-  }
-  
-  return inactividadMap;
-}
-
-/**
- * Integra días de inactividad en el array de líderes
- * @param {Array<Object>} lideres - Array de líderes
- * @param {Map<string, Object>} inactividadMap - Mapa de días de inactividad
- * @returns {Array<Object>} Array de líderes con días de inactividad
- */
-function integrarDiasInactividad(lideres, inactividadMap) {
-  return lideres.map(lider => {
-    const inactividad = inactividadMap.get(lider.ID_Lider);
-    
-    if (inactividad) {
-      return {
-        ...lider,
-        Dias_Inactivo: inactividad.dias_inactivo,
-        Ultima_Actividad: inactividad.ultima_actividad
-      };
-    } else {
-      return {
-        ...lider,
-        Dias_Inactivo: null,
-        Ultima_Actividad: null
-      };
-    }
-  });
-}
+// ✅ ELIMINADAS: calcularDiasInactividadEquipo() e integrarDiasInactividad()
+// Ya no son necesarias porque TODO viene de _EstadoLideres con datos REALES
 
 // ==================== GESTIÓN DE DATOS DE LD ====================
 
@@ -746,30 +661,26 @@ function getDatosLDCompleto(idLD) {
     }
   }
   
-  // ✅ HYBRID: Calcular días de inactividad solo para este equipo
-  const lcfIdsEquipo = lideres
-    .filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LCF')
-    .map(l => l.ID_Lider);
-  
-  console.log(`[CoreModule] Calculando días de inactividad para ${lcfIdsEquipo.length} LCF del equipo...`);
-  const inactividadMap = calcularDiasInactividadEquipo(lcfIdsEquipo);
-  
+  // ✅ SIMPLIFICADO: TODO viene de _EstadoLideres (ya cargado en 'lideres' con integrarPerfilesLideres)
   const lcfBajoLD = lideres
     .filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LCF')
     .map(lcf => {
       const susCelulas = celulasPorLCF.get(lcf.ID_Lider) || [];
       const susIngresos = almasPorLCF.get(lcf.ID_Lider) || [];
-      const inactividad = inactividadMap.get(lcf.ID_Lider);
       
       return {
         ID_Lider: lcf.ID_Lider,
         Nombre_Lider: lcf.Nombre_Lider || 'Sin Nombre',
         Rol: lcf.Rol,
-        Estado_Actividad: (lcf.Estado_Actividad && lcf.Estado_Actividad !== '-') ? lcf.Estado_Actividad : 'Activo',
-        Perfil_Lider: lcf.Perfil_Lider || '🌱 EN DESARROLLO', // ✅ NUEVO: Perfil del líder
-        IDP: lcf.IDP || 0, // ✅ NUEVO: Índice de Productividad
-        Dias_Inactivo: inactividad ? inactividad.dias_inactivo : null, // ✅ HYBRID: Días de inactividad
-        Ultima_Actividad: inactividad ? inactividad.ultima_actividad : null, // ✅ HYBRID: Última actividad
+        Estado_Actividad: (lcf.Estado_Actividad && lcf.Estado_Actividad !== '-') ? lcf.Estado_Actividad : lcf.Perfil_Lider || 'Activo',
+        Perfil_Lider: lcf.Perfil_Lider || '🌱 EN DESARROLLO', // ✅ De _EstadoLideres
+        IDP: lcf.IDP || 0, // ✅ De _EstadoLideres
+        Dias_Inactivo: lcf.Dias_Inactivo, // ✅ De _EstadoLideres (DATO REAL)
+        Ultima_Actividad: lcf.Ultima_Actividad, // ✅ De _EstadoLideres (calculado desde días reales)
+        Recibiendo_Celula: lcf.Recibiendo_Celula || 0, // ✅ De _EstadoLideres
+        Visitas_Positivas: lcf.Visitas_Positivas || 0, // ✅ De _EstadoLideres
+        Visitas_No_Positivas: lcf.Visitas_No_Positivas || 0, // ✅ De _EstadoLideres
+        Llamadas_Realizadas: lcf.Llamadas_Realizadas || 0, // ✅ De _EstadoLideres
         Celulas: susCelulas.length,
         Miembros: susCelulas.reduce((sum, c) => sum + obtenerTotalMiembros(c), 0),
         Ingresos: susIngresos.length,
@@ -795,7 +706,11 @@ function getDatosLDCompleto(idLD) {
   // Crear índice de ingresos para optimización
   const ingresosIndex = indexarIngresosPorLCF(ingresos);
   
-  // Construir estructuras jerárquicas para modales
+  // ✅ SIMPLIFICADO: Los líderes YA tienen toda la información de _EstadoLideres
+  // incluyendo Dias_Inactivo, IDP, Perfil_Lider, etc.
+  // No necesitamos calcular nada más
+  
+  // Construir estructuras jerárquicas para modales (líderes ya tienen todo)
   const cadenasLM = construirCadenasLM(idLD, lideres, ingresosIndex);
   const smallGroupsDirectos = construirSmallGroupsDirectos(idLD, lideres, ingresosIndex);
   
@@ -857,7 +772,11 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
         ID_Lider: sg.ID_Lider,
         Nombre_Lider: sg.Nombre_Lider,
         Rol: sg.Rol,
-        Estado_Actividad: sg.Estado_Actividad,
+        Estado_Actividad: sg.Estado_Actividad || sg.Perfil_Lider,
+        Perfil_Lider: sg.Perfil_Lider || '🌱 EN DESARROLLO',
+        IDP: sg.IDP || 0,
+        Dias_Inactivo: sg.Dias_Inactivo,
+        Ultima_Actividad: sg.Ultima_Actividad,
         lcfs: lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF').map(lcf => {
           const data = ingresosIndex[lcf.ID_Lider] || { ingresos: [], total: 0, cantidad: 0 };
           const almasEnCelula = data.ingresos.filter(i => i.En_Celula).length;
@@ -867,7 +786,11 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
             ID_Lider: lcf.ID_Lider,
             Nombre_Lider: lcf.Nombre_Lider,
             Rol: lcf.Rol,
-            Estado_Actividad: lcf.Estado_Actividad,
+            Estado_Actividad: lcf.Estado_Actividad || lcf.Perfil_Lider,
+            Perfil_Lider: lcf.Perfil_Lider || '🌱 EN DESARROLLO', // ✅ HYBRID: Perfil
+            IDP: lcf.IDP || 0, // ✅ HYBRID: IDP
+            Dias_Inactivo: lcf.Dias_Inactivo, // ✅ HYBRID: Días de inactividad
+            Ultima_Actividad: lcf.Ultima_Actividad, // ✅ HYBRID: Última actividad
             metricas: {
               total_almas: data.cantidad,
               almas_en_celula: almasEnCelula,
@@ -887,7 +810,11 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
           ID_Lider: lcf.ID_Lider,
           Nombre_Lider: lcf.Nombre_Lider,
           Rol: lcf.Rol,
-          Estado_Actividad: lcf.Estado_Actividad,
+          Estado_Actividad: lcf.Estado_Actividad || lcf.Perfil_Lider,
+          Perfil_Lider: lcf.Perfil_Lider || '🌱 EN DESARROLLO', // ✅ HYBRID: Perfil
+          IDP: lcf.IDP || 0, // ✅ HYBRID: IDP
+          Dias_Inactivo: lcf.Dias_Inactivo, // ✅ HYBRID: Días de inactividad
+          Ultima_Actividad: lcf.Ultima_Actividad, // ✅ HYBRID: Última actividad
           metricas: {
             total_almas: data.cantidad,
             almas_en_celula: almasEnCelula,
@@ -933,14 +860,19 @@ function construirSmallGroupsDirectos(idLD, lideres, ingresosIndex) {
       ID_Lider: sg.ID_Lider,
       Nombre_Lider: sg.Nombre_Lider,
       Rol: sg.Rol,
-      Estado_Actividad: sg.Estado_Actividad,
+      Estado_Actividad: sg.Estado_Actividad || sg.Perfil_Lider,
+      Perfil_Lider: sg.Perfil_Lider || '🌱 EN DESARROLLO', // ✅ HYBRID: Perfil
+      IDP: sg.IDP || 0, // ✅ HYBRID: IDP
+      Dias_Inactivo: sg.Dias_Inactivo, // ✅ HYBRID: Días de inactividad
+      Ultima_Actividad: sg.Ultima_Actividad, // ✅ HYBRID: Última actividad
       metricas: {
         total_lcf: totalLCF,
         total_almas: totalAlmas,
         almas_en_celula: almasEnCelula,
         almas_sin_celula: totalAlmas - almasEnCelula,
         tasa_integracion: totalAlmas > 0 ? ((almasEnCelula / totalAlmas) * 100).toFixed(1) : 0,
-        carga_trabajo: totalAlmas > 0 ? (totalAlmas > 50 ? 'Alta' : totalAlmas > 20 ? 'Media' : 'Baja') : 'Sin Datos'
+        carga_trabajo: totalAlmas > 0 ? (totalAlmas > 50 ? 'Alta' : totalAlmas > 20 ? 'Media' : 'Baja') : 'Sin Datos',
+        lcf_activos: lcfs.filter(l => l.Dias_Inactivo !== null && l.Dias_Inactivo <= 7).length // ✅ Métrica de LCF activos
       },
       lcfs: lcfs.map(lcf => {
         const data = ingresosIndex[lcf.ID_Lider] || { ingresos: [], total: 0, cantidad: 0 };
@@ -951,7 +883,11 @@ function construirSmallGroupsDirectos(idLD, lideres, ingresosIndex) {
           ID_Lider: lcf.ID_Lider,
           Nombre_Lider: lcf.Nombre_Lider,
           Rol: lcf.Rol,
-          Estado_Actividad: lcf.Estado_Actividad,
+          Estado_Actividad: lcf.Estado_Actividad || lcf.Perfil_Lider,
+          Perfil_Lider: lcf.Perfil_Lider || '🌱 EN DESARROLLO', // ✅ HYBRID: Perfil
+          IDP: lcf.IDP || 0, // ✅ HYBRID: IDP
+          Dias_Inactivo: lcf.Dias_Inactivo, // ✅ HYBRID: Días de inactividad
+          Ultima_Actividad: lcf.Ultima_Actividad, // ✅ HYBRID: Última actividad
           metricas: {
             total_almas: data.cantidad,
             almas_en_celula: almasEnCelula,
