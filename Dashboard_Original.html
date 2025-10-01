@@ -949,29 +949,52 @@ function mostrarResumenLD() {
         </div>
 
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div class="text-center p-3 bg-gray-50 rounded">
-                <p class="text-3xl font-bold text-blue-600">${resumen.estructura?.total_lm ?? 0}</p>
-                <p class="text-sm text-gray-500">LM</p>
+            <!-- 1. Total Almas -->
+            <div class="text-center p-3 bg-blue-50 rounded">
+                <p class="text-3xl font-bold text-blue-600">${resumen.Total_Ingresos ?? 0}</p>
+                <p class="text-sm text-gray-600">Total Almas</p>
             </div>
-            <div class="text-center p-3 bg-gray-50 rounded">
-                <p class="text-3xl font-bold text-green-600">${resumen.estructura?.total_small_groups ?? 0}</p>
-                <p class="text-sm text-gray-500">Small Groups</p>
+            
+            <!-- 2. Almas sin Célula -->
+            <div class="text-center p-3 bg-orange-50 rounded">
+                <p class="text-3xl font-bold text-orange-600">${(resumen.Total_Ingresos ?? 0) - (resumen.Ingresos_En_Celula ?? 0)}</p>
+                <p class="text-sm text-gray-600">Almas sin Célula</p>
             </div>
-            <div class="text-center p-3 bg-gray-50 rounded">
-                <p class="text-3xl font-bold text-purple-600">${resumen.estructura?.total_lcf ?? 0}</p>
-                <p class="text-sm text-gray-500">LCF Total</p>
+            
+            <!-- 3. Recibiendo Célula (suma de todos los LCF del equipo) -->
+            <div class="text-center p-3 bg-teal-50 rounded">
+                <p class="text-3xl font-bold text-teal-600">${(() => {
+                    const total = datosLD.equipo?.reduce((sum, lcf) => sum + (lcf.Recibiendo_Celula || 0), 0) || 0;
+                    return total;
+                })()}</p>
+                <p class="text-sm text-gray-600">Recibiendo Célula</p>
             </div>
-            <div class="text-center p-3 bg-gray-50 rounded">
-                <p class="text-3xl font-bold text-indigo-600">${resumen.metricas?.total_almas ?? 0}</p>
-                <p class="text-sm text-gray-500">Total Almas</p>
+            
+            <!-- 4. LCF Productivos (IDP > 15) -->
+            <div class="text-center p-3 bg-green-50 rounded">
+                <p class="text-3xl font-bold text-green-600">${(() => {
+                    const productivos = datosLD.equipo?.filter(lcf => (lcf.IDP || 0) > 15).length || 0;
+                    return productivos;
+                })()}</p>
+                <p class="text-sm text-gray-600">LCF Productivos</p>
             </div>
-            <div class="text-center p-3 bg-gray-50 rounded">
-                <p class="text-3xl font-bold text-teal-600">${resumen.metricas?.activos_totales ?? 0}</p>
-                <p class="text-sm text-gray-500">Activos</p>
+            
+            <!-- 5. LCF Inactivos (Dias_Inactivo > 14 o IDP = 0) -->
+            <div class="text-center p-3 bg-red-50 rounded">
+                <p class="text-3xl font-bold text-red-600">${(() => {
+                    const inactivos = datosLD.equipo?.filter(lcf => 
+                        (lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo > 14) || 
+                        (lcf.IDP === 0 || lcf.Perfil_Lider?.includes('INACTIVO'))
+                    ).length || 0;
+                    return inactivos;
+                })()}</p>
+                <p class="text-sm text-gray-600">LCF Inactivos</p>
             </div>
-            <div class="text-center p-3 bg-gray-50 rounded">
-                <p class="text-3xl font-bold ${resumen.metricas?.sin_supervision_lm > 0 ? 'text-orange-600' : 'text-gray-400'}">${resumen.metricas?.sin_supervision_lm ?? 0}</p>
-                <p class="text-sm text-gray-500">Sin LM</p>
+            
+            <!-- 6. Total LCF -->
+            <div class="text-center p-3 bg-purple-50 rounded">
+                <p class="text-3xl font-bold text-purple-600">${resumen.Total_LCF ?? 0}</p>
+                <p class="text-sm text-gray-600">Total LCF</p>
             </div>
         </div>
         
