@@ -74,6 +74,48 @@
             .no-print { display: none !important; }
             #modalContenido { max-height: none !important; overflow: visible !important; }
         }
+        
+        /* ==================== ESTILOS PARA GRÁFICOS RESPONSIVE ==================== */
+        canvas#chartEstados, canvas#chartCelulas {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 320px !important;
+            max-height: 320px !important;
+        }
+        
+        /* Contenedores de gráficos con control de overflow */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            overflow: hidden;
+        }
+        
+        /* Responsive breakpoints para gráficos */
+        @media (max-width: 768px) {
+            canvas#chartEstados, canvas#chartCelulas {
+                height: 280px !important;
+                max-height: 280px !important;
+            }
+            .chart-container {
+                height: 280px;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            canvas#chartEstados, canvas#chartCelulas {
+                height: 240px !important;
+                max-height: 240px !important;
+            }
+            .chart-container {
+                height: 240px;
+            }
+        }
+        
+        /* Asegurar que los contenedores no se desborden */
+        .bg-white.rounded-lg.shadow-md {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -168,13 +210,17 @@
         
         <div id="panelGraficos" class="hidden mt-8">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-white rounded-lg shadow-md p-6 min-w-0 relative">
                     <h3 class="text-lg font-semibold mb-4">Matriz de Efectividad del Liderazgo</h3>
-                    <canvas id="chartEstados"></canvas>
+                    <div class="chart-container">
+                        <canvas id="chartEstados"></canvas>
+                    </div>
                 </div>
-                <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="bg-white rounded-lg shadow-md p-6 min-w-0 relative">
                     <h3 class="text-lg font-semibold mb-4">Flujo de Transición de Estados de Células</h3>
-                    <canvas id="chartCelulas"></canvas>
+                    <div class="chart-container">
+                        <canvas id="chartCelulas"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1993,14 +2039,21 @@ function rehidratarConfigChart(config) {
     if (config.options.plugins && config.options.plugins.tooltip) {
         config.options.plugins.tooltip.callbacks = {
             title: function(context) {
+                // Normalizar context para compatibilidad Chart.js 2.x/3+
+                const item = Array.isArray(context) ? context[0] : context;
+                
                 if (config.type === 'bubble') {
-                    return context.raw.lcfName || 'LCF';
+                    return item?.raw?.lcfName ?? 'LCF';
                 }
-                return `Período: ${context.label}`;
+                return `Período: ${item?.label ?? 'N/A'}`;
             },
             label: function(context) {
+                // Normalizar context para compatibilidad Chart.js 2.x/3+
+                const item = Array.isArray(context) ? context[0] : context;
+                
                 if (config.type === 'bubble') {
-                    const data = context.raw;
+                    const data = item?.raw;
+                    if (!data) return 'Datos no disponibles';
                     return [
                         `Células: ${data.x}`,
                         `Efectividad: ${data.y.toFixed(1)}%`,
@@ -2010,17 +2063,21 @@ function rehidratarConfigChart(config) {
                     ];
                 } else {
                     // Para Chart.js 3+, usar dataPoints del tooltip
-                    const dataPoints = context.chart.tooltip?.dataPoints || [];
-                    const total = dataPoints.reduce((sum, item) => sum + item.parsed.y, 0);
-                    const percentage = total > 0 ? ((context.parsed.y / total) * 100).toFixed(1) : 0;
-                    return `${context.dataset.label}: ${context.parsed.y} (${percentage}%)`;
+                    const dataPoints = item?.chart?.tooltip?.dataPoints || [];
+                    const total = dataPoints.reduce((sum, point) => sum + (point.parsed?.y || 0), 0);
+                    const currentValue = item?.parsed?.y || 0;
+                    const percentage = total > 0 ? ((currentValue / total) * 100).toFixed(1) : 0;
+                    return `${item?.dataset?.label || 'Serie'}: ${currentValue} (${percentage}%)`;
                 }
             },
             footer: function(context) {
+                // Normalizar context para compatibilidad Chart.js 2.x/3+
+                const item = Array.isArray(context) ? context[0] : context;
+                
                 if (config.type !== 'bubble') {
                     // Para Chart.js 3+, usar dataPoints del tooltip
-                    const dataPoints = context.chart.tooltip?.dataPoints || [];
-                    const total = dataPoints.reduce((sum, item) => sum + item.parsed.y, 0);
+                    const dataPoints = item?.chart?.tooltip?.dataPoints || [];
+                    const total = dataPoints.reduce((sum, point) => sum + (point.parsed?.y || 0), 0);
                     return `Total: ${total} células`;
                 }
                 return '';
@@ -2030,16 +2087,110 @@ function rehidratarConfigChart(config) {
     
     // Restaurar legend callbacks
     if (config.options.plugins && config.options.plugins.legend) {
+        // Obtener referencia a los defaults de legend
+        const defaultLegend = Chart.defaults.plugins.legend.labels;
+        
+        // Crear objeto de configuración con propiedades visuales
         config.options.plugins.legend.labels = {
-            ...Chart.defaults.plugins.legend.labels,
+            ...defaultLegend,
             usePointStyle: true,
             pointStyle: 'circle',
             padding: 20,
             font: { size: 12 }
         };
+        
+        // Restaurar métodos explícitamente (no se copian con spread)
+        if (defaultLegend.generateLabels) {
+            config.options.plugins.legend.labels.generateLabels = defaultLegend.generateLabels;
+        }
+        if (defaultLegend.filter) {
+            config.options.plugins.legend.labels.filter = defaultLegend.filter;
+        }
+        if (defaultLegend.sort) {
+            config.options.plugins.legend.labels.sort = defaultLegend.sort;
+        }
     }
     
     return config;
+}
+
+// ==================== FUNCIONES DE TESTING ====================
+
+/**
+ * Función de testing para verificar tooltips y layout
+ */
+function testGraficosCompletos() {
+    console.log('🧪 INICIANDO TESTING COMPLETO DE GRÁFICOS');
+    console.log('==========================================');
+    
+    // Test 1: Verificar contenedores
+    const panelGraficos = document.getElementById('panelGraficos');
+    const chartEstados = document.getElementById('chartEstados');
+    const chartCelulas = document.getElementById('chartCelulas');
+    
+    console.log('📊 Test 1 - Contenedores:');
+    console.log('  - panelGraficos:', panelGraficos ? '✅ Existe' : '❌ No existe');
+    console.log('  - chartEstados:', chartEstados ? '✅ Existe' : '❌ No existe');
+    console.log('  - chartCelulas:', chartCelulas ? '✅ Existe' : '❌ No existe');
+    
+    // Test 2: Verificar clases CSS
+    if (chartEstados && chartCelulas) {
+        console.log('🎨 Test 2 - Clases CSS:');
+        console.log('  - chartEstados classes:', chartEstados.className);
+        console.log('  - chartCelulas classes:', chartCelulas.className);
+        
+        // Verificar contenedores padre
+        const containerEstados = chartEstados.parentElement;
+        const containerCelulas = chartCelulas.parentElement;
+        console.log('  - Container Estados classes:', containerEstados?.className);
+        console.log('  - Container Celulas classes:', containerCelulas?.className);
+    }
+    
+    // Test 3: Verificar Chart.js
+    console.log('📈 Test 3 - Chart.js:');
+    console.log('  - Chart global:', typeof Chart !== 'undefined' ? '✅ Disponible' : '❌ No disponible');
+    console.log('  - chartEstados instance:', window.chartEstados instanceof Chart ? '✅ Activo' : '❌ No activo');
+    console.log('  - chartCelulas instance:', window.chartCelulas instanceof Chart ? '✅ Activo' : '❌ No activo');
+    
+    // Test 4: Verificar configuración de tooltips
+    if (window.chartEstados && window.chartEstados.options.plugins.tooltip) {
+        console.log('🔍 Test 4 - Tooltips:');
+        console.log('  - chartEstados tooltip callbacks:', Object.keys(window.chartEstados.options.plugins.tooltip.callbacks || {}));
+        console.log('  - chartEstados tooltip enabled:', window.chartEstados.options.plugins.tooltip.enabled);
+    }
+    
+    if (window.chartCelulas && window.chartCelulas.options.plugins.tooltip) {
+        console.log('  - chartCelulas tooltip callbacks:', Object.keys(window.chartCelulas.options.plugins.tooltip.callbacks || {}));
+        console.log('  - chartCelulas tooltip enabled:', window.chartCelulas.options.plugins.tooltip.enabled);
+    }
+    
+    // Test 5: Verificar responsive
+    console.log('📱 Test 5 - Responsive:');
+    console.log('  - Window width:', window.innerWidth);
+    console.log('  - Window height:', window.innerHeight);
+    console.log('  - Chart containers visible:', panelGraficos?.classList.contains('hidden') ? '❌ Oculto' : '✅ Visible');
+    
+    console.log('==========================================');
+    console.log('✅ TESTING COMPLETO FINALIZADO');
+    console.log('==========================================');
+    
+    return {
+        contenedores: {
+            panelGraficos: !!panelGraficos,
+            chartEstados: !!chartEstados,
+            chartCelulas: !!chartCelulas
+        },
+        chartjs: {
+            disponible: typeof Chart !== 'undefined',
+            chartEstados: window.chartEstados instanceof Chart,
+            chartCelulas: window.chartCelulas instanceof Chart
+        },
+        responsive: {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            visible: !panelGraficos?.classList.contains('hidden')
+        }
+    };
 }
 
         // Actualizar gráficos (VERSIÓN OPTIMIZADA CON DATOS PRE-CALCULADOS)
