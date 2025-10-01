@@ -317,9 +317,11 @@ function navegarDesdeModalA(funcionDestino, ...parametros) {
         // Helper para obtener el color de la carga
         function getCargaColor(carga) {
              switch (carga) {
-                case 'Óptima': return 'carga-optima';
-                case 'Moderada': return 'carga-moderada';
-                case 'Alta': return 'carga-alta';
+                case 'Baja': return 'carga-optima';        // Verde (0-20 almas)
+                case 'Media': return 'carga-moderada';     // Azul (21-50 almas)
+                case 'Alta': return 'carga-alta';          // Naranja (51+ almas)
+                case 'Óptima': return 'carga-optima';      // Legacy
+                case 'Moderada': return 'carga-moderada';  // Legacy
                 case 'SOBRECARGADO': return 'carga-sobrecargado';
                 default: return 'bg-gray-100 text-gray-700';
             }
@@ -1397,10 +1399,29 @@ function crearTarjetaLCFDirectoConReporte(lcf) {
   
   // ✅ HYBRID: Mostrar días de inactividad si están disponibles
   const diasInactivo = lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo !== undefined ? lcf.Dias_Inactivo : null;
-  const diasTexto = diasInactivo !== null ? `${diasInactivo} días` : 'N/A';
-  const diasColor = diasInactivo !== null && diasInactivo <= 7 ? 'text-green-600' : 
-                   diasInactivo !== null && diasInactivo <= 14 ? 'text-yellow-600' : 
-                   diasInactivo !== null ? 'text-red-600' : 'text-gray-400';
+  
+  // ✅ CORRECCIÓN: Si es 999, mostrar "Sin Datos" en lugar de "999 días"
+  let diasTexto, diasColor, mostrarDias;
+  
+  if (diasInactivo === null || diasInactivo === undefined) {
+    mostrarDias = false; // No mostrar nada
+  } else if (diasInactivo >= 999) {
+    diasTexto = 'Sin Datos';
+    diasColor = 'text-gray-500';
+    mostrarDias = true;
+  } else if (diasInactivo <= 7) {
+    diasTexto = `${diasInactivo} días`;
+    diasColor = 'text-green-600';
+    mostrarDias = true;
+  } else if (diasInactivo <= 14) {
+    diasTexto = `${diasInactivo} días`;
+    diasColor = 'text-yellow-600';
+    mostrarDias = true;
+  } else {
+    diasTexto = `${diasInactivo} días`;
+    diasColor = 'text-red-600';
+    mostrarDias = true;
+  }
   
   return `
     <div class="bg-red-50 border border-red-200 rounded-lg shadow p-3">
@@ -1411,7 +1432,7 @@ function crearTarjetaLCFDirectoConReporte(lcf) {
           <span class="status-badge ${estadoColor} text-xs">
             ${lcf.Perfil_Lider || lcf.Estado_Actividad}
           </span>
-          ${diasInactivo !== null ? `<span class="text-xs ${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
+          ${mostrarDias ? `<span class="text-xs ${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
         </div>
       </div>
       
@@ -1532,9 +1553,29 @@ function verDetalleCadenaLM(idLM) {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2 ml-4">
                             ${sg.lcfs && sg.lcfs.length > 0 ? sg.lcfs.map(lcf => {
                                 const diasInactivo = lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo !== undefined ? lcf.Dias_Inactivo : null;
-                                const diasColor = diasInactivo !== null && diasInactivo <= 7 ? 'text-green-600' : 
-                                                 diasInactivo !== null && diasInactivo <= 14 ? 'text-yellow-600' : 
-                                                 diasInactivo !== null ? 'text-red-600' : 'text-gray-400';
+                                
+                                // ✅ CORRECCIÓN: Si es 999, mostrar "Sin Datos"
+                                let diasTexto, diasColor, mostrarDias;
+                                if (diasInactivo === null || diasInactivo === undefined) {
+                                  mostrarDias = false;
+                                } else if (diasInactivo >= 999) {
+                                  diasTexto = 'Sin Datos';
+                                  diasColor = 'text-gray-500';
+                                  mostrarDias = true;
+                                } else if (diasInactivo <= 7) {
+                                  diasTexto = `${diasInactivo}d`;
+                                  diasColor = 'text-green-600';
+                                  mostrarDias = true;
+                                } else if (diasInactivo <= 14) {
+                                  diasTexto = `${diasInactivo}d`;
+                                  diasColor = 'text-yellow-600';
+                                  mostrarDias = true;
+                                } else {
+                                  diasTexto = `${diasInactivo}d`;
+                                  diasColor = 'text-red-600';
+                                  mostrarDias = true;
+                                }
+                                
                                 const estadoColor = getEstadoColor(lcf.Perfil_Lider || lcf.Estado_Actividad);
                                 return `
                                 <div class="bg-white border rounded p-2 text-sm">
@@ -1550,10 +1591,13 @@ function verDetalleCadenaLM(idLM) {
                                     <div class="mt-1 text-xs text-gray-600">
                                         ${lcf.metricas?.total_almas || 0} almas | 
                                         ${lcf.metricas?.tasa_integracion || 0}% integración
-                                        ${diasInactivo !== null ? ` | <span class="${diasColor} font-semibold">📅 ${diasInactivo}d</span>` : ''}
+                                        ${mostrarDias ? ` | <span class="${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
                                     </div>
-                                    <div class="mt-1 text-xs">
+                                    <div class="mt-1 flex gap-2 items-center text-xs">
                                         <span class="text-purple-600 font-semibold">IDP: ${lcf.IDP || 0}</span>
+                                        <span class="status-badge ${getCargaColor(lcf.metricas?.carga_trabajo)} text-xs">
+                                            Carga: ${lcf.metricas?.carga_trabajo || 'N/A'}
+                                        </span>
                                     </div>
                                     
                                     <div class="mt-2 grid grid-cols-3 gap-1">
@@ -1589,9 +1633,29 @@ function verDetalleCadenaLM(idLM) {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                             ${lm.lcfDirectos.map(lcf => {
                                 const diasInactivo = lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo !== undefined ? lcf.Dias_Inactivo : null;
-                                const diasColor = diasInactivo !== null && diasInactivo <= 7 ? 'text-green-600' : 
-                                                 diasInactivo !== null && diasInactivo <= 14 ? 'text-yellow-600' : 
-                                                 diasInactivo !== null ? 'text-red-600' : 'text-gray-400';
+                                
+                                // ✅ CORRECCIÓN: Si es 999, mostrar "Sin Datos"
+                                let diasTexto, diasColor, mostrarDias;
+                                if (diasInactivo === null || diasInactivo === undefined) {
+                                  mostrarDias = false;
+                                } else if (diasInactivo >= 999) {
+                                  diasTexto = 'Sin Datos';
+                                  diasColor = 'text-gray-500';
+                                  mostrarDias = true;
+                                } else if (diasInactivo <= 7) {
+                                  diasTexto = `${diasInactivo}d`;
+                                  diasColor = 'text-green-600';
+                                  mostrarDias = true;
+                                } else if (diasInactivo <= 14) {
+                                  diasTexto = `${diasInactivo}d`;
+                                  diasColor = 'text-yellow-600';
+                                  mostrarDias = true;
+                                } else {
+                                  diasTexto = `${diasInactivo}d`;
+                                  diasColor = 'text-red-600';
+                                  mostrarDias = true;
+                                }
+                                
                                 const estadoColor = getEstadoColor(lcf.Perfil_Lider || lcf.Estado_Actividad);
                                 return `
                                 <div class="bg-orange-50 border border-orange-200 rounded p-2 text-sm">
@@ -1607,10 +1671,13 @@ function verDetalleCadenaLM(idLM) {
                                     <div class="text-xs text-gray-600">
                                         ${lcf.metricas?.total_almas || 0} almas | 
                                         ${lcf.metricas?.tasa_integracion || 0}% integración
-                                        ${diasInactivo !== null ? ` | <span class="${diasColor} font-semibold">📅 ${diasInactivo}d</span>` : ''}
+                                        ${mostrarDias ? ` | <span class="${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
                                     </div>
-                                    <div class="mt-1 text-xs">
+                                    <div class="mt-1 flex gap-2 items-center text-xs">
                                         <span class="text-purple-600 font-semibold">IDP: ${lcf.IDP || 0}</span>
+                                        <span class="status-badge ${getCargaColor(lcf.metricas?.carga_trabajo)} text-xs">
+                                            Carga: ${lcf.metricas?.carga_trabajo || 'N/A'}
+                                        </span>
                                     </div>
                                     
                                     <div class="mt-2 grid grid-cols-3 gap-1">
@@ -1734,65 +1801,70 @@ function verDetalleSG(idSG) {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     ${sg.lcfs && sg.lcfs.length > 0 ? sg.lcfs.map(lcf => {
                         const diasInactivo = lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo !== undefined ? lcf.Dias_Inactivo : null;
-                        const diasColor = diasInactivo !== null && diasInactivo <= 7 ? 'text-green-600' : 
-                                         diasInactivo !== null && diasInactivo <= 14 ? 'text-yellow-600' : 
-                                         diasInactivo !== null ? 'text-red-600' : 'text-gray-400';
+                        
+                        // ✅ CORRECCIÓN: Si es 999, mostrar "Sin Datos"
+                        let diasTexto, diasColor, mostrarDias;
+                        if (diasInactivo === null || diasInactivo === undefined) {
+                          mostrarDias = false;
+                        } else if (diasInactivo >= 999) {
+                          diasTexto = 'Sin Datos';
+                          diasColor = 'text-gray-500';
+                          mostrarDias = true;
+                        } else if (diasInactivo <= 7) {
+                          diasTexto = `${diasInactivo}d`;
+                          diasColor = 'text-green-600';
+                          mostrarDias = true;
+                        } else if (diasInactivo <= 14) {
+                          diasTexto = `${diasInactivo}d`;
+                          diasColor = 'text-yellow-600';
+                          mostrarDias = true;
+                        } else {
+                          diasTexto = `${diasInactivo}d`;
+                          diasColor = 'text-red-600';
+                          mostrarDias = true;
+                        }
+                        
                         const estadoColor = getEstadoColor(lcf.Perfil_Lider || lcf.Estado_Actividad);
                         return `
-                        <div class="bg-gray-50 border rounded-lg p-3">
-                            <div class="flex justify-between items-start mb-2">
+                        <div class="bg-white border rounded p-2 text-sm">
+                            <div class="flex justify-between items-start">
                                 <div>
-                                    <p class="font-semibold">${lcf.Nombre_Lider}</p>
+                                    <p class="font-medium text-gray-800">${lcf.Nombre_Lider}</p>
                                     <p class="text-xs text-gray-500">${lcf.ID_Lider}</p>
                                 </div>
                                 <span class="status-badge ${estadoColor} text-xs">
                                     ${lcf.Perfil_Lider || lcf.Estado_Actividad || 'Sin datos'}
                                 </span>
                             </div>
-                            
-                            ${diasInactivo !== null ? `
-                            <div class="mb-2 text-xs">
-                                <span class="${diasColor} font-semibold">📅 ${diasInactivo} días sin actividad</span>
+                            <div class="mt-1 text-xs text-gray-600">
+                                ${lcf.metricas?.total_almas || 0} almas | 
+                                ${lcf.metricas?.tasa_integracion || 0}% integración
+                                ${mostrarDias ? ` | <span class="${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
                             </div>
-                            ` : ''}
-                            
-                            <div class="grid grid-cols-4 gap-2 text-center text-xs mb-2">
-                                <div>
-                                    <div class="font-bold text-blue-600">${lcf.metricas?.total_almas || 0}</div>
-                                    <div class="text-gray-500">Almas</div>
-                                </div>
-                                <div>
-                                    <div class="font-bold text-green-600">${lcf.metricas?.almas_en_celula || 0}</div>
-                                    <div class="text-gray-500">Célula</div>
-                                </div>
-                                <div>
-                                    <div class="font-bold text-teal-600">${lcf.metricas?.tasa_integracion || 0}%</div>
-                                    <div class="text-gray-500">Integr.</div>
-                                </div>
-                                <div>
-                                    <div class="font-bold text-purple-600">${lcf.IDP || 0}</div>
-                                    <div class="text-gray-500">IDP</div>
-                                </div>
+                            <div class="mt-1 flex gap-2 items-center text-xs">
+                                <span class="text-purple-600 font-semibold">IDP: ${lcf.IDP || 0}</span>
+                                <span class="status-badge ${getCargaColor(lcf.metricas?.carga_trabajo)} text-xs">
+                                    Carga: ${lcf.metricas?.carga_trabajo || 'N/A'}
+                                </span>
                             </div>
                             
-                            <!-- BOTONES CORREGIDOS -->
-                            <div class="grid grid-cols-3 gap-1">
-    <button onclick="verResumenLCF('${lcf.ID_Lider}', '${lcf.Nombre_Lider.replace(/'/g, "\\'")}')"
-            class="bg-blue-600 hover:bg-blue-700 text-white py-1 rounded text-xs"
-            title="Ver Resumen de Métricas">
-        <i class="fas fa-chart-line text-xs"></i>
-    </button>
-    <button onclick="verSeguimientoAlmasLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')"
-            class="bg-purple-600 hover:bg-purple-700 text-white py-1 rounded text-xs"
-            title="Seguimiento detallado">
-        <i class="fas fa-chart-bar text-xs"></i>
-    </button>
-    <button onclick="generarReporteLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')" 
-            class="bg-green-600 hover:bg-green-700 text-white py-1 rounded text-xs"
-            title="Generar PDF">
-        <i class="fas fa-file-pdf text-xs"></i>
-    </button>
-</div>
+                            <div class="mt-2 grid grid-cols-3 gap-1">
+                              <button onclick="verResumenLCF('${lcf.ID_Lider}', '${lcf.Nombre_Lider.replace(/'/g, "\\'")}')"
+                                    class="bg-blue-600 hover:bg-blue-700 text-white px-1 py-1 rounded text-xs"
+                                    title="Ver Resumen de Métricas">
+                                <i class="fas fa-chart-line text-xs"></i>
+                            </button>
+                              <button onclick="verSeguimientoAlmasLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')"
+                                     class="bg-purple-600 hover:bg-purple-700 text-white px-1 py-1 rounded text-xs"
+                                    title="Seguimiento detallado">
+                                    <i class="fas fa-chart-bar text-xs"></i>
+                                </button>
+                                <button onclick="generarReporteLCF('${lcf.ID_Lider}', '${escapeAttr(lcf.Nombre_Lider)}')" 
+                                        class="bg-green-600 hover:bg-green-700 text-white px-1 py-1 rounded text-xs"
+                                        title="PDF">
+                                    <i class="fas fa-file-pdf text-xs"></i>
+                                </button>
+                            </div>
                         </div>
                     `;}).join('') : '<p class="text-center text-gray-500">No hay LCF en este grupo</p>'}
                 </div>

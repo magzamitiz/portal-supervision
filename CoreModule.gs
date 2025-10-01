@@ -165,8 +165,8 @@ function cargarDirectorioCompleto(forceReload = false) {
     }
     
     if (celulas && ingresos && celulas.length > 0 && ingresos.length > 0) {
-      const almasEnCelulasMap = mapearAlmasACelulas(celulas);
-      integrarAlmasACelulas(ingresos, almasEnCelulasMap);
+    const almasEnCelulasMap = mapearAlmasACelulas(celulas);
+    integrarAlmasACelulas(ingresos, almasEnCelulasMap);
     }
     
     const procesamientoTime = Date.now() - procesamientoStart;
@@ -379,10 +379,10 @@ function cargarEstadoLideres(spreadsheet) {
   
   // Cache de resultados
   const cacheKey = 'ESTADO_LIDERES_CACHE';
-  const cache = CacheService.getScriptCache();
-  const cached = cache.get(cacheKey);
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get(cacheKey);
   
-  if (cached) {
+    if (cached) {
     console.log('[CoreModule] ✅ Usando estados desde caché');
     const data = JSON.parse(cached);
     return new Map(data);
@@ -415,7 +415,17 @@ function cargarEstadoLideres(spreadsheet) {
       const idLider = String(row[0] || '').trim(); // Columna A: ID_Lider
       
       if (idLider) {
-        const diasSinActividad = parseInt(row[2]) || null; // Columna C: Días sin Actividad (REAL)
+        // ✅ CORRECCIÓN: Manejar correctamente el valor 0 (reportó hoy)
+        const diasSinActividadRaw = row[2]; // Columna C: Días sin Actividad (REAL)
+        let diasSinActividad = null;
+        
+        if (diasSinActividadRaw !== null && diasSinActividadRaw !== undefined && diasSinActividadRaw !== '') {
+          diasSinActividad = parseInt(diasSinActividadRaw);
+          // Si parseInt falla, será NaN, lo convertimos a null
+          if (isNaN(diasSinActividad)) {
+            diasSinActividad = null;
+          }
+        }
         
         // Calcular Ultima_Actividad basado en Días sin Actividad REALES
         let ultimaActividad = null;
@@ -661,9 +671,36 @@ function getDatosLDCompleto(idLD) {
     }
   }
   
-  // ✅ SIMPLIFICADO: TODO viene de _EstadoLideres (ya cargado en 'lideres' con integrarPerfilesLideres)
-  const lcfBajoLD = lideres
-    .filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LCF')
+  // ✅ CORRECCIÓN: Obtener TODOS los LCF de la red completa (directos + en cadenas)
+  // Función recursiva para obtener todos los LCF de la red
+  function obtenerTodosLCFDeRed(idSuperior, lideresArray) {
+    const lcfsEncontrados = [];
+    
+    // 1. LCF directos
+    const lcfsDirectos = lideresArray.filter(l => l.ID_Lider_Directo === idSuperior && l.Rol === 'LCF');
+    lcfsEncontrados.push(...lcfsDirectos);
+    
+    // 2. LM que reportan a este superior
+    const lms = lideresArray.filter(l => l.ID_Lider_Directo === idSuperior && l.Rol === 'LM');
+    lms.forEach(lm => {
+      lcfsEncontrados.push(...obtenerTodosLCFDeRed(lm.ID_Lider, lideresArray));
+    });
+    
+    // 3. Small Groups que reportan a este superior
+    const sgs = lideresArray.filter(l => l.ID_Lider_Directo === idSuperior && l.Rol === 'SMALL GROUP');
+    sgs.forEach(sg => {
+      lcfsEncontrados.push(...obtenerTodosLCFDeRed(sg.ID_Lider, lideresArray));
+    });
+    
+    return lcfsEncontrados;
+  }
+  
+  // Obtener TODOS los LCF de toda la red del LD
+  const todosLCFDeRed = obtenerTodosLCFDeRed(idLD, lideres);
+  
+  console.log(`[CoreModule] ✅ Total LCF en la red del LD: ${todosLCFDeRed.length}`);
+  
+  const lcfBajoLD = todosLCFDeRed
     .map(lcf => {
       const susCelulas = celulasPorLCF.get(lcf.ID_Lider) || [];
       const susIngresos = almasPorLCF.get(lcf.ID_Lider) || [];
@@ -714,12 +751,47 @@ function getDatosLDCompleto(idLD) {
   const cadenasLM = construirCadenasLM(idLD, lideres, ingresosIndex);
   const smallGroupsDirectos = construirSmallGroupsDirectos(idLD, lideres, ingresosIndex);
   
+  // ✅ CORRECCIÓN: Separar LCF directos (sin supervisión) de todos los LCF de la red
+  const lcfDirectosSinSupervision = lideres
+    .filter(l => l.ID_Lider_Directo === idLD && l.Rol === 'LCF')
+    .map(lcf => {
+      const susCelulas = celulasPorLCF.get(lcf.ID_Lider) || [];
+      const susIngresos = almasPorLCF.get(lcf.ID_Lider) || [];
+      
+      return {
+        ID_Lider: lcf.ID_Lider,
+        Nombre_Lider: lcf.Nombre_Lider || 'Sin Nombre',
+        Rol: lcf.Rol,
+        Estado_Actividad: (lcf.Estado_Actividad && lcf.Estado_Actividad !== '-') ? lcf.Estado_Actividad : lcf.Perfil_Lider || 'Activo',
+        Perfil_Lider: lcf.Perfil_Lider || '🌱 EN DESARROLLO',
+        IDP: lcf.IDP || 0,
+        Dias_Inactivo: lcf.Dias_Inactivo,
+        Ultima_Actividad: lcf.Ultima_Actividad,
+        Recibiendo_Celula: lcf.Recibiendo_Celula || 0,
+        Visitas_Positivas: lcf.Visitas_Positivas || 0,
+        Visitas_No_Positivas: lcf.Visitas_No_Positivas || 0,
+        Llamadas_Realizadas: lcf.Llamadas_Realizadas || 0,
+        Celulas: susCelulas.length,
+        Miembros: susCelulas.reduce((sum, c) => sum + obtenerTotalMiembros(c), 0),
+        Ingresos: susIngresos.length,
+        Ingresos_Asignados: susIngresos.filter(i => i.Estado_Asignacion === 'Asignado').length,
+        Ingresos_En_Celula: susIngresos.filter(i => i.En_Celula).length,
+        metricas: {
+          total_almas: susIngresos.length,
+          almas_en_celula: susIngresos.filter(i => i.En_Celula).length,
+          almas_sin_celula: susIngresos.filter(i => !i.En_Celula).length,
+          tasa_integracion: susIngresos.length > 0 ? ((susIngresos.filter(i => i.En_Celula).length / susIngresos.length) * 100).toFixed(1) : 0,
+          carga_trabajo: susIngresos.length > 50 ? 'Alta' : susIngresos.length > 20 ? 'Media' : 'Baja'
+        }
+      };
+    });
+
   // Devolver estructura compatible con Dashboard
   return {
     success: true,
     resumen: {
       ld: ld,
-      Total_LCF: lcfBajoLD.length,
+      Total_LCF: lcfBajoLD.length, // Total de TODA la red
       Total_Celulas: totalCelulas,
       Total_Miembros: totalMiembros,
       Total_Ingresos: totalIngresos,
@@ -734,8 +806,8 @@ function getDatosLDCompleto(idLD) {
         tasa_integracion: totalIngresos > 0 ? ((totalIngresosEnCelula / totalIngresos) * 100).toFixed(1) : 0
       }
     },
-    lcf_directos: lcfBajoLD,
-    equipo: lcfBajoLD, // Por compatibilidad
+    lcf_directos: lcfDirectosSinSupervision, // ✅ Solo LCF directos al LD (sin LM/SG)
+    equipo: lcfBajoLD, // ✅ TODOS los LCF de la red (para métricas)
     cadenas_lm: cadenasLM, // Para modales
     small_groups_directos: smallGroupsDirectos, // Para modales
     modo: 'completo'
