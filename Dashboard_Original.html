@@ -169,11 +169,11 @@
         <div id="panelGraficos" class="hidden mt-8">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-lg shadow-md p-6">
-                    <h3 class="text-lg font-semibold mb-4">Actividad del Equipo (LCF)</h3>
+                    <h3 class="text-lg font-semibold mb-4">Matriz de Efectividad del Liderazgo</h3>
                     <canvas id="chartEstados"></canvas>
                 </div>
                 <div class="bg-white rounded-lg shadow-md p-6">
-                    <h3 class="text-lg font-semibold mb-4">Salud de las Células del Equipo</h3>
+                    <h3 class="text-lg font-semibold mb-4">Flujo de Transición de Estados de Células</h3>
                     <canvas id="chartCelulas"></canvas>
                 </div>
             </div>
@@ -2004,35 +2004,19 @@ function actualizarGraficos() {
     google.script.run
         .withSuccessHandler(function(resultado) {
             if (resultado.success) {
-                // Gráfico de Actividad del Equipo (LCF) - Doughnut
+                // Matriz de Efectividad del Liderazgo (Bubble Chart)
                 const ctxEstados = document.getElementById('chartEstados').getContext('2d');
                 if (window.chartEstados instanceof Chart) {
                     window.chartEstados.destroy();
                 }
-                window.chartEstados = new Chart(ctxEstados, {
-                    type: 'doughnut',
-                    data: resultado.graficos.actividadEquipo.chartData,
-                    options: { 
-                        responsive: true, 
-                        plugins: { legend: { position: 'bottom' } } 
-                    }
-                });
+                window.chartEstados = new Chart(ctxEstados, resultado.graficos.actividadEquipo.chartData);
                 
-                // Gráfico de Salud de Células - Bar Horizontal
+                // Flujo de Transición de Estados de Células (Área Apilada)
                 const ctxCelulas = document.getElementById('chartCelulas').getContext('2d');
                 if (window.chartCelulas instanceof Chart) {
                     window.chartCelulas.destroy();
                 }
-                window.chartCelulas = new Chart(ctxCelulas, {
-                    type: 'bar',
-                    data: resultado.graficos.saludCelulas.chartData,
-                    options: {
-                        responsive: true,
-                        indexAxis: 'y',
-                        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
-                        plugins: { legend: { display: false } }
-                    }
-                });
+                window.chartCelulas = new Chart(ctxCelulas, resultado.graficos.saludCelulas.chartData);
                 
                 console.log('✅ Gráficos actualizados con datos optimizados');
             } else {

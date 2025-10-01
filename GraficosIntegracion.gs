@@ -6,13 +6,13 @@
 // ==================== FUNCIONES DE INTEGRACIÓN CON DASHBOARD ====================
 
 /**
- * Actualiza el gráfico de "Actividad del Equipo (LCF)" con datos optimizados
+ * Genera la Matriz de Efectividad del Liderazgo (Bubble Chart)
  * @param {string} idLD - ID del LD para filtrar datos
- * @returns {Object} Datos optimizados para el gráfico
+ * @returns {Object} Datos para gráfico de burbujas
  */
 function actualizarGraficoActividadEquipo(idLD = null) {
   try {
-    console.log('🔄 Actualizando gráfico de actividad del equipo...');
+    console.log('🔄 Generando Matriz de Efectividad del Liderazgo...');
     
     // Obtener datos de gráficos
     const datosGraficos = obtenerDatosGraficos();
@@ -26,54 +26,134 @@ function actualizarGraficoActividadEquipo(idLD = null) {
       lcfData = lcfData.filter(lcf => lcf.LD_ID === idLD);
     }
     
-    // Contar estados de LCF
-    const conteos = {
-      activos: 0,
-      alerta: 0,
-      inactivos: 0,
-      sinDatos: 0
-    };
-    
-    lcfData.forEach(lcf => {
+    // Preparar datos para Bubble Chart
+    const bubbleData = lcfData.map(lcf => {
+      const numCelulas = parseInt(lcf.Num_Celulas) || 0;
+      const efectividad = parseFloat(lcf.Porcentaje_Efectividad) || 0;
+      const totalPersonas = parseInt(lcf.Total_Personas) || 0;
+      
+      // Determinar color basado en estado
+      let color = '#9ca3af'; // Gris por defecto
       switch(lcf.Estado_LCF) {
         case 'Activo':
-          conteos.activos++;
+          color = '#10b981'; // Verde
           break;
         case 'Alerta':
-          conteos.alerta++;
+          color = '#f59e0b'; // Amarillo
           break;
         case 'Inactivo':
-          conteos.inactivos++;
-          break;
-        default:
-          conteos.sinDatos++;
+          color = '#ef4444'; // Rojo
           break;
       }
+      
+      return {
+        x: numCelulas,
+        y: efectividad,
+        r: Math.max(8, Math.sqrt(totalPersonas) * 2.5), // Radio mínimo de 8
+        lcfName: lcf.LCF_Nombre,
+        lcfId: lcf.LCF_ID,
+        estado: lcf.Estado_LCF,
+        totalPersonas: totalPersonas,
+        ldName: lcf.LD_Nombre,
+        color: color
+      };
     });
     
-    // Preparar datos para Chart.js
+    // Preparar configuración del gráfico
     const chartData = {
-      labels: ['Activos', 'En Alerta', 'Inactivos', 'Sin Datos'],
-      datasets: [{
-        data: [conteos.activos, conteos.alerta, conteos.inactivos, conteos.sinDatos],
-        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#9ca3af'],
-        borderWidth: 2,
-        borderColor: '#ffffff'
-      }]
+      type: 'bubble',
+      data: {
+        datasets: [{
+          label: 'LCF por Efectividad',
+          data: bubbleData,
+          backgroundColor: bubbleData.map(b => b.color + '80'), // 50% transparencia
+          borderColor: bubbleData.map(b => b.color),
+          borderWidth: 2,
+          hoverBackgroundColor: bubbleData.map(b => b.color),
+          hoverBorderColor: '#ffffff',
+          hoverBorderWidth: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Matriz de Efectividad del Liderazgo',
+            font: { size: 16, weight: 'bold' }
+          },
+          legend: {
+            display: false
+          },
+          tooltip: {
+            enabled: true,
+            callbacks: {
+              title: function(context) {
+                return context[0].raw.lcfName;
+              },
+              label: function(context) {
+                const data = context.raw;
+                return [
+                  `Células: ${data.x}`,
+                  `Efectividad: ${data.y.toFixed(1)}%`,
+                  `Personas: ${data.totalPersonas}`,
+                  `Estado: ${data.estado}`,
+                  `LD: ${data.ldName}`
+                ];
+              }
+            },
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: '#ffffff',
+            bodyColor: '#ffffff',
+            borderColor: '#ffffff',
+            borderWidth: 1
+          }
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Número de Células bajo Supervisión',
+              font: { size: 12, weight: 'bold' }
+            },
+            beginAtZero: true,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Efectividad (%) - Células Saludables + Listas para Multiplicar',
+              font: { size: 12, weight: 'bold' }
+            },
+            beginAtZero: true,
+            max: 100,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          }
+        },
+        interaction: {
+          intersect: false,
+          mode: 'point'
+        }
+      }
     };
     
-    console.log(`✅ Gráfico de actividad actualizado: ${lcfData.length} LCF procesados`);
+    console.log(`✅ Matriz de efectividad generada: ${bubbleData.length} LCF procesados`);
     
     return {
       success: true,
       chartData: chartData,
+      bubbleData: bubbleData,
       totalLCF: lcfData.length,
-      conteos: conteos,
       timestamp: new Date().toISOString()
     };
     
   } catch (error) {
-    console.error('❌ Error actualizando gráfico de actividad:', error);
+    console.error('❌ Error generando matriz de efectividad:', error);
     return {
       success: false,
       error: error.toString(),
@@ -84,73 +164,197 @@ function actualizarGraficoActividadEquipo(idLD = null) {
 }
 
 /**
- * Actualiza el gráfico de "Salud de las Células del Equipo" con datos optimizados
- * @param {string} idLD - ID del LD para filtrar datos
- * @returns {Object} Datos optimizados para el gráfico
+ * Genera el Flujo de Transición de Estados de Células (Área Apilada Temporal)
+ * @param {string} idLD - ID del LD para filtrar datos (opcional, no aplica para histórico)
+ * @returns {Object} Datos para gráfico de área apilada
  */
 function actualizarGraficoSaludCelulas(idLD = null) {
   try {
-    console.log('🔄 Actualizando gráfico de salud de células...');
+    console.log('🔄 Generando Flujo de Transición de Estados de Células...');
     
-    // Obtener datos de gráficos
-    const datosGraficos = obtenerDatosGraficos();
-    if (!datosGraficos.success) {
-      throw new Error('No se pudieron obtener los datos de gráficos');
+    // Obtener datos históricos (últimos 6 meses)
+    const datosHistoricos = obtenerDatosHistoricos(6);
+    if (!datosHistoricos.success) {
+      throw new Error('No se pudieron obtener los datos históricos');
     }
     
-    // Filtrar por LD si se especifica
-    let lcfData = datosGraficos.data;
-    if (idLD) {
-      lcfData = lcfData.filter(lcf => lcf.LD_ID === idLD);
-    }
+    // Ordenar por fecha (más antiguo primero para el gráfico)
+    const datosOrdenados = datosHistoricos.data.sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
     
-    // Sumar células por estado de todos los LCF
-    const conteos = {
-      saludables: 0,
-      listasMultiplicar: 0,
-      enRiesgo: 0,
-      vacias: 0,
-      enCrecimiento: 0
-    };
-    
-    lcfData.forEach(lcf => {
-      conteos.saludables += parseInt(lcf.Celulas_Saludables) || 0;
-      conteos.listasMultiplicar += parseInt(lcf.Celulas_Listas_Multiplicar) || 0;
-      conteos.enRiesgo += parseInt(lcf.Celulas_En_Riesgo) || 0;
-      conteos.vacias += parseInt(lcf.Celulas_Vacias) || 0;
-      conteos.enCrecimiento += parseInt(lcf.Celulas_En_Crecimiento) || 0;
+    // Extraer datos para el gráfico
+    const labels = datosOrdenados.map(d => {
+      const fecha = new Date(d.Fecha);
+      return `${fecha.getMonth() + 1}/${fecha.getFullYear()}`;
     });
     
-    // Preparar datos para Chart.js (gráfico de barras horizontales)
+    // Preparar datos para Chart.js (gráfico de área apilada)
     const chartData = {
-      labels: ['Saludables', 'Listas para Multiplicar', 'En Crecimiento', 'En Riesgo', 'Vacías'],
-      datasets: [{
-        label: 'Células del Equipo',
-        data: [
-          conteos.saludables,
-          conteos.listasMultiplicar,
-          conteos.enCrecimiento,
-          conteos.enRiesgo,
-          conteos.vacias
-        ],
-        backgroundColor: ['#10b981', '#8b5cf6', '#3b82f6', '#f59e0b', '#ef4444'],
-        borderWidth: 1,
-        borderColor: '#ffffff'
-      }]
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Listas para Multiplicar',
+            data: datosOrdenados.map(d => parseInt(d.Listas_Multiplicar) || 0),
+            backgroundColor: 'rgba(16, 185, 129, 0.3)',
+            borderColor: '#10b981',
+            borderWidth: 3,
+            fill: '+1',
+            tension: 0.4,
+            pointBackgroundColor: '#10b981',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8
+          },
+          {
+            label: 'Saludables',
+            data: datosOrdenados.map(d => parseInt(d.Saludables) || 0),
+            backgroundColor: 'rgba(59, 130, 246, 0.3)',
+            borderColor: '#3b82f6',
+            borderWidth: 3,
+            fill: '+1',
+            tension: 0.4,
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8
+          },
+          {
+            label: 'En Crecimiento',
+            data: datosOrdenados.map(d => parseInt(d.En_Crecimiento) || 0),
+            backgroundColor: 'rgba(139, 92, 246, 0.3)',
+            borderColor: '#8b5cf6',
+            borderWidth: 3,
+            fill: '+1',
+            tension: 0.4,
+            pointBackgroundColor: '#8b5cf6',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8
+          },
+          {
+            label: 'En Riesgo',
+            data: datosOrdenados.map(d => parseInt(d.En_Riesgo) || 0),
+            backgroundColor: 'rgba(245, 158, 11, 0.3)',
+            borderColor: '#f59e0b',
+            borderWidth: 3,
+            fill: '+1',
+            tension: 0.4,
+            pointBackgroundColor: '#f59e0b',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8
+          },
+          {
+            label: 'Vacías',
+            data: datosOrdenados.map(d => parseInt(d.Vacias) || 0),
+            backgroundColor: 'rgba(239, 68, 68, 0.3)',
+            borderColor: '#ef4444',
+            borderWidth: 3,
+            fill: 'origin',
+            tension: 0.4,
+            pointBackgroundColor: '#ef4444',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 6,
+            pointHoverRadius: 8
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: 'Flujo de Transición de Estados de Células',
+            font: { size: 16, weight: 'bold' }
+          },
+          legend: {
+            position: 'top',
+            labels: {
+              usePointStyle: true,
+              pointStyle: 'circle',
+              padding: 20,
+              font: { size: 12 }
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: '#ffffff',
+            bodyColor: '#ffffff',
+            borderColor: '#ffffff',
+            borderWidth: 1,
+            callbacks: {
+              title: function(context) {
+                return `Período: ${context[0].label}`;
+              },
+              label: function(context) {
+                const total = context.reduce((sum, item) => sum + item.parsed.y, 0);
+                const percentage = total > 0 ? ((context.parsed.y / total) * 100).toFixed(1) : 0;
+                return `${context.dataset.label}: ${context.parsed.y} (${percentage}%)`;
+              },
+              footer: function(context) {
+                const total = context.reduce((sum, item) => sum + item.parsed.y, 0);
+                return `Total: ${total} células`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Período',
+              font: { size: 12, weight: 'bold' }
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Número de Células',
+              font: { size: 12, weight: 'bold' }
+            },
+            beginAtZero: true,
+            stacked: false,
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          }
+        },
+        elements: {
+          line: {
+            borderJoinStyle: 'round'
+          }
+        }
+      }
     };
     
-    console.log(`✅ Gráfico de salud de células actualizado: ${lcfData.length} LCF procesados`);
+    console.log(`✅ Flujo de transición generado: ${datosOrdenados.length} períodos procesados`);
     
     return {
       success: true,
       chartData: chartData,
-      totalLCF: lcfData.length,
-      conteos: conteos,
+      totalPeriodos: datosOrdenados.length,
+      datosHistoricos: datosOrdenados,
       timestamp: new Date().toISOString()
     };
     
   } catch (error) {
-    console.error('❌ Error actualizando gráfico de salud de células:', error);
+    console.error('❌ Error generando flujo de transición:', error);
     return {
       success: false,
       error: error.toString(),
