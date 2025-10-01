@@ -317,9 +317,10 @@ function navegarDesdeModalA(funcionDestino, ...parametros) {
         // Helper para obtener el color de la carga
         function getCargaColor(carga) {
              switch (carga) {
-                case 'Baja': return 'carga-optima';        // Verde (0-20 almas)
-                case 'Media': return 'carga-moderada';     // Azul (21-50 almas)
-                case 'Alta': return 'carga-alta';          // Naranja (51+ almas)
+                case 'Baja': return 'carga-optima';        // Verde (10-15 almas)
+                case 'Media': return 'carga-moderada';     // Azul (16-25 almas)
+                case 'Alta': return 'carga-alta';          // Naranja (26-35 almas)
+                case 'Muy Alta': return 'carga-sobrecargado'; // Rojo (36+ almas)
                 case 'Óptima': return 'carga-optima';      // Legacy
                 case 'Moderada': return 'carga-moderada';  // Legacy
                 case 'SOBRECARGADO': return 'carga-sobrecargado';
@@ -1442,8 +1443,8 @@ function crearTarjetaLCFDirectoConReporte(lcf) {
           <div class="text-gray-500">Almas</div>
         </div>
         <div class="bg-white rounded p-1">
-          <div class="font-bold text-green-600">${lcf.metricas.tasa_integracion}%</div>
-          <div class="text-gray-500">Integr.</div>
+          <div class="font-bold text-green-600">${lcf.Recibiendo_Celula || 0}</div>
+          <div class="text-gray-500">En Célula</div>
         </div>
         <div class="bg-white rounded p-1">
           <div class="font-bold text-purple-600">${lcf.IDP || 0}</div>
@@ -1589,9 +1590,7 @@ function verDetalleCadenaLM(idLM) {
                                         </span>
                                     </div>
                                     <div class="mt-1 text-xs text-gray-600">
-                                        ${lcf.metricas?.total_almas || 0} almas | 
-                                        ${lcf.metricas?.tasa_integracion || 0}% integración
-                                        ${mostrarDias ? ` | <span class="${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
+                                        ${lcf.metricas?.total_almas || 0} almas | ${lcf.Recibiendo_Celula || 0} en célula${mostrarDias ? ` | <span class="${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
                                     </div>
                                     <div class="mt-1 flex gap-2 items-center text-xs">
                                         <span class="text-purple-600 font-semibold">IDP: ${lcf.IDP || 0}</span>
@@ -1669,9 +1668,7 @@ function verDetalleCadenaLM(idLM) {
                                         </span>
                                     </div>
                                     <div class="text-xs text-gray-600">
-                                        ${lcf.metricas?.total_almas || 0} almas | 
-                                        ${lcf.metricas?.tasa_integracion || 0}% integración
-                                        ${mostrarDias ? ` | <span class="${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
+                                        ${lcf.metricas?.total_almas || 0} almas | ${lcf.Recibiendo_Celula || 0} en célula${mostrarDias ? ` | <span class="${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
                                     </div>
                                     <div class="mt-1 flex gap-2 items-center text-xs">
                                         <span class="text-purple-600 font-semibold">IDP: ${lcf.IDP || 0}</span>
@@ -1837,9 +1834,7 @@ function verDetalleSG(idSG) {
                                 </span>
                             </div>
                             <div class="mt-1 text-xs text-gray-600">
-                                ${lcf.metricas?.total_almas || 0} almas | 
-                                ${lcf.metricas?.tasa_integracion || 0}% integración
-                                ${mostrarDias ? ` | <span class="${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
+                                ${lcf.metricas?.total_almas || 0} almas | ${lcf.Recibiendo_Celula || 0} en célula${mostrarDias ? ` | <span class="${diasColor} font-semibold">📅 ${diasTexto}</span>` : ''}
                             </div>
                             <div class="mt-1 flex gap-2 items-center text-xs">
                                 <span class="text-purple-600 font-semibold">IDP: ${lcf.IDP || 0}</span>
@@ -1937,7 +1932,7 @@ function verDetalleLCF(idLCF) {
                     <p class="text-xs text-gray-600">Total Almas</p>
                 </div>
                 <div class="text-center p-3 bg-green-50 rounded">
-                    <p class="text-2xl font-bold text-green-600">${lcf.metricas.almas_en_celula}</p>
+                    <p class="text-2xl font-bold text-green-600">${lcf.Recibiendo_Celula || 0}</p>
                     <p class="text-xs text-gray-600">En Célula</p>
                 </div>
                 <div class="text-center p-3 bg-orange-50 rounded">
@@ -1945,8 +1940,8 @@ function verDetalleLCF(idLCF) {
                     <p class="text-xs text-gray-600">Sin Célula</p>
                 </div>
                 <div class="text-center p-3 bg-purple-50 rounded">
-                    <p class="text-2xl font-bold text-purple-600">${lcf.metricas.tasa_integracion}%</p>
-                    <p class="text-xs text-gray-600">Integración</p>
+                    <p class="text-2xl font-bold text-purple-600">${lcf.Recibiendo_Celula || 0}</p>
+                    <p class="text-xs text-gray-600">En Célula</p>
                 </div>
             </div>
             

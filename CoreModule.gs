@@ -728,7 +728,7 @@ function getDatosLDCompleto(idLD) {
           almas_en_celula: susIngresos.filter(i => i.En_Celula).length,
           almas_sin_celula: susIngresos.filter(i => !i.En_Celula).length,
           tasa_integracion: susIngresos.length > 0 ? ((susIngresos.filter(i => i.En_Celula).length / susIngresos.length) * 100).toFixed(1) : 0,
-          carga_trabajo: susIngresos.length > 50 ? 'Alta' : susIngresos.length > 20 ? 'Media' : 'Baja'
+          carga_trabajo: susIngresos.length >= 36 ? 'Muy Alta' : susIngresos.length >= 26 ? 'Alta' : susIngresos.length >= 16 ? 'Media' : 'Baja'
         }
       };
     });
@@ -781,7 +781,7 @@ function getDatosLDCompleto(idLD) {
           almas_en_celula: susIngresos.filter(i => i.En_Celula).length,
           almas_sin_celula: susIngresos.filter(i => !i.En_Celula).length,
           tasa_integracion: susIngresos.length > 0 ? ((susIngresos.filter(i => i.En_Celula).length / susIngresos.length) * 100).toFixed(1) : 0,
-          carga_trabajo: susIngresos.length > 50 ? 'Alta' : susIngresos.length > 20 ? 'Media' : 'Baja'
+          carga_trabajo: susIngresos.length >= 36 ? 'Muy Alta' : susIngresos.length >= 26 ? 'Alta' : susIngresos.length >= 16 ? 'Media' : 'Baja'
         }
       };
     });
@@ -875,7 +875,7 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
               almas_en_celula: almasEnCelula,
               almas_sin_celula: almasSinCelula,
               tasa_integracion: data.cantidad > 0 ? ((almasEnCelula / data.cantidad) * 100).toFixed(1) : 0,
-              carga_trabajo: data.cantidad > 0 ? (data.cantidad > 10 ? 'Alta' : data.cantidad > 5 ? 'Media' : 'Baja') : 'Sin Datos'
+              carga_trabajo: data.cantidad > 0 ? (data.cantidad >= 36 ? 'Muy Alta' : data.cantidad >= 26 ? 'Alta' : data.cantidad >= 16 ? 'Media' : 'Baja') : 'Sin Datos'
             }
           };
         })
@@ -952,7 +952,7 @@ function construirSmallGroupsDirectos(idLD, lideres, ingresosIndex) {
         almas_en_celula: almasEnCelula,
         almas_sin_celula: totalAlmas - almasEnCelula,
         tasa_integracion: totalAlmas > 0 ? ((almasEnCelula / totalAlmas) * 100).toFixed(1) : 0,
-        carga_trabajo: totalAlmas > 0 ? (totalAlmas > 50 ? 'Alta' : totalAlmas > 20 ? 'Media' : 'Baja') : 'Sin Datos',
+        carga_trabajo: totalAlmas > 0 ? (totalAlmas >= 36 ? 'Muy Alta' : totalAlmas >= 26 ? 'Alta' : totalAlmas >= 16 ? 'Media' : 'Baja') : 'Sin Datos',
         lcf_activos: lcfs.filter(l => l.Dias_Inactivo !== null && l.Dias_Inactivo <= 7).length // ✅ Métrica de LCF activos
       },
       lcfs: lcfs.map(lcf => {

@@ -12,14 +12,25 @@
  */
 function mapearAlmasACelulas(celulas) {
   const mapa = new Map();
+  let totalMiembros = 0;
+  
   celulas.forEach(celula => {
-    celula.Miembros.forEach(miembro => {
-      if (miembro.ID_Miembro) {
-        // ID_Miembro en Células se asume que es el ID_Alma en Ingresos
-        mapa.set(miembro.ID_Miembro, celula.ID_Celula);
-      }
-    });
+    if (celula.Miembros && celula.Miembros.length > 0) {
+      celula.Miembros.forEach(miembro => {
+        // ✅ FIX: Buscar el ID en cualquier campo posible
+        const idMiembro = miembro.ID_Miembro || miembro.ID_Alma || miembro.id_miembro || miembro.id_alma;
+        if (idMiembro) {
+          const idLimpio = String(idMiembro).trim();
+          if (idLimpio) {
+            mapa.set(idLimpio, celula.ID_Celula);
+            totalMiembros++;
+          }
+        }
+      });
+    }
   });
+  
+  console.log(`[ActividadModule] ✅ Mapeadas ${totalMiembros} almas a células (${mapa.size} únicas)`);
   return mapa;
 }
 
@@ -29,11 +40,20 @@ function mapearAlmasACelulas(celulas) {
  * @param {Map<string, string>} almasEnCelulasMap - Mapa de ID_Alma a ID_Celula
  */
 function integrarAlmasACelulas(ingresos, almasEnCelulasMap) {
+  let almasAsignadas = 0;
+  
   ingresos.forEach(ingreso => {
-    const idCelula = almasEnCelulasMap.get(ingreso.ID_Alma);
+    // ✅ FIX: Limpiar el ID antes de buscar en el mapa
+    const idAlma = ingreso.ID_Alma ? String(ingreso.ID_Alma).trim() : null;
+    const idCelula = idAlma ? almasEnCelulasMap.get(idAlma) : null;
+    
     ingreso.ID_Celula = idCelula || null;
     ingreso.En_Celula = !!idCelula;
+    
+    if (idCelula) almasAsignadas++;
   });
+  
+  console.log(`[ActividadModule] ✅ ${almasAsignadas} de ${ingresos.length} almas asignadas a células (${((almasAsignadas/ingresos.length)*100).toFixed(1)}%)`);
 }
 
 console.log('📊 ActividadModule cargado (versión simplificada) - Solo mapeo de almas a células');

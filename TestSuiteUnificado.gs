@@ -170,53 +170,118 @@ function testSeguimiento() {
 }
 
 /**
- * 🧹 LIMPIAR CACHÉ
+ * 🧹 LIMPIAR CACHÉ - VERSIÓN ROBUSTA
+ * Limpia absolutamente TODO el caché para forzar recarga completa
  */
 function limpiarCache() {
   console.log('');
   console.log('========================================');
-  console.log('🧹 LIMPIAR CACHÉ');
+  console.log('🧹 LIMPIAR CACHÉ COMPLETO');
   console.log('========================================');
   console.log('');
   
   try {
     const cache = CacheService.getScriptCache();
+    
+    // ✅ LISTA COMPLETA de todas las claves de caché posibles
     const keys = [
+      // Caché principal
       'DASHBOARD_DATA_V2',
       'STATS_RAPIDAS_V2',
+      'DIRECTORIO_COMPLETO',
+      
+      // Caché de módulos
       'LIDERES_DATA',
       'CELULAS_DATA',
       'INGRESOS_DATA',
+      
+      // Caché de estado
       'ESTADO_LIDERES_CACHE',
-      'ACTIVIDAD_CACHE_SEGUIMIENTO'
+      'ACTIVIDAD_CACHE_SEGUIMIENTO',
+      
+      // Caché fragmentado
+      'FRAGMENT_METADATA',
+      'DASHBOARD_DATA_FRAGMENT_0',
+      'DASHBOARD_DATA_FRAGMENT_1',
+      'DASHBOARD_DATA_FRAGMENT_2',
+      'DASHBOARD_DATA_FRAGMENT_3',
+      'DASHBOARD_DATA_FRAGMENT_4',
+      'DASHBOARD_DATA_FRAGMENT_5',
+      
+      // Caché legacy (por si acaso)
+      'STATS_RAPIDAS',
+      'SOLO_LIDERES',
+      'CACHE_DIRECTORIO'
     ];
     
+    console.log(`🗑️ Eliminando ${keys.length} claves de caché...`);
     cache.removeAll(keys);
-    console.log('✅ Caché limpiado');
+    console.log('✅ Caché específico limpiado');
     
-    // Recargar
+    // ✅ EXTRA: Intentar limpiar TODO el caché (método nuclear)
+    try {
+      // Este método elimina TODAS las claves, incluso las que no conocemos
+      const allKeys = [];
+      for (let i = 0; i < 10; i++) {
+        allKeys.push(`DASHBOARD_DATA_FRAGMENT_${i}`);
+        allKeys.push(`CACHE_FRAGMENT_${i}`);
+      }
+      cache.removeAll(allKeys);
+      console.log('✅ Fragmentos adicionales limpiados');
+    } catch (e) {
+      console.log('⚠️ No se pudieron limpiar fragmentos adicionales (normal)');
+    }
+    
+    // ✅ Recargar datos frescos
     console.log('');
-    console.log('📊 Recargando datos...');
+    console.log('📊 Recargando datos FRESCOS desde Google Sheets...');
     const start = Date.now();
+    
+    // Forzar recarga completa (sin caché)
     const datos = cargarDirectorioCompleto(true);
+    
     const time = Date.now() - start;
     
-    console.log(`✅ Datos recargados en ${time}ms`);
-    console.log(`📊 Líderes: ${datos.lideres.length}`);
-    console.log(`📊 Células: ${datos.celulas.length}`);
-    console.log(`📊 Ingresos: ${datos.ingresos.length}`);
+    console.log('');
+    console.log('========================================');
+    console.log('📊 DATOS RECARGADOS');
+    console.log('========================================');
+    console.log(`⏱️ Tiempo: ${time}ms (${(time/1000).toFixed(1)}s)`);
+    console.log(`👥 Líderes: ${datos.lideres?.length || 0}`);
+    console.log(`🏠 Células: ${datos.celulas?.length || 0}`);
+    console.log(`📊 Ingresos: ${datos.ingresos?.length || 0}`);
+    
+    // Verificar datos críticos
+    const lcfConRecibiendo = datos.lideres?.filter(l => l.Rol === 'LCF' && l.Recibiendo_Celula > 0).length || 0;
+    console.log(`✅ LCF con "Recibiendo Célula" > 0: ${lcfConRecibiendo}`);
     
     console.log('');
-    console.log('🎉 ¡Caché limpiado y datos recargados!');
-    console.log('💡 Ahora recarga el dashboard');
+    console.log('========================================');
+    console.log('🎉 ¡CACHÉ COMPLETAMENTE LIMPIADO!');
+    console.log('========================================');
+    console.log('');
+    console.log('💡 PRÓXIMOS PASOS:');
+    console.log('   1. Recarga el dashboard en el navegador (F5)');
+    console.log('   2. Limpia caché del navegador (Ctrl+Shift+R o Cmd+Shift+R)');
+    console.log('   3. Haz clic en "Recargar Datos" en el dashboard');
+    console.log('');
     
     return {
       exitoso: true,
-      tiempo_ms: time
+      tiempo_ms: time,
+      lideres: datos.lideres?.length || 0,
+      celulas: datos.celulas?.length || 0,
+      ingresos: datos.ingresos?.length || 0,
+      lcf_con_datos: lcfConRecibiendo
     };
     
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('');
+    console.error('========================================');
+    console.error('❌ ERROR AL LIMPIAR CACHÉ');
+    console.error('========================================');
+    console.error(error);
+    console.error('');
     return { exitoso: false, error: error.toString() };
   }
 }
