@@ -368,9 +368,8 @@ function verificarLCF(idLCF) {
     
     return { 
       exitoso: true,
-      encontrado_estado: !!fila,
+      encontrado_estado: sheetEstado ? true : false,
       encontrado_datos: !!lider,
-      recibiendo_celula_estado: fila ? fila[3] : null,
       recibiendo_celula_datos: lider ? lider.Recibiendo_Celula : null
     };
     
@@ -474,3 +473,26 @@ function testMetricasResumen() {
 }
 
 console.log('🧪 Tests disponibles: testCompleto(), testMetricasResumen(), limpiarCache(), verificarLCF(idLCF)');
+
+// ==================== FUNCIONES HELPER PARA TESTS ====================
+
+/**
+ * 🔍 Verificar KARLA (LCF-1035)
+ */
+function testKarla() {
+  return verificarLCF('LCF-1035');
+}
+
+/**
+ * 🔍 Verificar ANA KAREN (LCF-1011)
+ */
+function testAnaKaren() {
+  return verificarLCF('LCF-1011');
+}
+
+/**
+ * 🔍 Verificar ULISES (LCF-1067)
+ */
+function testUlises() {
+  return verificarLCF('LCF-1067');
+}

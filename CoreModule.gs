@@ -870,6 +870,7 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
             IDP: lcf.IDP || 0, // ✅ HYBRID: IDP
             Dias_Inactivo: lcf.Dias_Inactivo, // ✅ HYBRID: Días de inactividad
             Ultima_Actividad: lcf.Ultima_Actividad, // ✅ HYBRID: Última actividad
+            Recibiendo_Celula: lcf.Recibiendo_Celula || 0, // ✅ FIX: Agregar campo de _EstadoLideres
             metricas: {
               total_almas: data.cantidad,
               almas_en_celula: almasEnCelula,
@@ -894,12 +895,13 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
           IDP: lcf.IDP || 0, // ✅ HYBRID: IDP
           Dias_Inactivo: lcf.Dias_Inactivo, // ✅ HYBRID: Días de inactividad
           Ultima_Actividad: lcf.Ultima_Actividad, // ✅ HYBRID: Última actividad
+          Recibiendo_Celula: lcf.Recibiendo_Celula || 0, // ✅ FIX: Agregar campo de _EstadoLideres
           metricas: {
             total_almas: data.cantidad,
             almas_en_celula: almasEnCelula,
             almas_sin_celula: almasSinCelula,
             tasa_integracion: data.cantidad > 0 ? ((almasEnCelula / data.cantidad) * 100).toFixed(1) : 0,
-            carga_trabajo: data.cantidad > 0 ? (data.cantidad > 10 ? 'Alta' : data.cantidad > 5 ? 'Media' : 'Baja') : 'Sin Datos'
+            carga_trabajo: data.cantidad >= 36 ? 'Muy Alta' : data.cantidad >= 26 ? 'Alta' : data.cantidad >= 16 ? 'Media' : 'Baja'
           }
         };
       }),
@@ -969,12 +971,13 @@ function construirSmallGroupsDirectos(idLD, lideres, ingresosIndex) {
           IDP: lcf.IDP || 0, // ✅ HYBRID: IDP
           Dias_Inactivo: lcf.Dias_Inactivo, // ✅ HYBRID: Días de inactividad
           Ultima_Actividad: lcf.Ultima_Actividad, // ✅ HYBRID: Última actividad
+          Recibiendo_Celula: lcf.Recibiendo_Celula || 0, // ✅ FIX: Agregar campo de _EstadoLideres
           metricas: {
             total_almas: data.cantidad,
             almas_en_celula: almasEnCelula,
             almas_sin_celula: almasSinCelula,
             tasa_integracion: data.cantidad > 0 ? ((almasEnCelula / data.cantidad) * 100).toFixed(1) : 0,
-            carga_trabajo: data.cantidad > 0 ? (data.cantidad > 10 ? 'Alta' : data.cantidad > 5 ? 'Media' : 'Baja') : 'Sin Datos'
+            carga_trabajo: data.cantidad >= 36 ? 'Muy Alta' : data.cantidad >= 26 ? 'Alta' : data.cantidad >= 16 ? 'Media' : 'Baja'
           }
         };
       })
