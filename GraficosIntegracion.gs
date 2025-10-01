@@ -88,21 +88,6 @@ function actualizarGraficoActividadEquipo(idLD = null) {
           },
           tooltip: {
             enabled: true,
-            callbacks: {
-              title: function(context) {
-                return context[0].raw.lcfName;
-              },
-              label: function(context) {
-                const data = context.raw;
-                return [
-                  `Células: ${data.x}`,
-                  `Efectividad: ${data.y.toFixed(1)}%`,
-                  `Personas: ${data.totalPersonas}`,
-                  `Estado: ${data.estado}`,
-                  `LD: ${data.ldName}`
-                ];
-              }
-            },
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
             titleColor: '#ffffff',
             bodyColor: '#ffffff',
@@ -279,13 +264,7 @@ function actualizarGraficoSaludCelulas(idLD = null) {
             font: { size: 16, weight: 'bold' }
           },
           legend: {
-            position: 'top',
-            labels: {
-              usePointStyle: true,
-              pointStyle: 'circle',
-              padding: 20,
-              font: { size: 12 }
-            }
+            position: 'top'
           },
           tooltip: {
             mode: 'index',
@@ -294,21 +273,7 @@ function actualizarGraficoSaludCelulas(idLD = null) {
             titleColor: '#ffffff',
             bodyColor: '#ffffff',
             borderColor: '#ffffff',
-            borderWidth: 1,
-            callbacks: {
-              title: function(context) {
-                return `Período: ${context[0].label}`;
-              },
-              label: function(context) {
-                const total = context.reduce((sum, item) => sum + item.parsed.y, 0);
-                const percentage = total > 0 ? ((context.parsed.y / total) * 100).toFixed(1) : 0;
-                return `${context.dataset.label}: ${context.parsed.y} (${percentage}%)`;
-              },
-              footer: function(context) {
-                const total = context.reduce((sum, item) => sum + item.parsed.y, 0);
-                return `Total: ${total} células`;
-              }
-            }
+            borderWidth: 1
           }
         },
         scales: {

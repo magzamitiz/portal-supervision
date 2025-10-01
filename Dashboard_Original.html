@@ -1985,6 +1985,59 @@ function cerrarModal() {
     modal.style.display = 'none'; 
 }
         
+        // Función helper para restaurar callbacks perdidos en la serialización
+function rehidratarConfigChart(config) {
+    if (!config || !config.options) return config;
+    
+    // Restaurar tooltip callbacks
+    if (config.options.plugins && config.options.plugins.tooltip) {
+        config.options.plugins.tooltip.callbacks = {
+            title: function(context) {
+                if (config.type === 'bubble') {
+                    return context[0].raw.lcfName || 'LCF';
+                }
+                return `Período: ${context[0].label}`;
+            },
+            label: function(context) {
+                if (config.type === 'bubble') {
+                    const data = context.raw;
+                    return [
+                        `Células: ${data.x}`,
+                        `Efectividad: ${data.y.toFixed(1)}%`,
+                        `Personas: ${data.totalPersonas}`,
+                        `Estado: ${data.estado}`,
+                        `LD: ${data.ldName}`
+                    ];
+                } else {
+                    const total = context.reduce((sum, item) => sum + item.parsed.y, 0);
+                    const percentage = total > 0 ? ((context.parsed.y / total) * 100).toFixed(1) : 0;
+                    return `${context.dataset.label}: ${context.parsed.y} (${percentage}%)`;
+                }
+            },
+            footer: function(context) {
+                if (config.type !== 'bubble') {
+                    const total = context.reduce((sum, item) => sum + item.parsed.y, 0);
+                    return `Total: ${total} células`;
+                }
+                return '';
+            }
+        };
+    }
+    
+    // Restaurar legend callbacks
+    if (config.options.plugins && config.options.plugins.legend) {
+        config.options.plugins.legend.labels = {
+            ...Chart.defaults.plugins.legend.labels,
+            usePointStyle: true,
+            pointStyle: 'circle',
+            padding: 20,
+            font: { size: 12 }
+        };
+    }
+    
+    return config;
+}
+
         // Actualizar gráficos (VERSIÓN OPTIMIZADA CON DATOS PRE-CALCULADOS)
 function actualizarGraficos() {
     const panel = document.getElementById('panelGraficos');
@@ -2012,7 +2065,9 @@ function actualizarGraficos() {
                     if (window.chartEstados instanceof Chart) {
                         window.chartEstados.destroy();
                     }
-                    window.chartEstados = new Chart(ctxEstados, resultado.graficos.actividadEquipo.chartData);
+                    // Rehidratar configuración antes de crear el gráfico
+                    const configRehidratada = rehidratarConfigChart(resultado.graficos.actividadEquipo.chartData);
+                    window.chartEstados = new Chart(ctxEstados, configRehidratada);
                 }
                 
                 // Flujo de Transición de Estados de Células (Área Apilada)
@@ -2021,7 +2076,9 @@ function actualizarGraficos() {
                     if (window.chartCelulas instanceof Chart) {
                         window.chartCelulas.destroy();
                     }
-                    window.chartCelulas = new Chart(ctxCelulas, resultado.graficos.saludCelulas.chartData);
+                    // Rehidratar configuración antes de crear el gráfico
+                    const configRehidratada = rehidratarConfigChart(resultado.graficos.saludCelulas.chartData);
+                    window.chartCelulas = new Chart(ctxCelulas, configRehidratada);
                 }
                 
                 console.log('✅ Gráficos actualizados con datos optimizados');
