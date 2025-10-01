@@ -751,14 +751,21 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
   return misLM.map(lm => {
     const smallGroups = lideres.filter(l => l.ID_Lider_Directo === lm.ID_Lider && l.Rol === 'SMALL GROUP');
     
-    const lcfsEnCadena = [];
+    // ✅ CORRECCIÓN: Obtener LCF en Small Groups
+    const lcfsEnSG = [];
     smallGroups.forEach(sg => {
       const lcfs = lideres.filter(l => l.ID_Lider_Directo === sg.ID_Lider && l.Rol === 'LCF');
-      lcfsEnCadena.push(...lcfs);
+      lcfsEnSG.push(...lcfs);
     });
     
-    // Calcular métricas usando el índice
-    const totalAlmas = lcfsEnCadena.reduce((sum, lcf) => {
+    // ✅ CORRECCIÓN: Obtener LCF directos (sin SG)
+    const lcfsDirectosDelLM = lideres.filter(l => l.ID_Lider_Directo === lm.ID_Lider && l.Rol === 'LCF');
+    
+    // ✅ CORRECCIÓN: Unir TODOS los LCF (en SG + directos)
+    const todosLosLCF = [...lcfsEnSG, ...lcfsDirectosDelLM];
+    
+    // Calcular métricas usando TODOS los LCF
+    const totalAlmas = todosLosLCF.reduce((sum, lcf) => {
       const data = ingresosIndex[lcf.ID_Lider] || { cantidad: 0 };
       return sum + data.cantidad;
     }, 0);
@@ -826,7 +833,9 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
       }),
       metricas: {
         total_small_groups: smallGroups.length,
-        total_lcf_en_cadena: lcfsEnCadena.length,
+        total_lcf_en_cadena: todosLosLCF.length, // ✅ CORREGIDO: Ahora incluye LCF directos también
+        lcf_en_small_groups: lcfsEnSG.length, // ✅ NUEVO: LCF solo en SG
+        lcf_directos: lcfsDirectosDelLM.length, // ✅ NUEVO: LCF directos al LM
         total_almas_en_cadena: totalAlmas,
         small_groups_activos: smallGroups.filter(sg => sg.Estado_Actividad === 'Activo').length,
         salud_cadena: 'Sin Datos'

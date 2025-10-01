@@ -1463,6 +1463,9 @@ function verDetalleCadenaLM(idLM) {
                     <div class="text-center">
                         <div class="text-2xl font-bold text-green-600">${lm.metricas?.total_lcf_en_cadena || 0}</div>
                         <div class="text-sm text-gray-600">Total LCF</div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            ${lm.metricas?.lcf_en_small_groups || 0} en SG + ${lm.metricas?.lcf_directos || 0} directos
+                        </div>
                     </div>
                     <div class="text-center">
                         <div class="text-2xl font-bold text-purple-600">${lm.metricas?.total_almas_en_cadena || 0}</div>
