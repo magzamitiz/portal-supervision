@@ -1994,9 +1994,9 @@ function rehidratarConfigChart(config) {
         config.options.plugins.tooltip.callbacks = {
             title: function(context) {
                 if (config.type === 'bubble') {
-                    return context[0].raw.lcfName || 'LCF';
+                    return context.raw.lcfName || 'LCF';
                 }
-                return `Período: ${context[0].label}`;
+                return `Período: ${context.label}`;
             },
             label: function(context) {
                 if (config.type === 'bubble') {
@@ -2009,14 +2009,18 @@ function rehidratarConfigChart(config) {
                         `LD: ${data.ldName}`
                     ];
                 } else {
-                    const total = context.reduce((sum, item) => sum + item.parsed.y, 0);
+                    // Para Chart.js 3+, usar dataPoints del tooltip
+                    const dataPoints = context.chart.tooltip?.dataPoints || [];
+                    const total = dataPoints.reduce((sum, item) => sum + item.parsed.y, 0);
                     const percentage = total > 0 ? ((context.parsed.y / total) * 100).toFixed(1) : 0;
                     return `${context.dataset.label}: ${context.parsed.y} (${percentage}%)`;
                 }
             },
             footer: function(context) {
                 if (config.type !== 'bubble') {
-                    const total = context.reduce((sum, item) => sum + item.parsed.y, 0);
+                    // Para Chart.js 3+, usar dataPoints del tooltip
+                    const dataPoints = context.chart.tooltip?.dataPoints || [];
+                    const total = dataPoints.reduce((sum, item) => sum + item.parsed.y, 0);
                     return `Total: ${total} células`;
                 }
                 return '';
