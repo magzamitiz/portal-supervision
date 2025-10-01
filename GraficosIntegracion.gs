@@ -632,26 +632,29 @@ function actualizarTodosLosGraficos(idLD = null) {
   try {
     console.log('🔄 Actualizando todos los gráficos del dashboard...');
     
-    // Actualizar gráficos existentes
+    // Actualizar gráficos principales
     const actividadEquipo = actualizarGraficoActividadEquipo(idLD);
     const saludCelulas = actualizarGraficoSaludCelulas(idLD);
     
-    // Generar nuevos gráficos optimizados
-    const matrizEfectividad = obtenerDatosMatrizEfectividad(idLD);
-    const flujoTransicion = obtenerDatosFlujoTransicion(6);
-    
+    // Optimizar datos para reducir tamaño
     const resultado = {
       success: true,
       graficos: {
-        actividadEquipo: actividadEquipo,
-        saludCelulas: saludCelulas,
-        matrizEfectividad: matrizEfectividad,
-        flujoTransicion: flujoTransicion
+        actividadEquipo: {
+          success: actividadEquipo.success,
+          chartData: actividadEquipo.chartData,
+          totalLCF: actividadEquipo.totalLCF
+        },
+        saludCelulas: {
+          success: saludCelulas.success,
+          chartData: saludCelulas.chartData,
+          totalPeriodos: saludCelulas.totalPeriodos
+        }
       },
       timestamp: new Date().toISOString()
     };
     
-    // Verificar si todos los gráficos se generaron correctamente
+    // Verificar si los gráficos se generaron correctamente
     const errores = Object.values(resultado.graficos).filter(g => !g.success);
     if (errores.length > 0) {
       console.warn(`⚠️ ${errores.length} gráficos tuvieron errores`);
@@ -666,6 +669,34 @@ function actualizarTodosLosGraficos(idLD = null) {
       success: false,
       error: error.toString(),
       graficos: null,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+// ==================== FUNCIONES ALTERNATIVAS PARA PRUEBAS ====================
+
+/**
+ * Función simplificada para probar la comunicación frontend-backend
+ * @param {string} idLD - ID del LD para filtrar datos
+ * @returns {Object} Datos simplificados
+ */
+function probarGraficos(idLD = null) {
+  try {
+    console.log('🧪 Probando comunicación de gráficos...');
+    
+    return {
+      success: true,
+      mensaje: 'Comunicación funcionando',
+      idLD: idLD,
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en prueba:', error);
+    return {
+      success: false,
+      error: error.toString(),
       timestamp: new Date().toISOString()
     };
   }

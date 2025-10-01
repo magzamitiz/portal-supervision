@@ -2003,24 +2003,30 @@ function actualizarGraficos() {
     // Llamar a la función optimizada del backend
     google.script.run
         .withSuccessHandler(function(resultado) {
-            if (resultado.success) {
+            console.log('Resultado recibido:', resultado);
+            
+            if (resultado && resultado.success && resultado.graficos) {
                 // Matriz de Efectividad del Liderazgo (Bubble Chart)
-                const ctxEstados = document.getElementById('chartEstados').getContext('2d');
-                if (window.chartEstados instanceof Chart) {
-                    window.chartEstados.destroy();
+                if (resultado.graficos.actividadEquipo && resultado.graficos.actividadEquipo.chartData) {
+                    const ctxEstados = document.getElementById('chartEstados').getContext('2d');
+                    if (window.chartEstados instanceof Chart) {
+                        window.chartEstados.destroy();
+                    }
+                    window.chartEstados = new Chart(ctxEstados, resultado.graficos.actividadEquipo.chartData);
                 }
-                window.chartEstados = new Chart(ctxEstados, resultado.graficos.actividadEquipo.chartData);
                 
                 // Flujo de Transición de Estados de Células (Área Apilada)
-                const ctxCelulas = document.getElementById('chartCelulas').getContext('2d');
-                if (window.chartCelulas instanceof Chart) {
-                    window.chartCelulas.destroy();
+                if (resultado.graficos.saludCelulas && resultado.graficos.saludCelulas.chartData) {
+                    const ctxCelulas = document.getElementById('chartCelulas').getContext('2d');
+                    if (window.chartCelulas instanceof Chart) {
+                        window.chartCelulas.destroy();
+                    }
+                    window.chartCelulas = new Chart(ctxCelulas, resultado.graficos.saludCelulas.chartData);
                 }
-                window.chartCelulas = new Chart(ctxCelulas, resultado.graficos.saludCelulas.chartData);
                 
                 console.log('✅ Gráficos actualizados con datos optimizados');
             } else {
-                console.error('Error actualizando gráficos:', resultado.error);
+                console.error('Error actualizando gráficos:', resultado ? resultado.error : 'Resultado nulo');
                 // Fallback a método anterior si hay error
                 actualizarGraficosFallback();
             }
