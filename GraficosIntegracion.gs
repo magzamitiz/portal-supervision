@@ -6,6 +6,60 @@
 // ==================== FUNCIONES DE INTEGRACIÓN CON DASHBOARD ====================
 
 /**
+ * Obtiene toda la cadena jerárquica de un LD (todos los LCF bajo su supervisión)
+ * @param {string} idLD - ID del LD para obtener su cadena completa
+ * @returns {Array} Array de IDs de LCF en toda la cadena jerárquica
+ */
+function obtenerCadenaJerarquicaCompleta(idLD) {
+  try {
+    console.log(`🔍 Obteniendo cadena jerárquica completa para LD: ${idLD}`);
+    
+    // Obtener datos de gráficos
+    const datosGraficos = obtenerDatosGraficos();
+    if (!datosGraficos.success) {
+      throw new Error('No se pudieron obtener los datos de gráficos');
+    }
+    
+    const todosLosLCF = datosGraficos.data;
+    const lcfEnCadena = new Set();
+    const lcfProcesados = new Set();
+    
+    // Función recursiva para obtener todos los LCF bajo un LD
+    function obtenerLCFBajoLD(ldId, nivel = 0) {
+      if (lcfProcesados.has(ldId)) return; // Evitar bucles infinitos
+      lcfProcesados.add(ldId);
+      
+      console.log(`${'  '.repeat(nivel)}🔍 Nivel ${nivel}: Buscando LCF bajo LD ${ldId}`);
+      
+      // Buscar LCF que reporten directamente a este LD
+      const lcfDirectos = todosLosLCF.filter(lcf => lcf.LD_ID === ldId);
+      console.log(`${'  '.repeat(nivel)}📊 Encontrados ${lcfDirectos.length} LCF directos`);
+      
+      lcfDirectos.forEach(lcf => {
+        lcfEnCadena.add(lcf.LCF_ID);
+        console.log(`${'  '.repeat(nivel)}  ✅ LCF: ${lcf.LCF_Nombre} (${lcf.LCF_ID})`);
+        
+        // Recursivamente buscar LCF que reporten a este LCF
+        obtenerLCFBajoLD(lcf.LCF_ID, nivel + 1);
+      });
+    }
+    
+    // Iniciar búsqueda recursiva
+    obtenerLCFBajoLD(idLD);
+    
+    const resultado = Array.from(lcfEnCadena);
+    console.log(`✅ Cadena jerárquica completa: ${resultado.length} LCF encontrados`);
+    console.log(`📋 LCF en cadena: ${resultado.join(', ')}`);
+    
+    return resultado;
+    
+  } catch (error) {
+    console.error('❌ Error obteniendo cadena jerárquica:', error);
+    return [];
+  }
+}
+
+/**
  * Genera la Matriz de Efectividad del Liderazgo (Bubble Chart)
  * @param {string} idLD - ID del LD para filtrar datos
  * @returns {Object} Datos para gráfico de burbujas
@@ -24,8 +78,10 @@ function actualizarGraficoActividadEquipo(idLD = null) {
     let lcfData = datosGraficos.data;
     console.log(`📊 Datos originales: ${lcfData.length} LCF`);
     if (idLD) {
-      lcfData = lcfData.filter(lcf => lcf.LD_ID === idLD);
-      console.log(`🔍 Filtrado por LD ${idLD}: ${lcfData.length} LCF`);
+      // Obtener toda la cadena jerárquica del LD
+      const cadenaJerarquica = obtenerCadenaJerarquicaCompleta(idLD);
+      lcfData = lcfData.filter(lcf => cadenaJerarquica.includes(lcf.LCF_ID));
+      console.log(`🔍 Filtrado por cadena jerárquica completa del LD ${idLD}: ${lcfData.length} LCF`);
     } else {
       console.log('📊 Mostrando todos los LCF (sin filtro)');
     }
