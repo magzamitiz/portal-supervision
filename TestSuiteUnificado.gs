@@ -287,11 +287,14 @@ function limpiarCache() {
 }
 
 /**
- * 🔍 VERIFICAR LCF ESPECÍFICO
+ * 🔍 VERIFICAR LCF ESPECÍFICO - VERSIÓN COMPLETA
+ * Verifica datos de un LCF en _EstadoLideres y en datos cargados
  */
 function verificarLCF(idLCF) {
   console.log('');
-  console.log(`🔍 Verificando: ${idLCF}`);
+  console.log('========================================');
+  console.log(`🔍 VERIFICAR LCF: ${idLCF}`);
+  console.log('========================================');
   console.log('');
   
   try {
@@ -304,13 +307,25 @@ function verificarLCF(idLCF) {
       const fila = data.find(row => String(row[0]).trim() === idLCF);
       
       if (fila) {
-        console.log('✅ En _EstadoLideres:');
-        console.log(`   Perfil: ${fila[8]}`);
+        console.log('📋 DATOS EN _EstadoLideres:');
+        console.log('─────────────────────────────────');
+        console.log(`   ID: ${fila[0]}`);
+        console.log(`   Nombre: ${fila[1]}`);
+        console.log(`   Días sin Actividad: ${fila[2]}`);
+        console.log(`   ✅ Recibiendo Célula: ${fila[3]}`);  // ← COLUMNA D
+        console.log(`   Visitas Positivas: ${fila[4]}`);
+        console.log(`   Visitas No Positivas: ${fila[5]}`);
+        console.log(`   Llamadas: ${fila[6]}`);
         console.log(`   IDP: ${fila[7]}`);
-        console.log(`   Días: ${fila[2]}`);
+        console.log(`   Perfil: ${fila[8]}`);
+        console.log('');
       } else {
-        console.log('❌ NO en _EstadoLideres');
+        console.log('❌ NO encontrado en _EstadoLideres');
+        console.log('');
       }
+    } else {
+      console.log('❌ Hoja _EstadoLideres no encontrada');
+      console.log('');
     }
     
     // 2. En datos cargados
@@ -318,19 +333,54 @@ function verificarLCF(idLCF) {
     const lider = datos.lideres.find(l => l.ID_Lider === idLCF);
     
     if (lider) {
-      console.log('');
-      console.log('✅ En datos cargados:');
+      console.log('📊 DATOS EN MEMORIA (cargados):');
+      console.log('─────────────────────────────────');
+      console.log(`   ID: ${lider.ID_Lider}`);
+      console.log(`   Nombre: ${lider.Nombre_Lider || 'N/A'}`);
+      console.log(`   Rol: ${lider.Rol}`);
       console.log(`   Perfil: ${lider.Perfil_Lider || 'N/A'}`);
       console.log(`   IDP: ${lider.IDP !== null ? lider.IDP : 'N/A'}`);
-      console.log(`   Días: ${lider.Dias_Inactivo !== null ? lider.Dias_Inactivo : 'N/A'}`);
+      console.log(`   Días Inactivo: ${lider.Dias_Inactivo !== null ? lider.Dias_Inactivo : 'N/A'}`);
+      console.log(`   ✅ Recibiendo Célula: ${lider.Recibiendo_Celula !== null ? lider.Recibiendo_Celula : 'N/A'}`);
+      console.log(`   Visitas Positivas: ${lider.Visitas_Positivas || 0}`);
+      console.log(`   Llamadas: ${lider.Llamadas_Realizadas || 0}`);
+      console.log('');
+      
+      // Verificar métricas
+      if (lider.metricas) {
+        console.log('📈 MÉTRICAS:');
+        console.log('─────────────────────────────────');
+        console.log(`   Total Almas: ${lider.metricas.total_almas || 0}`);
+        console.log(`   Almas en Célula (calculado): ${lider.metricas.almas_en_celula || 0}`);
+        console.log(`   Tasa Integración: ${lider.metricas.tasa_integracion || 0}%`);
+        console.log(`   Carga: ${lider.metricas.carga_trabajo || 'N/A'}`);
+        console.log('');
+      }
     } else {
-      console.log('❌ NO en datos cargados');
+      console.log('❌ NO encontrado en datos cargados');
+      console.log('');
     }
     
-    return { exitoso: true };
+    console.log('========================================');
+    console.log('✅ VERIFICACIÓN COMPLETADA');
+    console.log('========================================');
+    console.log('');
+    
+    return { 
+      exitoso: true,
+      encontrado_estado: !!fila,
+      encontrado_datos: !!lider,
+      recibiendo_celula_estado: fila ? fila[3] : null,
+      recibiendo_celula_datos: lider ? lider.Recibiendo_Celula : null
+    };
     
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('');
+    console.error('========================================');
+    console.error('❌ ERROR EN VERIFICACIÓN');
+    console.error('========================================');
+    console.error(error);
+    console.error('');
     return { exitoso: false, error: error.toString() };
   }
 }
