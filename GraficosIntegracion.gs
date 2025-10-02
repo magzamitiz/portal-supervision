@@ -43,14 +43,15 @@ function obtenerCadenaJerarquicaCompleta(idLD, lcfData = null) {
     
     console.log(`🗺️ Mapa de supervisores creado: ${Object.keys(supervisores).length} supervisores`);
     
-    // BFS iterativo para evitar límite de recursión
+    // BFS iterativo optimizado para evitar límite de recursión y reindexación
     const lcfEnCadena = new Set();
     const lcfProcesados = new Set();
     const cola = [{ id: idLD, nivel: 0, ruta: [idLD] }];
     let nivelesProcesados = 0;
+    let idx = 0; // Índice incremental para evitar shift() costoso
     
-    while (cola.length > 0) {
-      const { id: supervisorActual, nivel, ruta } = cola.shift();
+    while (idx < cola.length) {
+      const { id: supervisorActual, nivel, ruta } = cola[idx++];
       
       if (lcfProcesados.has(supervisorActual)) {
         console.log(`${'  '.repeat(nivel)}⚠️ Ciclo detectado en ${supervisorActual}, saltando...`);
