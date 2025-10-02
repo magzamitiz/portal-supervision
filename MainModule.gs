@@ -418,11 +418,7 @@ function generarAlertasRapidas() {
   try {
     console.log('[MainModule] Generando alertas rápidas...');
     
-    // Obtener datos del caché si están disponibles
-    const datosCache = getCacheData();
-    if (datosCache && datosCache.lideres) {
-      return generarAlertas(datosCache);
-    }
+    // Generar alertas básicas sin depender de análisis complejo
     
     // Si no hay caché, generar alertas básicas
     const alertas = [];
