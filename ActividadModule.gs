@@ -32,10 +32,6 @@ function mapearAlmasACelulas(celulas) {
             mapa.set(idLimpio, celula.ID_Celula);
             miembrosConID++;
             
-            // Debug para los primeros 5 mapeos
-            if (miembrosConID <= 5) {
-              console.log(`[ActividadModule] ✅ Mapeado: "${idLimpio}" → ${celula.ID_Celula} (${miembro.Nombre_Miembro || 'Sin nombre'})`);
-            }
           }
         } else {
           miembrosSinID++;
@@ -101,16 +97,8 @@ function integrarAlmasACelulas(ingresos, almasEnCelulasMap) {
       
       if (idCelula) {
         almasAsignadas++;
-        // Debug para los primeros 5 casos exitosos
-        if (almasAsignadas <= 5) {
-          console.log(`[ActividadModule] ✅ Alma "${idAlma}" → Célula "${idCelula}" (${ingreso.Nombre_Completo})`);
-        }
       } else if (idAlma) {
-        // Debug para los primeros 5 casos fallidos
-        if (erroresEncontrados < 5) {
-          console.log(`[ActividadModule] ❌ Alma "${idAlma}" NO encontrada en mapa (${ingreso.Nombre_Completo})`);
-          erroresEncontrados++;
-        }
+        erroresEncontrados++;
       }
       
     } catch (error) {

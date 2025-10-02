@@ -194,12 +194,11 @@ function getDashboardData(forceReload = false) {
 
     // Realizar análisis completo
     const analisis = {
-      lideres: analizarLideres(directorioData.lideres || []),
       celulas: analizarCelulas(directorioData.celulas || []),
       ingresos: analizarIngresos(directorioData.ingresos || []),
       datosBase: directorioData,
       metricas: calcularMetricasPrincipales(directorioData),
-      alertas: generarAlertas(directorioData),
+      alertas: generarAlertasRapidas(),
       timestamp: directorioData.timestamp,
       modo_carga: modo
     };
@@ -467,5 +466,8 @@ function generarAlertasRapidas() {
     return [];
   }
 }
+
+
+
 
 console.log('🏠 MainModule cargado - Aplicación principal lista');

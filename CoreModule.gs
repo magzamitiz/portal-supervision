@@ -625,29 +625,18 @@ function getDatosLDBasico(idLD) {
  * @returns {Object} Objeto con los datos completos del LD
  */
 function getDatosLDCompleto(idLD) {
-  console.log('[CoreModule] Debug - getDatosLDCompleto iniciado para LD:', idLD);
   checkTimeout();
   console.log('[CoreModule] Cargando modo completo para LD:', idLD);
   
-  console.log('[CoreModule] Debug - Llamando a cargarDirectorioCompleto...');
   const dataCompleta = cargarDirectorioCompleto();
-  console.log('[CoreModule] Debug - cargarDirectorioCompleto retornó:', dataCompleta ? 'datos' : 'null/undefined');
   if (!dataCompleta || !dataCompleta.lideres) {
     return { success: false, error: 'Datos del directorio no válidos o error en carga' };
   }
   
   const { lideres, ingresos, celulas } = dataCompleta;
   
-  // Debug: verificar datos cargados
-  console.log(`[CoreModule] Debug - Total líderes cargados: ${lideres ? lideres.length : 0}`);
-  console.log(`[CoreModule] Debug - Buscando LD: ${idLD}`);
-  if (lideres && lideres.length > 0) {
-    console.log(`[CoreModule] Debug - Primeros 3 IDs de líderes:`, lideres.slice(0, 3).map(l => l.ID_Lider));
-  }
-  
   const ld = lideres.find(l => l?.ID_Lider === idLD && l?.Rol === 'LD');
   if (!ld) {
-    console.log(`[CoreModule] Debug - LD ${idLD} no encontrado. Líderes disponibles:`, lideres.map(l => `${l.ID_Lider}(${l.Rol})`));
     return { success: false, error: `LD ${idLD} no encontrado` };
   }
 
