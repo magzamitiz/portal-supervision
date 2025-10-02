@@ -694,32 +694,86 @@ function getVistaRapidaLCF(idLCF) {
 }
 
 /**
- * Obtiene resumen de un LCF
+ * Obtiene resumen de un LCF - VERSIÓN CORREGIDA
  * @param {string} idLCF - ID del LCF
- * @returns {Object} Resumen del LCF
+ * @returns {Object} Resumen del LCF con estructura correcta para frontend
  */
 function getResumenLCF(idLCF) {
   try {
+    console.log(`[SeguimientoModule] Obteniendo resumen para LCF: ${idLCF}`);
+    
+    // Obtener seguimiento completo
     const seguimiento = getSeguimientoAlmasLCF_REAL(idLCF);
     
     if (!seguimiento.success) {
+      console.error('[SeguimientoModule] Error obteniendo seguimiento:', seguimiento.error);
       return seguimiento;
     }
     
-    const almas = seguimiento.data.almas || [];
-    const resumen = calcularResumenSeguimiento(almas, seguimiento.data.lcf);
+    // ✅ CORRECCIÓN: Acceder directamente a las propiedades sin .data
+    const almas = seguimiento.almas || [];
+    const lcf = seguimiento.lcf;
     
+    // ✅ CORRECCIÓN: Convertir snake_case a camelCase para el frontend
+    let resumenFormateado;
+    
+    if (seguimiento.resumen) {
+      // Mapear campos de snake_case a camelCase
+      resumenFormateado = {
+        totalAlmas: seguimiento.resumen.total_almas || almas.length,
+        conBienvenida: seguimiento.resumen.con_bienvenida || 0,
+        conVisita: seguimiento.resumen.con_visita || 0,
+        enCelula: seguimiento.resumen.en_celula || 0,
+        altaPrioridad: seguimiento.resumen.alta_prioridad || 0,
+        promedioDiasSinContacto: seguimiento.resumen.promedio_dias_sin_contacto || 0,
+        tasaBienvenida: seguimiento.resumen.tasa_bienvenida || 0,
+        tasaVisita: seguimiento.resumen.tasa_visita || 0,
+        tasaIntegracion: seguimiento.resumen.tasa_integracion || 0
+      };
+    } else {
+      // Calcular manualmente si no hay resumen
+      const conBienvenida = almas.filter(a => 
+        a.Bienvenida && a.Bienvenida.completado
+      ).length;
+      
+      const conVisita = almas.filter(a => 
+        a.Visita_Bendicion && a.Visita_Bendicion.completado
+      ).length;
+      
+      const enCelula = almas.filter(a => 
+        a.En_Celula || (a.Progreso_Celulas && a.Progreso_Celulas.completados > 0)
+      ).length;
+      
+      const totalAlmas = almas.length;
+      
+      resumenFormateado = {
+        totalAlmas: totalAlmas,
+        conBienvenida: conBienvenida,
+        conVisita: conVisita,
+        enCelula: enCelula,
+        altaPrioridad: almas.filter(a => a.Dias_Sin_Seguimiento > 14).length,
+        promedioDiasSinContacto: totalAlmas > 0 ? 
+          Math.round(almas.reduce((sum, a) => sum + (a.Dias_Sin_Seguimiento || 0), 0) / totalAlmas) : 0,
+        tasaBienvenida: totalAlmas > 0 ? Math.round((conBienvenida / totalAlmas) * 100) : 0,
+        tasaVisita: totalAlmas > 0 ? Math.round((conVisita / totalAlmas) * 100) : 0,
+        tasaIntegracion: totalAlmas > 0 ? Math.round((enCelula / totalAlmas) * 100) : 0
+      };
+    }
+    
+    // ✅ ESTRUCTURA CORRECTA: data contiene directamente las métricas
     return {
       success: true,
-      data: {
-        lcf: seguimiento.data.lcf,
-        resumen: resumen,
-        timestamp: new Date().toISOString()
-      }
+      data: resumenFormateado,
+      lcf: lcf,
+      timestamp: new Date().toISOString()
     };
+    
   } catch (error) {
-    console.error('[SeguimientoModule] Error en getResumenLCF:', error);
-    return { success: false, error: error.toString() };
+    console.error('[SeguimientoModule] Error crítico en getResumenLCF:', error);
+    return { 
+      success: false, 
+      error: `Error obteniendo resumen: ${error.toString()}` 
+    };
   }
 }
 
@@ -795,6 +849,89 @@ function testCargarDatosLCF(idLCF = 'LCF-1026') {
     
   } catch (error) {
     console.error('❌ Error en test:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Función de prueba para verificar corrección de getResumenLCF
+ * @param {string} idLCF - ID del LCF a probar (opcional)
+ * @returns {Object} Resultado de la prueba
+ */
+function testGetResumenLCF_Correccion(idLCF = 'LCF-1001') {
+  console.log('\n========================================');
+  console.log('🧪 TEST: Verificando corrección de getResumenLCF');
+  console.log('========================================\n');
+  
+  try {
+    // Ejecutar la función corregida
+    const resultado = getResumenLCF(idLCF);
+    
+    if (!resultado.success) {
+      console.error('❌ La función retornó error:', resultado.error);
+      return { success: false, error: resultado.error };
+    }
+    
+    // Verificar estructura requerida por el frontend
+    const camposRequeridos = [
+      'totalAlmas', 'conBienvenida', 'conVisita', 'enCelula',
+      'tasaBienvenida', 'tasaVisita', 'tasaIntegracion'
+    ];
+    
+    const camposFaltantes = [];
+    camposRequeridos.forEach(campo => {
+      if (resultado.data[campo] === undefined) {
+        camposFaltantes.push(campo);
+      }
+    });
+    
+    if (camposFaltantes.length > 0) {
+      console.error('❌ Faltan campos requeridos:', camposFaltantes.join(', '));
+      return { 
+        success: false, 
+        error: 'Estructura incompleta',
+        camposFaltantes: camposFaltantes 
+      };
+    }
+    
+    // Verificar tipos de datos
+    const tiposCorrectos = 
+      typeof resultado.data.totalAlmas === 'number' &&
+      typeof resultado.data.conBienvenida === 'number' &&
+      typeof resultado.data.conVisita === 'number' &&
+      typeof resultado.data.enCelula === 'number' &&
+      typeof resultado.data.tasaBienvenida === 'number' &&
+      typeof resultado.data.tasaVisita === 'number' &&
+      typeof resultado.data.tasaIntegracion === 'number';
+    
+    if (!tiposCorrectos) {
+      console.error('❌ Los tipos de datos no son correctos');
+      return { success: false, error: 'Tipos de datos incorrectos' };
+    }
+    
+    // Todo correcto
+    console.log('✅ TEST EXITOSO - Estructura correcta para el frontend');
+    console.log('\n📊 Datos del resumen:');
+    console.log(`  • Total Almas: ${resultado.data.totalAlmas}`);
+    console.log(`  • Con Bienvenida: ${resultado.data.conBienvenida}`);
+    console.log(`  • Con Visita: ${resultado.data.conVisita}`);
+    console.log(`  • En Célula: ${resultado.data.enCelula}`);
+    console.log(`  • Tasa Bienvenida: ${resultado.data.tasaBienvenida}%`);
+    console.log(`  • Tasa Visita: ${resultado.data.tasaVisita}%`);
+    console.log(`  • Tasa Integración: ${resultado.data.tasaIntegracion}%`);
+    console.log('\n✅ La corrección funciona correctamente');
+    
+    return {
+      success: true,
+      mensaje: 'Corrección verificada exitosamente',
+      datos: resultado.data
+    };
+    
+  } catch (error) {
+    console.error('❌ Error durante la prueba:', error);
     return {
       success: false,
       error: error.toString()
