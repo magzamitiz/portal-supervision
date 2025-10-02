@@ -391,12 +391,33 @@ function cargarCelulasOptimizado(spreadsheet) {
       const celula = celulasMap.get(idCelula);
       
       // Agregar miembro si existe
-      const idMiembro = columnas.idMiembro !== -1 ? String(row[columnas.idMiembro] || '').trim() : null;
-      const nombreMiembro = columnas.nombreMiembro !== -1 ? String(row[columnas.nombreMiembro] || '').trim() : null;
+      let idMiembro = columnas.idMiembro !== -1 ? String(row[columnas.idMiembro] || '').trim() : '';
+      const nombreMiembro = columnas.nombreMiembro !== -1 ? String(row[columnas.nombreMiembro] || '').trim() : '';
       
       if (idMiembro || nombreMiembro) {
-        // Evitar duplicados
-        const miembroExiste = celula.Miembros.some(m => m.ID_Miembro === idMiembro);
+        // Normalizar nombre para comparación
+        const nombreNormalizado = nombreMiembro.toLowerCase().trim();
+        
+        // Verificar duplicados de forma inteligente
+        let miembroExiste = false;
+        
+        if (idMiembro) {
+          // Si tiene ID, verificar solo por ID
+          miembroExiste = celula.Miembros.some(m => m.ID_Miembro === idMiembro);
+        } else {
+          // Sin ID: verificar por nombre normalizado
+          miembroExiste = celula.Miembros.some(m => {
+            const nombreExistente = (m.Nombre_Miembro || '').toLowerCase().trim();
+            return nombreExistente === nombreNormalizado && !m.ID_Miembro;
+          });
+          
+          // Asignar ID temporal único si no existe
+          if (!miembroExiste) {
+            idMiembro = `TEMP_${Date.now()}_${i}`;
+          }
+        }
+        
+        // Agregar miembro solo si no existe
         if (!miembroExiste) {
           celula.Miembros.push({
             ID_Miembro: idMiembro,
@@ -410,22 +431,18 @@ function cargarCelulasOptimizado(spreadsheet) {
     // Convertir Map a Array y determinar estados
     const celulas = Array.from(celulasMap.values());
     
-    // Determinar estado de cada célula
+    // Determinar estado de cada célula basado en Total_Miembros
     celulas.forEach(celula => {
-      const minMiembros = (typeof CONFIG !== 'undefined' && CONFIG.CELULAS && CONFIG.CELULAS.MIN_MIEMBROS) ? CONFIG.CELULAS.MIN_MIEMBROS : 3;
-      const maxMiembros = (typeof CONFIG !== 'undefined' && CONFIG.CELULAS && CONFIG.CELULAS.MAX_MIEMBROS) ? CONFIG.CELULAS.MAX_MIEMBROS : 12;
-      const idealMiembros = (typeof CONFIG !== 'undefined' && CONFIG.CELULAS && CONFIG.CELULAS.IDEAL_MIEMBROS) ? CONFIG.CELULAS.IDEAL_MIEMBROS : 8;
-      
       if (celula.Total_Miembros === 0) {
         celula.Estado = 'Vacía';
-      } else if (celula.Total_Miembros < minMiembros) {
+      } else if (celula.Total_Miembros < 1) {
         celula.Estado = 'En Riesgo';
-      } else if (celula.Total_Miembros <= idealMiembros) {
-        celula.Estado = 'En Crecimiento';
-      } else if (celula.Total_Miembros <= maxMiembros) {
+      } else if (celula.Total_Miembros <= 3) {
         celula.Estado = 'Saludable';
-      } else {
+      } else if (celula.Total_Miembros > 4) {
         celula.Estado = 'Lista para Multiplicar';
+      } else {
+        celula.Estado = 'En Crecimiento';
       }
     });
     

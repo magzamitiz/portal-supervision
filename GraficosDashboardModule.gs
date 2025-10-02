@@ -174,6 +174,9 @@ function poblarDatosGraficos(forceReload = false) {
       // Escribir nuevos datos
       sheet.getRange(2, 1, datosGraficos.length, datosGraficos[0].length)
            .setValues(datosGraficos);
+      
+      // Aplicar formato de fecha a la columna 13 (Fecha_Ultima_Actualizacion)
+      sheet.getRange(2, 13, datosGraficos.length, 1).setNumberFormat('yyyy-MM-dd HH:mm:ss');
     }
     
     console.log(`✅ Datos de gráficos actualizados: ${datosGraficos.length} LCF procesados`);
@@ -208,6 +211,20 @@ function procesarDatosLCF(lcf, data) {
     // Filtrar células bajo este LCF
     const celulasDelLCF = data.celulas.filter(c => c.ID_LCF_Responsable === lcf.ID_Lider);
     
+    // Debug temporal para LCFs específicos del LD-4003
+    if (['LCF-1028', 'LCF-1029', 'LCF-1079'].includes(lcf.ID_Lider)) {
+      console.log(`\n=== DEBUG ${lcf.ID_Lider} - ${lcf.Nombre_Lider} ===`);
+      console.log(`Células encontradas: ${celulasDelLCF.length}`);
+      let totalDebug = 0;
+      celulasDelLCF.forEach(cel => {
+        const miembros = obtenerTotalMiembros(cel);
+        totalDebug += miembros;
+        console.log(`  - ${cel.ID_Celula}: ${miembros} miembros (Total_Miembros: ${cel.Total_Miembros}, Miembros.length: ${cel.Miembros ? cel.Miembros.length : 0})`);
+      });
+      console.log(`Total personas calculado: ${totalDebug}`);
+      console.log(`Estado del LCF: ${lcf.Estado_Actividad}`);
+    }
+    
     // Contar células por estado
     const conteos = {
       saludables: 0,
@@ -236,7 +253,7 @@ function procesarDatosLCF(lcf, data) {
           conteos.enCrecimiento++;
           break;
       }
-      conteos.totalPersonas += celula.Total_Miembros || 0;
+      conteos.totalPersonas += obtenerTotalMiembros(celula);
     });
     
     // Calcular efectividad (Saludables + Listas para Multiplicar) / Total
@@ -259,7 +276,7 @@ function procesarDatosLCF(lcf, data) {
       conteos.enCrecimiento,                  // Celulas_En_Crecimiento
       conteos.totalPersonas,                  // Total_Personas
       Math.round(efectividad * 100) / 100,    // Porcentaje_Efectividad
-      new Date().toISOString()                // Fecha_Ultima_Actualizacion
+      new Date()                              // Fecha_Ultima_Actualizacion
     ];
     
   } catch (error) {
