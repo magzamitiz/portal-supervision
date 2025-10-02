@@ -632,9 +632,10 @@ function handleLideresResponse(response) {
     window.datosActuales = response.data; // Guardar globalmente
     
     console.log('Datos procesados:', {
-        lideres: datosActuales.lideres?.total_LD || 0,
-        celulas: datosActuales.celulas?.total_celulas || 0,
-        ingresos: datosActuales.ingresos?.total_historico || 0
+        actividad: datosActuales.actividad || {},
+        metricas: datosActuales.metricas || {},
+        lideres: datosActuales.lideres?.lista?.length || 0,
+        alertas: datosActuales.alertas?.length || 0
     });
     
     actualizarInterfaz();

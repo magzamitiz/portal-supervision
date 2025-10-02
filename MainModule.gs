@@ -372,20 +372,12 @@ function forceReloadDashboardData() {
     
     // 4. Crear análisis simplificado con datos disponibles
     const analisis = {
+      // Usar datos de actividad (estructura real de getEstadisticasRapidas)
+      actividad: stats.data.actividad || {},
+      metricas: stats.data.metricas || {},
       lideres: {
-        total_LD: stats.data.lideres.total_LD,
-        total_LCF: stats.data.lideres.total_LCF,
         lista: lideres.data || []
       },
-      celulas: {
-        total_celulas: stats.data.celulas.total_celulas
-      },
-      ingresos: {
-        total_historico: stats.data.ingresos.total_historico,
-        ingresos_mes: stats.data.ingresos.ingresos_mes,
-        tasa_integracion_celula: stats.data.ingresos.tasa_integracion_celula
-      },
-      metricas: stats.data.metricas,
       alertas: alertas || [],
       timestamp: stats.data.timestamp,
       modo_optimizado: true,
