@@ -430,8 +430,8 @@ function actualizarGraficoSaludCelulas(idLD = null) {
 
 /**
  * Obtiene datos para el gráfico de Matriz de Efectividad del Liderazgo (Bubble Chart)
- * @param {string} idLD - ID del LD para filtrar datos
- * @returns {Object} Datos para gráfico de burbujas
+ * @param {string} idLD - ID del LD para filtrar datos (usa cadena jerárquica completa)
+ * @returns {Object} Datos para gráfico de burbujas con TODA la cadena jerárquica del LD
  */
 function obtenerDatosMatrizEfectividad(idLD = null) {
   try {
@@ -443,10 +443,14 @@ function obtenerDatosMatrizEfectividad(idLD = null) {
       throw new Error('No se pudieron obtener los datos de gráficos');
     }
     
-    // Filtrar por LD si se especifica
+    // Filtrar por LD si se especifica - USAR CADENA JERÁRQUICA COMPLETA
     let lcfData = datosGraficos.data;
     if (idLD) {
-      lcfData = lcfData.filter(lcf => lcf.LD_ID === idLD);
+      const cadenaJerarquica = obtenerCadenaJerarquicaCompleta(idLD, datosGraficos.data);
+      lcfData = lcfData.filter(lcf => cadenaJerarquica.has(lcf.LCF_ID));
+      console.log(`🔍 Filtrado por cadena jerárquica completa del LD ${idLD}: ${lcfData.length} LCF`);
+    } else {
+      console.log('📊 Mostrando todos los LCF (sin filtro)');
     }
     
     // Preparar datos para gráfico de burbujas
