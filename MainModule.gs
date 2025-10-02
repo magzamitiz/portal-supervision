@@ -343,6 +343,54 @@ function validarConectividad() {
 }
 
 /**
+ * Limpia el caché específico de todos los líderes
+ * @param {Array} lideres - Array de líderes para limpiar sus cachés
+ */
+function clearLeaderDetailCache(lideres) {
+  try {
+    console.log('[MainModule] 🧹 Limpiando caché específico de líderes...');
+    const cache = CacheService.getScriptCache();
+    let clavesLimpiadas = 0;
+    
+    if (!lideres || lideres.length === 0) {
+      console.log('[MainModule] ⚠️ No hay líderes para limpiar caché');
+      return;
+    }
+    
+    // Limpiar caché de cada líder
+    lideres.forEach(lider => {
+      const idLider = lider.ID_Lider;
+      if (idLider) {
+        // Limpiar todos los tipos de caché por LD
+        const clavesLD = [
+          `LD_QUICK_${idLider}`,
+          `LD_FULL_${idLider}`,
+          `LD_BASIC_${idLider}`,
+          `LD_OPT_FULL_${idLider}`,
+          `LD_OPT_BASIC_${idLider}`
+        ];
+        
+        clavesLD.forEach(clave => {
+          try {
+            cache.remove(clave);
+            clavesLimpiadas++;
+          } catch (error) {
+            // Ignorar errores de claves individuales
+          }
+        });
+      }
+    });
+    
+    console.log(`[MainModule] ✅ ${clavesLimpiadas} claves de caché de líderes limpiadas`);
+    return clavesLimpiadas;
+    
+  } catch (error) {
+    console.error('[MainModule] Error limpiando caché de líderes:', error);
+    return 0;
+  }
+}
+
+/**
  * Fuerza la recarga completa de datos del dashboard
  * VERSIÓN OPTIMIZADA: Carga solo datos esenciales para evitar timeout
  * @returns {Object} Respuesta con análisis completo
@@ -366,6 +414,10 @@ function forceReloadDashboardData() {
     if (!directorioCompleto || !directorioCompleto.lideres) {
       throw new Error('Error cargando directorio completo desde Google Sheets');
     }
+    
+    // ✅ CORRECCIÓN: Limpiar caché específico de todos los líderes
+    const clavesLimpiadas = clearLeaderDetailCache(directorioCompleto.lideres);
+    console.log(`[MainModule] 🧹 ${clavesLimpiadas} claves de caché de líderes eliminadas`);
     
     // 1. Filtrar líderes LD desde datos frescos
     const lideresLD = directorioCompleto.lideres.filter(l => l.Rol === 'LD');
@@ -397,6 +449,7 @@ function forceReloadDashboardData() {
     const timeElapsed = Date.now() - startTime;
     console.log(`[MainModule] ✅ Recarga forzada completada en ${timeElapsed}ms`);
     console.log(`[MainModule] 📊 Datos frescos cargados: ${lideresLD.length} LDs, ${stats.data.actividad?.total_recibiendo_celulas || 0} almas`);
+    console.log(`[MainModule] 🧹 Caché limpiado: ${clavesLimpiadas} claves de líderes eliminadas`);
 
     return {
       success: true,
@@ -470,5 +523,36 @@ function generarAlertasRapidas() {
 
 
 
+
+/**
+ * Función de prueba para verificar la limpieza de caché de líderes
+ * @param {string} idLD - ID del líder para probar
+ * @returns {Object} Resultado de la prueba
+ */
+function testClearLeaderCache(idLD = 'LD-4001') {
+  try {
+    console.log(`🧪 TEST: Probando limpieza de caché para LD ${idLD}`);
+    
+    // Simular datos de líder
+    const lideresTest = [{ ID_Lider: idLD, Nombre_Lider: 'Test LD' }];
+    
+    // Limpiar caché
+    const clavesLimpiadas = clearLeaderDetailCache(lideresTest);
+    
+    console.log(`✅ Test completado: ${clavesLimpiadas} claves limpiadas`);
+    return {
+      success: true,
+      claves_limpiadas: clavesLimpiadas,
+      ld_probado: idLD
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en test:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
 
 console.log('🏠 MainModule cargado - Aplicación principal lista');
