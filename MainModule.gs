@@ -352,44 +352,57 @@ function forceReloadDashboardData() {
     console.log('[MainModule] 🔄 RECARGA FORZADA solicitada desde el Frontend');
     const startTime = Date.now();
     
-    // ✅ OPTIMIZACIÓN: Cargar solo datos esenciales para evitar timeout
-    console.log('[MainModule] Cargando datos esenciales (versión optimizada)...');
+    // ✅ CORRECCIÓN: Limpiar caché antes de cargar datos frescos
+    console.log('[MainModule] Limpiando caché para forzar recarga desde Google Sheets...');
+    clearCache();
     
-    // 1. Obtener estadísticas rápidas (ya optimizadas)
+    // Limpiar caché específico de estadísticas
+    const cache = CacheService.getScriptCache();
+    cache.remove('STATS_RAPIDAS_V2');
+    
+    // ✅ CORRECCIÓN: Cargar directorio completo desde Google Sheets
+    console.log('[MainModule] Cargando directorio completo desde Google Sheets...');
+    const directorioCompleto = cargarDirectorioCompleto(true); // forceReload = true
+    if (!directorioCompleto || !directorioCompleto.lideres) {
+      throw new Error('Error cargando directorio completo desde Google Sheets');
+    }
+    
+    // 1. Filtrar líderes LD desde datos frescos
+    const lideresLD = directorioCompleto.lideres.filter(l => l.Rol === 'LD');
+    console.log(`[MainModule] ✅ ${lideresLD.length} LDs cargados desde Google Sheets`);
+    
+    // 2. Obtener estadísticas frescas (después de limpiar caché)
     const stats = getEstadisticasRapidas();
     if (!stats.success) {
       throw new Error('Error obteniendo estadísticas: ' + stats.error);
     }
     
-    // 2. Obtener lista de líderes (ya optimizada)
-    const lideres = getListaDeLideres();
-    if (!lideres.success) {
-      throw new Error('Error obteniendo líderes: ' + lideres.error);
-    }
-    
     // 3. Obtener alertas (función rápida)
     const alertas = generarAlertasRapidas();
     
-    // 4. Crear análisis simplificado con datos disponibles
+    // 4. Crear análisis con datos frescos desde Google Sheets
     const analisis = {
       // Usar datos de actividad (estructura real de getEstadisticasRapidas)
       actividad: stats.data.actividad || {},
       metricas: stats.data.metricas || {},
       lideres: {
-        lista: lideres.data || []
+        lista: lideresLD // ✅ Datos frescos desde Google Sheets
       },
       alertas: alertas || [],
       timestamp: stats.data.timestamp,
       modo_optimizado: true,
-      modo_carga: 'RECARGA FORZADA (optimizada)'
+      modo_carga: 'RECARGA FORZADA (datos frescos desde Google Sheets)'
     };
 
     const timeElapsed = Date.now() - startTime;
     console.log(`[MainModule] ✅ Recarga forzada completada en ${timeElapsed}ms`);
+    console.log(`[MainModule] 📊 Datos frescos cargados: ${lideresLD.length} LDs, ${stats.data.actividad?.total_recibiendo_celulas || 0} almas`);
 
     return {
       success: true,
-      data: analisis
+      data: analisis,
+      tiempo_ms: timeElapsed,
+      modo: 'RECARGA_FORZADA_DATOS_FRESCOS'
     };
 
   } catch (error) {
