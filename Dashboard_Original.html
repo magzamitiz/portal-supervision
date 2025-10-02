@@ -512,6 +512,33 @@ function handleRecargaCompleta(response) {
         datosActuales = response.data;
         window.datosActuales = response.data;
         
+        // ✅ CORRECCIÓN: Actualizar métricas y timestamp después de recarga
+        console.log('🔄 Actualizando métricas después de recarga...');
+        
+        // Verificar que los campos necesarios existen
+        const datosSeguros = {
+            actividad: response.data.actividad || {},
+            metricas: response.data.metricas || {},
+            timestamp: response.data.timestamp || new Date().toISOString()
+        };
+        
+        actualizarEstadisticas(datosSeguros);
+        actualizarTimestamp();
+        
+        // ✅ CORRECCIÓN: Actualizar selector de LD con datos frescos
+        if (response.data.lideres?.lista) {
+            console.log('🔄 Actualizando selector de LD con datos frescos...');
+            const ldAnterior = ldSeleccionado; // Conservar selección previa
+            llenarSelectorLD(response.data.lideres.lista);
+            
+            // Restaurar selección previa si el LD sigue existiendo
+            if (ldAnterior && response.data.lideres.lista.some(ld => ld.ID_Lider === ldAnterior)) {
+                ldSeleccionado = ldAnterior;
+                document.getElementById('selectorLD').value = ldAnterior;
+                console.log(`✅ Selección de LD restaurada: ${ldAnterior}`);
+            }
+        }
+        
         // Mostrar alertas globales si existen
         mostrarAlertasGlobales();
         
