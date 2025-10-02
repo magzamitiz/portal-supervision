@@ -723,4 +723,81 @@ function getResumenLCF(idLCF) {
   }
 }
 
+/**
+ * Carga datos completos de un LCF (células y almas)
+ * @param {string} idLCF - ID del LCF
+ * @returns {Object} Respuesta con células y almas del LCF
+ */
+function cargarDatosLCF(idLCF) {
+  try {
+    console.log('[SeguimientoModule] Cargando datos completos de LCF:', idLCF);
+    
+    if (!idLCF) {
+      return { success: false, error: 'ID de LCF no proporcionado' };
+    }
+    
+    // Cargar datos completos del directorio
+    const data = cargarDirectorioCompleto();
+    if (!data || !data.lideres || !data.celulas || !data.ingresos) {
+      return { success: false, error: 'No se pudieron cargar los datos del directorio' };
+    }
+    
+    // Buscar el LCF específico
+    const lcf = data.lideres.find(l => l.ID_Lider === idLCF && l.Rol === 'LCF');
+    if (!lcf) {
+      return { success: false, error: `LCF ${idLCF} no encontrado` };
+    }
+    
+    // Obtener células del LCF
+    const celulasLCF = data.celulas.filter(c => c.ID_LCF === idLCF);
+    console.log(`[SeguimientoModule] Encontradas ${celulasLCF.length} células para LCF ${idLCF}`);
+    
+    // Obtener almas del LCF usando la función existente
+    const almasLCF = getSeguimientoAlmasLCF_REAL(idLCF);
+    if (!almasLCF.success) {
+      return { success: false, error: almasLCF.error || 'Error cargando almas del LCF' };
+    }
+    
+    console.log(`[SeguimientoModule] ✅ Datos LCF cargados: ${celulasLCF.length} células, ${almasLCF.data.length} almas`);
+    
+    return {
+      success: true,
+      celulas: celulasLCF,
+      almas: almasLCF.data || []
+    };
+    
+  } catch (error) {
+    console.error('[SeguimientoModule] Error cargando datos LCF:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Función de prueba para verificar la carga de datos LCF
+ * @param {string} idLCF - ID del LCF para probar (opcional)
+ * @returns {Object} Resultado de la prueba
+ */
+function testCargarDatosLCF(idLCF = 'LCF-1026') {
+  try {
+    console.log(`🧪 TEST: Probando cargarDatosLCF(${idLCF})`);
+    
+    const resultado = cargarDatosLCF(idLCF);
+    
+    if (resultado.success) {
+      console.log(`✅ Test exitoso: ${resultado.celulas.length} células, ${resultado.almas.length} almas`);
+    } else {
+      console.log(`❌ Test falló: ${resultado.error}`);
+    }
+    
+    return resultado;
+    
+  } catch (error) {
+    console.error('❌ Error en test:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
 console.log('📋 SeguimientoModule cargado - Gestión de seguimiento modularizada');
