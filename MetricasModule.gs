@@ -482,31 +482,47 @@ function getEstadisticasRapidas() {
     if (datos && datos.lideres) {
       Logger.log('[getEstadisticasRapidas] ✅ Datos encontrados en DASHBOARD_DATA_V2');
       
+      // ✅ ACTUALIZADO: Leer desde _ResumenDashboard para obtener las nuevas métricas
+      Logger.log('[getEstadisticasRapidas] 📊 Leyendo métricas desde _ResumenDashboard...');
+      
+      let nuevasMetricas = null;
+      try {
+        const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+        const resumenSheet = spreadsheet.getSheetByName('_ResumenDashboard');
+        
+        if (resumenSheet) {
+          const valores = resumenSheet.getRange('B1:B5').getValues();
+          nuevasMetricas = {
+            total_recibiendo_celulas: parseInt(valores[0][0]) || 0,
+            activos_recibiendo_celula: parseInt(valores[1][0]) || 0,
+            alerta_2_3_semanas: parseInt(valores[2][0]) || 0,
+            critico_mas_1_mes: parseInt(valores[3][0]) || 0,
+            lideres_inactivos: parseInt(valores[4][0]) || 0
+          };
+          Logger.log('[getEstadisticasRapidas] ✅ Métricas leídas desde _ResumenDashboard:', nuevasMetricas);
+        }
+      } catch (error) {
+        Logger.log('[getEstadisticasRapidas] ⚠️ Error leyendo _ResumenDashboard:', error);
+      }
+      
       const stats = {
         success: true,
         data: {
-          lideres: { 
-            total_LD: datos.lideres.filter(l => l.Rol === 'LD').length,
-            total_LCF: datos.lideres.filter(l => l.Rol === 'LCF').length 
+          actividad: nuevasMetricas || {
+            total_recibiendo_celulas: 0,
+            activos_recibiendo_celula: 0,
+            alerta_2_3_semanas: 0,
+            critico_mas_1_mes: 0,
+            lideres_inactivos: 0
           },
-          celulas: { 
-            total_celulas: datos.celulas ? datos.celulas.length : 0 
-          },
-          ingresos: {
-            total_historico: datos.ingresos ? datos.ingresos.length : 0,
-            ingresos_mes: datos.ingresos ? datos.ingresos.filter(ing => {
-              if (!ing.Timestamp) return false;
-              const fecha = new Date(ing.Timestamp);
-              const hace30Dias = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-              return fecha >= hace30Dias;
-            }).length : 0,
-            tasa_integracion_celula: datos.ingresos && datos.ingresos.length > 0 ? 
-              ((datos.ingresos.filter(ing => ing.En_Celula).length / datos.ingresos.length) * 100).toFixed(1) : 0
-          },
-          metricas: {
-            promedio_lcf_por_ld: (datos.lideres.filter(l => l.Rol === 'LCF').length / 
-                                   Math.max(datos.lideres.filter(l => l.Rol === 'LD').length, 1)).toFixed(1)
-          },
+          metricas: nuevasMetricas ? {
+            porcentaje_activos: nuevasMetricas.total_recibiendo_celulas > 0 ? 
+              ((nuevasMetricas.activos_recibiendo_celula / nuevasMetricas.total_recibiendo_celulas) * 100).toFixed(1) : 0,
+            porcentaje_alerta: nuevasMetricas.total_recibiendo_celulas > 0 ? 
+              ((nuevasMetricas.alerta_2_3_semanas / nuevasMetricas.total_recibiendo_celulas) * 100).toFixed(1) : 0,
+            porcentaje_critico: nuevasMetricas.total_recibiendo_celulas > 0 ? 
+              ((nuevasMetricas.critico_mas_1_mes / nuevasMetricas.total_recibiendo_celulas) * 100).toFixed(1) : 0
+          } : {},
           timestamp: new Date().toISOString()
         }
       };
@@ -536,28 +552,26 @@ function getEstadisticasRapidas() {
     }
     
     const startMinimal = Date.now();
-    const valores = resumenSheet.getRange('B1:B7').getValues();
+    const valores = resumenSheet.getRange('B1:B5').getValues();
     const timeMinimal = Date.now() - startMinimal;
     
-    Logger.log(`[getEstadisticasRapidas] ✅ Mínimas cargadas desde _ResumenDashboard en ${timeMinimal}ms`);
+    Logger.log(`[getEstadisticasRapidas] ✅ Nuevas métricas cargadas desde _ResumenDashboard en ${timeMinimal}ms`);
     
     const result = {
       success: true,
       data: {
-        lideres: { 
-          total_LD: parseInt(valores[0][0]) || 0,
-          total_LCF: parseInt(valores[1][0]) || 0
+        actividad: {
+          total_recibiendo_celulas: parseInt(valores[0][0]) || 0,
+          activos_recibiendo_celula: parseInt(valores[1][0]) || 0,
+          alerta_2_3_semanas: parseInt(valores[2][0]) || 0,
+          critico_mas_1_mes: parseInt(valores[3][0]) || 0,
+          lideres_inactivos: parseInt(valores[4][0]) || 0
         },
-        celulas: { 
-          total_celulas: parseInt(valores[2][0]) || 0 
-        },
-        ingresos: {
-          total_historico: parseInt(valores[3][0]) || 0,
-          ingresos_mes: parseInt(valores[4][0]) || 0,
-          tasa_integracion_celula: parseFloat(valores[5][0]) || 0
-        },
+        // Métricas calculadas
         metricas: {
-          promedio_lcf_por_ld: valores[6][0] || '0'
+          porcentaje_activos: valores[0][0] > 0 ? ((parseInt(valores[1][0]) / parseInt(valores[0][0])) * 100).toFixed(1) : 0,
+          porcentaje_alerta: valores[0][0] > 0 ? ((parseInt(valores[2][0]) / parseInt(valores[0][0])) * 100).toFixed(1) : 0,
+          porcentaje_critico: valores[0][0] > 0 ? ((parseInt(valores[3][0]) / parseInt(valores[0][0])) * 100).toFixed(1) : 0
         },
         timestamp: new Date().toISOString()
       }
@@ -599,16 +613,14 @@ function cargarEstadisticasMinimas() {
     }
     
     // Leer datos de la hoja _ResumenDashboard (muy rápido)
-    const metricasValues = resumenSheet.getRange("B1:B7").getValues();
+    const metricasValues = resumenSheet.getRange("B1:B5").getValues();
     
     const stats = {
-      totalLideres: metricasValues[0][0] || 0, // Total LD (B1)
-      totalLCF: metricasValues[1][0] || 0, // Total LCF (B2)
-      totalCelulas: metricasValues[2][0] || 0, // Total células (B3)
-      totalIngresos: metricasValues[3][0] || 0, // Total almas histórico (B4)
-      ingresosMes: metricasValues[4][0] || 0, // Ingresos del mes (B5)
-      almasEnCelula: metricasValues[5][0] || 0, // Almas en célula (B6)
-      tasaIntegracion: metricasValues[6][0] || 0, // Tasa de integración (B7)
+      totalRecibiendoCelulas: metricasValues[0][0] || 0, // Total Recibiendo Células (B1)
+      activosRecibiendoCelula: metricasValues[1][0] || 0, // Activos recibiendo célula (B2)
+      alerta2_3Semanas: metricasValues[2][0] || 0, // 2 a 3 semanas sin recibir célula (B3)
+      criticoMas1Mes: metricasValues[3][0] || 0, // Más de 1 mes sin recibir célula (B4)
+      lideresInactivos: metricasValues[4][0] || 0, // Líderes Inactivos (B5)
       ultimaActualizacion: new Date().toISOString()
     };
     
@@ -674,9 +686,9 @@ function calcularMetricasLCF(idLCF) {
 }
 
 /**
- * Test para verificar la corrección del cache key mismatch
+ * Test esencial para verificar funcionamiento de estadísticas
  */
-function testCorrecionEstadisticas() {
+function testEstadisticasEsencial() {
   Logger.log('🧪 TEST: Verificando corrección de getEstadisticasRapidas');
   Logger.log('');
   
@@ -730,6 +742,44 @@ function testCorrecionEstadisticas() {
     test3: { tiempo: time3, exitoso: resultado2.success },
     mejora: mejora + '%'
   };
+}
+
+/**
+ * Test rápido para verificar nuevas métricas de actividad
+ */
+function testNuevasMetricas() {
+  console.log('🧪 TEST: Probando getEstadisticasRapidas()');
+  
+  try {
+    const resultado = getEstadisticasRapidas();
+    console.log('✅ Resultado completo:', JSON.stringify(resultado, null, 2));
+    
+    if (resultado.success) {
+      console.log('✅ SUCCESS: true');
+      console.log('📊 Datos recibidos:', resultado.data);
+      
+      if (resultado.data.actividad) {
+        console.log('✅ Estructura actividad encontrada:', resultado.data.actividad);
+      } else {
+        console.log('❌ No se encontró estructura actividad');
+      }
+      
+      if (resultado.data.metricas) {
+        console.log('✅ Estructura metricas encontrada:', resultado.data.metricas);
+      } else {
+        console.log('❌ No se encontró estructura metricas');
+      }
+    } else {
+      console.log('❌ SUCCESS: false');
+      console.log('❌ Error:', resultado.error);
+    }
+    
+    return resultado;
+    
+  } catch (error) {
+    console.error('❌ ERROR en test:', error);
+    return { success: false, error: error.toString() };
+  }
 }
 
 console.log('📊 MetricasModule cargado - Cálculo de métricas modularizado');

@@ -472,4 +472,103 @@ function limpiarCacheManualmente() {
   }
 }
 
+/**
+ * Función robusta de limpieza completa del sistema
+ * Limpia todas las cachés conocidas y reinicia el sistema
+ * @returns {Object} Resultado completo de la limpieza
+ */
+function limpiarCacheRobustoCompleto() {
+  try {
+    console.log('🧹 INICIANDO LIMPIEZA ROBUSTA COMPLETA DEL SISTEMA');
+    const startTime = Date.now();
+    
+    const resultado = {
+      success: true,
+      timestamp: new Date().toISOString(),
+      operaciones: {},
+      errores: []
+    };
+    
+    // 1. Limpiar caché principal
+    try {
+      console.log('🧹 Limpiando caché principal...');
+      resultado.operaciones.cache_principal = clearCache();
+    } catch (error) {
+      resultado.errores.push(`Cache principal: ${error.toString()}`);
+    }
+    
+    // 2. Limpiar caché de estadísticas rápidas
+    try {
+      console.log('🧹 Limpiando caché de estadísticas...');
+      const cache = CacheService.getScriptCache();
+      cache.remove('STATS_RAPIDAS_V2');
+      resultado.operaciones.stats_rapidas = true;
+    } catch (error) {
+      resultado.errores.push(`Stats rápidas: ${error.toString()}`);
+    }
+    
+    // 3. Limpiar todas las claves conocidas del sistema
+    try {
+      console.log('🧹 Limpieza exhaustiva de claves conocidas...');
+      const cache = CacheService.getScriptCache();
+      const clavesConocidas = [
+        'DASHBOARD_DATA_V2',
+        'STATS_RAPIDAS_V2', 
+        'LD_FULL_',
+        'ACTIVIDAD_CACHE',
+        'DIRECTORIO_COMPLETO',
+        'CACHE_GRAFICOS'
+      ];
+      
+      let clavesLimpiadas = 0;
+      clavesConocidas.forEach(clave => {
+        try {
+          cache.remove(clave);
+          clavesLimpiadas++;
+        } catch (e) {
+          // Ignorar errores de claves individuales
+        }
+      });
+      
+      resultado.operaciones.claves_limpiadas = clavesLimpiadas;
+    } catch (error) {
+      resultado.errores.push(`Limpieza claves: ${error.toString()}`);
+    }
+    
+    // 4. Forzar recarga de datos críticos
+    try {
+      console.log('🔄 Forzando recarga de datos críticos...');
+      if (typeof cargarDirectorioCompleto === 'function') {
+        cargarDirectorioCompleto(true); // forceReload = true
+        resultado.operaciones.recarga_directorio = true;
+      }
+    } catch (error) {
+      resultado.errores.push(`Recarga directorio: ${error.toString()}`);
+    }
+    
+    const timeElapsed = Date.now() - startTime;
+    resultado.tiempo_total_ms = timeElapsed;
+    
+    if (resultado.errores.length === 0) {
+      console.log(`✅ LIMPIEZA ROBUSTA COMPLETADA EN ${timeElapsed}ms`);
+      resultado.mensaje = 'Sistema completamente limpio y reiniciado';
+    } else {
+      console.log(`⚠️ LIMPIEZA COMPLETADA CON ${resultado.errores.length} ERRORES EN ${timeElapsed}ms`);
+      resultado.success = false;
+      resultado.mensaje = `Limpieza parcial: ${resultado.errores.length} errores encontrados`;
+    }
+    
+    return resultado;
+    
+  } catch (error) {
+    console.error('❌ ERROR CRÍTICO EN LIMPIEZA ROBUSTA:', error);
+    return {
+      success: false,
+      error: error.toString(),
+      timestamp: new Date().toISOString(),
+      mensaje: 'Error crítico durante la limpieza'
+    };
+  }
+}
+
 console.log('📦 CacheModule cargado - Sistema de caché con fragmentación automática');

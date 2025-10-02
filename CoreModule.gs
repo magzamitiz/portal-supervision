@@ -910,9 +910,7 @@ function construirCadenasLM(idLD, lideres, ingresosIndex) {
         total_lcf_en_cadena: todosLosLCF.length, // ✅ CORREGIDO: Ahora incluye LCF directos también
         lcf_en_small_groups: lcfsEnSG.length, // ✅ NUEVO: LCF solo en SG
         lcf_directos: lcfsDirectosDelLM.length, // ✅ NUEVO: LCF directos al LM
-        total_almas_en_cadena: totalAlmas,
-        small_groups_activos: smallGroups.filter(sg => sg.Estado_Actividad === 'Activo').length,
-        salud_cadena: 'Sin Datos'
+        total_almas_en_cadena: totalAlmas
       }
     };
   });

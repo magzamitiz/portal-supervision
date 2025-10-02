@@ -4,6 +4,51 @@
  */
 
 /**
+ * Función de prueba para verificar la generación de PDF
+ * @param {string} idLCF - ID del LCF a probar
+ * @returns {Object} Resultado de la prueba
+ */
+function probarGeneracionPDF(idLCF = 'LCF-1026') {
+  try {
+    console.log(`🧪 Probando generación de PDF para: ${idLCF}`);
+    
+    const resultado = generarReporteLCF(idLCF);
+    
+    if (resultado.success) {
+      console.log(`✅ PDF generado exitosamente:`);
+      console.log(`   - Archivo: ${resultado.fileName}`);
+      console.log(`   - LCF: ${resultado.lcf}`);
+      console.log(`   - Total almas: ${resultado.total_almas}`);
+      console.log(`   - Tamaño base64: ${resultado.content ? resultado.content.length : 0} caracteres`);
+      
+      return {
+        success: true,
+        mensaje: 'PDF generado correctamente',
+        detalles: {
+          fileName: resultado.fileName,
+          lcf: resultado.lcf,
+          total_almas: resultado.total_almas,
+          base64_size: resultado.content ? resultado.content.length : 0
+        }
+      };
+    } else {
+      console.error(`❌ Error generando PDF: ${resultado.error}`);
+      return {
+        success: false,
+        error: resultado.error
+      };
+    }
+    
+  } catch (error) {
+    console.error(`❌ Error en prueba: ${error}`);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
  * Genera reporte completo de un LCF
  * @param {string} idLCF - ID del LCF
  * @returns {Object} Reporte completo del LCF
@@ -38,41 +83,46 @@ function generarReporteLCF(idLCF) {
 
     const almasLCF = [];
     for (const fila of todosLosSeguimientos) {
-      if (fila[1] === idLCF) { // Columna B = ID_LCF
-        const alma = {
-          id: fila[0], // Columna A = ID_Alma
-          nombre: fila[2], // Columna C = Nombre_Alma
-          telefono: fila[3], // Columna D = Telefono
-          fechaIngreso: fila[4], // Columna E = Fecha_Ingreso
-          bienvenida: fila[5], // Columna F = Resultado_Bienvenida
-          visita: fila[6], // Columna G = Resultado_Visita
-          progresoCelulas: fila[7], // Columna H = Progreso_Celulas
-          estado: fila[8], // Columna I = Estado
-          prioridad: fila[9], // Columna J = Prioridad
-          bienvenidaIcon: getBienvenidaIcon(fila[5]),
-          visitaIcon: getVisitaIcon(fila[6])
-        };
-        almasLCF.push(alma);
+      if (fila[2] === idLCF) { // Columna C = ID_LCF
+        almasLCF.push({
+          Nombre_Completo: fila[1], // Columna B = Nombre
+          Telefono: fila[4], // Columna E = Telefono
+          Acepta_Visita: String(fila[5] || 'No').trim().toUpperCase(), // Columna F = Acepta_Visita
+          B: getBienvenidaIcon(fila[6]), // Columna G = Resultado_Bienvenida
+          V: getVisitaIcon(fila[7]), // Columna H = Resultado_Visita
+          C: fila[8] || '0/12', // Columna I = Progreso_Celulas
+          Dias: fila[9] || 0 // Columna J = Dias_Sin_Seguimiento
+        });
       }
     }
 
+    // Ordenar por días (más urgentes primero)
+    const almasOrdenadas = almasLCF.sort((a, b) => b.Dias - a.Dias);
+    
     const metricas = {
       total_almas: almasLCF.length,
-      con_bienvenida: almasLCF.filter(a => a.bienvenidaIcon !== '✗').length,
-      con_visita: almasLCF.filter(a => a.visitaIcon !== '✗').length,
-      en_celula: almasLCF.filter(a => a.progresoCelulas && a.progresoCelulas.includes('Integrado')).length,
-      alta_prioridad: almasLCF.filter(a => a.prioridad === 'Alta').length
+      desean_visita: almasLCF.filter(a => a.Acepta_Visita === 'SI' || a.Acepta_Visita === 'SÍ').length,
+      urgentes: almasLCF.filter(a => a.Dias > 30).length
     };
 
+    // Generar HTML del reporte
+    const html = generarHTMLReporteLCF(lcf, ldSupervisor, almasOrdenadas, metricas);
+    
+    // Convertir HTML a PDF
+    const blob = Utilities.newBlob(html, 'text/html', 'report.html');
+    const pdf = blob.getAs('application/pdf');
+    
+    // Generar nombre de archivo
+    const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    const fileName = `Reporte_${lcf.Nombre_Lider.replace(/\s+/g, '_')}_${fecha}.pdf`;
+    
     return {
       success: true,
-      data: {
-        lcf: lcf,
-        ldSupervisor: ldSupervisor,
-        almas: almasLCF,
-        metricas: metricas,
-        html: generarHTMLReporteLCF(lcf, ldSupervisor, almasLCF, metricas)
-      }
+      fileName: fileName,
+      content: Utilities.base64Encode(pdf.getBytes()),
+      lcf: lcf.Nombre_Lider,
+      total_almas: almasOrdenadas.length,
+      metricas: metricas
     };
 
   } catch (error) {
@@ -120,7 +170,7 @@ function generarReportesEquipoLD(idLD) {
 }
 
 /**
- * Genera HTML del reporte LCF
+ * Genera el HTML del reporte para un LCF con un diseño (UI/UX) mejorado.
  * @param {Object} lcf - Datos del LCF
  * @param {Object} ldSupervisor - Datos del LD supervisor
  * @param {Array} almas - Array de almas
@@ -128,75 +178,100 @@ function generarReportesEquipoLD(idLD) {
  * @returns {string} HTML del reporte
  */
 function generarHTMLReporteLCF(lcf, ldSupervisor, almas, metricas) {
-  let html = `
-    <div class="reporte-lcf">
-      <h2>Reporte de LCF: ${lcf.Nombre_Lider}</h2>
-      <p><strong>Supervisor LD:</strong> ${ldSupervisor ? ldSupervisor.Nombre_Lider : 'No asignado'}</p>
-      
-      <div class="metricas">
-        <h3>Métricas</h3>
-        <ul>
-          <li>Total de almas: ${metricas.total_almas}</li>
-          <li>Con bienvenida: ${metricas.con_bienvenida}</li>
-          <li>Con visita: ${metricas.con_visita}</li>
-          <li>En célula: ${metricas.en_celula}</li>
-          <li>Alta prioridad: ${metricas.alta_prioridad}</li>
-        </ul>
+  const fechaHoy = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        @page { size: letter; margin: 0.75in; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 10pt; color: #333; }
+        .header { text-align: center; border-bottom: 2px solid #005A9C; padding-bottom: 15px; margin-bottom: 25px; }
+        .header h1 { font-size: 22pt; color: #005A9C; margin: 0; }
+        .header p { font-size: 11pt; color: #555; margin: 5px 0 0; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background-color: #f7f7f7; padding: 15px; border-radius: 8px; margin-bottom: 25px; }
+        .info-grid span { color: #666; }
+        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center; margin-bottom: 25px; }
+        .metric-box { padding: 15px; border-radius: 8px; background-color: #f7f7f7; }
+        .metric-box .value { font-size: 24pt; font-weight: bold; color: #005A9C; }
+        .metric-box .label { font-size: 9pt; color: #666; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+        th { background-color: #005A9C; color: white; padding: 10px; text-align: left; }
+        td { padding: 8px; border-bottom: 1px solid #ddd; }
+        tr:nth-child(even) { background-color: #f7f7f7; }
+        .urgent { color: #D8000C; font-weight: bold; }
+        .footer { text-align: center; font-size: 8pt; color: #888; margin-top: 30px; border-top: 1px solid #ccc; padding-top: 10px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Reporte de Seguimiento de Almas</h1>
+        <p>Generado el ${fechaHoy}</p>
       </div>
-      
-      <div class="almas">
-        <h3>Almas</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Teléfono</th>
-              <th>Bienvenida</th>
-              <th>Visita</th>
-              <th>Estado</th>
-              <th>Prioridad</th>
+      <div class="info-grid">
+        <div><strong>Líder (LCF):</strong> <span>${lcf.Nombre_Lider}</span></div>
+        <div><strong>Supervisor (LD):</strong> <span>${ldSupervisor ? ldSupervisor.Nombre_Lider : 'No asignado'}</span></div>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric-box"><div class="value">${metricas.total_almas}</div><div class="label">Total Almas</div></div>
+        <div class="metric-box"><div class="value">${metricas.desean_visita}</div><div class="label">Desean Visita</div></div>
+        <div class="metric-box"><div class="value urgent">${metricas.urgentes}</div><div class="label urgent">Casos Urgentes (+30d)</div></div>
+      </div>
+      <h3>Lista de Seguimiento</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th style="width: 15%;">Teléfono</th>
+            <th style="width: 10%; text-align: center;">Acepta Visita</th>
+            <th style="width: 5%; text-align: center;">B</th>
+            <th style="width: 5%; text-align: center;">V</th>
+            <th style="width: 10%; text-align: center;">Células</th>
+            <th style="width: 10%; text-align: center;">Días</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${almas.map(alma => `
+            <tr class="${alma.Dias > 30 ? 'urgent-row' : ''}">
+              <td>${alma.Nombre_Completo}</td>
+              <td>${alma.Telefono || '-'}</td>
+              <td style="text-align: center;">${alma.Acepta_Visita === 'SI' || alma.Acepta_Visita === 'SÍ' ? 'Sí' : 'No'}</td>
+              <td style="text-align: center; font-weight: bold;">${alma.B}</td>
+              <td style="text-align: center; font-weight: bold;">${alma.V}</td>
+              <td style="text-align: center;">${alma.C}</td>
+              <td style="text-align: center;" class="${alma.Dias > 30 ? 'urgent' : ''}">${alma.Dias}</td>
             </tr>
-          </thead>
-          <tbody>
-  `;
-  
-  almas.forEach(alma => {
-    html += `
-      <tr>
-        <td>${alma.nombre}</td>
-        <td>${alma.telefono}</td>
-        <td>${alma.bienvenidaIcon}</td>
-        <td>${alma.visitaIcon}</td>
-        <td>${alma.estado}</td>
-        <td>${alma.prioridad}</td>
-      </tr>
-    `;
-  });
-  
-  html += `
-          </tbody>
-        </table>
+          `).join('')}
+        </tbody>
+      </table>
+      <div class="footer">
+        Portal de Supervisión V2.0
       </div>
-    </div>
+    </body>
+    </html>
   `;
-  
-  return html;
 }
 
 /**
- * Obtiene el LD supervisor de un líder
+ * Encuentra el LD supervisor de un líder (navegando la jerarquía)
  * @param {Object} lider - Datos del líder
  * @param {Array} todosLideres - Array de todos los líderes
- * @returns {Object|null} LD supervisor o null
+ * @returns {Object|null} LD supervisor o null si no se encuentra
  */
 function obtenerLDSupervisor(lider, todosLideres) {
   if (!lider.ID_Lider_Directo) return null;
   
-  const supervisor = todosLideres.find(l => 
-    l.ID_Lider === lider.ID_Lider_Directo && l.Rol === 'LD'
-  );
+  let supervisor = todosLideres.find(l => l.ID_Lider === lider.ID_Lider_Directo);
   
-  return supervisor || null;
+  // Si el supervisor directo no es LD, buscar recursivamente
+  while (supervisor && supervisor.Rol !== 'LD') {
+    if (!supervisor.ID_Lider_Directo) break;
+    supervisor = todosLideres.find(l => l.ID_Lider === supervisor.ID_Lider_Directo);
+  }
+  
+  return supervisor;
 }
 
 /**

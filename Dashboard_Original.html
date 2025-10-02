@@ -1,4 +1,17 @@
 <!DOCTYPE html>
+<!--
+    PORTAL DE SUPERVISIÓN V2.0
+    
+    NOTA IMPORTANTE: Los gráficos están temporalmente desactivados para el desarrollo de la etapa final.
+    - Panel de gráficos oculto con display: none !important
+    - Función actualizarGraficos() desactivada
+    - Llamadas a gráficos comentadas en mostrarDatosLD()
+    
+    Para reactivar los gráficos:
+    1. Remover "style='display: none !important;'" del panelGraficos
+    2. Restaurar función actualizarGraficos() original
+    3. Descomentar llamada actualizarGraficos() en mostrarDatosLD()
+-->
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -195,7 +208,8 @@
         <div id="resumenLD" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
             </div>
         
-        <div id="panelGraficos" class="hidden mt-8">
+        <!-- GRÁFICOS TEMPORALMENTE DESACTIVADOS PARA DESARROLLO DE ETAPA FINAL -->
+        <div id="panelGraficos" class="hidden mt-8" style="display: none !important;">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-lg shadow-md p-6 min-w-0 relative">
                     <h3 class="text-lg font-semibold mb-4">Matriz de Efectividad del Liderazgo</h3>
@@ -406,10 +420,16 @@ function cargarDatosIniciales() {
 // Nueva función para manejar la respuesta de las estadísticas
 function handleEstadisticasResponse(response) {
     if (response && response.success) {
-        console.log('Estadísticas rápidas recibidas:', response.data);
+        console.log('📊 Estadísticas rápidas recibidas');
         actualizarEstadisticas(response.data); // Función que dibuja los cuadros de resumen
-        document.getElementById('dataTimestamp').textContent = new Date(response.data.timestamp).toLocaleString();
+        
+        // Actualizar timestamp si existe
+        const timestampElement = document.getElementById('dataTimestamp');
+        if (timestampElement && response.data.timestamp) {
+            timestampElement.textContent = new Date(response.data.timestamp).toLocaleString();
+        }
     } else {
+        console.error('❌ Error en estadísticas:', response ? response.error : "Respuesta inválida");
         handleDataFailure(response ? response.error : "Respuesta de estadísticas inválida");
     }
     // No se esconde el loader aquí, se espera a que ambas llamadas terminen o la principal
@@ -692,72 +712,70 @@ function handleLideresResponse(response) {
 
         
         
-        // Actualizar estadísticas generales (CORREGIDA PARA FUNCIONAR CON CARGA RÁPIDA)
+        // Actualizar estadísticas generales (ACTUALIZADA PARA NUEVAS MÉTRICAS DE ACTIVIDAD)
 function actualizarEstadisticas(stats) {
     const container = document.getElementById('estadisticasGenerales');
     if (!stats) {
+        console.error('❌ No se pudieron cargar las estadísticas');
         container.innerHTML = `<p class="text-red-500">No se pudieron cargar las estadísticas.</p>`;
         return;
     }
 
-    // Acceso seguro a los datos que SÍ vienen en la carga rápida
-    const valores = {
-        total_LD: stats.lideres?.total_LD ?? 0,
-        total_LCF: stats.lideres?.total_LCF ?? 0,
-        total_celulas: stats.celulas?.total_celulas ?? 0,
-        ingresos_mes: stats.ingresos?.ingresos_mes ?? 0,
-        tasa_integracion_celula: stats.ingresos?.tasa_integracion_celula ?? 0
-    };
+    // Acceso a las nuevas métricas de actividad
+    const actividad = stats.actividad || {};
+    const metricas = stats.metricas || {};
     
     container.innerHTML = `
         <div class="stat-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Liderazgo (LD)</p>
-                    <p class="text-3xl font-bold text-gray-800">${valores.total_LD}</p>
+                    <p class="text-gray-500 text-sm">Total Recibiendo Células</p>
+                    <p class="text-3xl font-bold text-gray-800">${actividad.total_recibiendo_celulas || 0}</p>
                 </div>
-                <i class="fas fa-user-tie text-purple-500 text-3xl"></i>
+                <i class="fas fa-users text-blue-500 text-3xl"></i>
             </div>
         </div>
         
         <div class="stat-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Casas de FE</p>
-                    <p class="text-3xl font-bold text-gray-800">${valores.total_LCF}</p>
+                    <p class="text-gray-500 text-sm">Activos Recibiendo Célula</p>
+                    <p class="text-3xl font-bold text-green-600">${actividad.activos_recibiendo_celula || 0}</p>
+                    <p class="text-xs text-green-600">${metricas.porcentaje_activos || 0}% del total</p>
                 </div>
-                <i class="fas fa-home text-blue-500 text-3xl"></i>
+                <i class="fas fa-check-circle text-green-500 text-3xl"></i>
             </div>
         </div>
         
         <div class="stat-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Total Células</p>
-                    <p class="text-3xl font-bold text-gray-800">${valores.total_celulas}</p>
+                    <p class="text-gray-500 text-sm">Alerta (2-3 semanas)</p>
+                    <p class="text-3xl font-bold text-yellow-600">${actividad.alerta_2_3_semanas || 0}</p>
+                    <p class="text-xs text-yellow-600">${metricas.porcentaje_alerta || 0}% del total</p>
                 </div>
-                <i class="fas fa-users text-green-500 text-3xl"></i>
+                <i class="fas fa-exclamation-triangle text-yellow-500 text-3xl"></i>
             </div>
         </div>
         
         <div class="stat-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Ingresos (Mes)</p>
-                    <p class="text-3xl font-bold text-gray-800">${valores.ingresos_mes}</p>
+                    <p class="text-gray-500 text-sm">Crítico (+1 mes)</p>
+                    <p class="text-3xl font-bold text-red-600">${actividad.critico_mas_1_mes || 0}</p>
+                    <p class="text-xs text-red-600">${metricas.porcentaje_critico || 0}% del total</p>
                 </div>
-                <i class="fas fa-user-plus text-orange-500 text-3xl"></i>
+                <i class="fas fa-exclamation-circle text-red-500 text-3xl"></i>
             </div>
         </div>
         
         <div class="stat-card">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-gray-500 text-sm">Tasa Integración</p>
-                    <p class="text-3xl font-bold text-gray-800">${valores.tasa_integracion_celula}%</p>
-                     <p class="text-xs text-blue-600">Almas en célula</p>
+                    <p class="text-gray-500 text-sm">Líderes Inactivos</p>
+                    <p class="text-3xl font-bold text-gray-600">${actividad.lideres_inactivos || 0}</p>
                 </div>
-                <i class="fas fa-link text-blue-500 text-3xl"></i>
+                <i class="fas fa-user-slash text-gray-500 text-3xl"></i>
             </div>
         </div>
     `;
@@ -981,7 +999,7 @@ function llenarSelectorLD(listaLDs) {
             mostrarResumenLD();
             mostrarAlertasLD();
             mostrarEquipoLD();
-            actualizarGraficos();
+            // actualizarGraficos(); // TEMPORALMENTE DESACTIVADO PARA DESARROLLO DE ETAPA FINAL
         }
         
         // Actualizar la función mostrarResumenLD para incluir la estructura
@@ -1001,18 +1019,18 @@ function mostrarResumenLD() {
             <span class="status-badge ${estadoColor}">Estado LD: ${estadoLD}</span>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <!-- 1. Total Almas -->
             <div class="text-center p-3 bg-blue-50 rounded">
                 <p class="text-3xl font-bold text-blue-600">${resumen.Total_Ingresos ?? 0}</p>
                 <p class="text-sm text-gray-600">Total Almas</p>
             </div>
             
-            <!-- 2. Almas sin Célula -->
-            <div class="text-center p-3 bg-orange-50 rounded">
+            <!-- 2. Almas sin Célula - TEMPORALMENTE REMOVIDO PARA CORRECCIÓN -->
+            <!-- <div class="text-center p-3 bg-orange-50 rounded">
                 <p class="text-3xl font-bold text-orange-600">${(resumen.Total_Ingresos ?? 0) - (resumen.Ingresos_En_Celula ?? 0)}</p>
                 <p class="text-sm text-gray-600">Almas sin Célula</p>
-            </div>
+            </div> -->
             
             <!-- 3. Recibiendo Célula (suma de todos los LCF del equipo) -->
             <div class="text-center p-3 bg-teal-50 rounded">
@@ -1115,9 +1133,7 @@ function mostrarEquipoLD() {
                 lm.metricas = {
                     total_small_groups: lm.smallGroups ? lm.smallGroups.length : 0,
                     total_lcf_en_cadena: 0,
-                    total_almas_en_cadena: 0,
-                    small_groups_activos: 0,
-                    salud_cadena: 'Sin Datos'
+                    total_almas_en_cadena: 0
                 };
             }
         });
@@ -1385,10 +1401,6 @@ function crearTarjetaLMConReporte(lm) {
           </div>
         </div>
         
-        <div class="text-xs text-gray-600 mb-3">
-          <p>✅ Activos: ${lm.metricas.small_groups_activos}/${lm.metricas.total_small_groups} SG</p>
-          <p>📈 Salud: <span class="${getSaludColor(lm.metricas.salud_cadena)}">${lm.metricas.salud_cadena}</span></p>
-        </div>
         
         <button onclick="verDetalleCadenaLM('${lm.ID_Lider}')" 
                 class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition text-sm">
@@ -1565,10 +1577,6 @@ function verDetalleCadenaLM(idLM) {
                     <div class="text-center">
                         <div class="text-2xl font-bold text-purple-600">${lm.metricas?.total_almas_en_cadena || 0}</div>
                         <div class="text-sm text-gray-600">Total Almas</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold ${getSaludColor(lm.metricas?.salud_cadena || 'Sin datos')}">${lm.metricas?.salud_cadena || 'Sin datos'}</div>
-                        <div class="text-sm text-gray-600">Salud</div>
                     </div>
                 </div>
             </div>
@@ -1781,16 +1789,6 @@ function generarReporteLCFDesdeModal(idLCF, nombreLCF) {
     }, 300);
 }
 
-// Función auxiliar para obtener color de salud
-function getSaludColor(salud) {
-    switch(salud) {
-        case 'Excelente': return 'text-green-600';
-        case 'Buena': return 'text-blue-600';
-        case 'Regular': return 'text-yellow-600';
-        case 'Crítica': return 'text-red-600';
-        default: return 'text-gray-600';
-    }
-}
 
 function verDetalleSG(idSG) {
     // Buscar el SG en todas las estructuras
@@ -2014,18 +2012,6 @@ function verDetalleLCF(idLCF) {
     modal.classList.remove('hidden');
 }
 
-/**
- * Helper: Obtener color de salud
- */
-function getSaludColor(salud) {
-    switch(salud) {
-        case 'Excelente': return 'text-green-600';
-        case 'Buena': return 'text-blue-600';
-        case 'Regular': return 'text-yellow-600';
-        case 'Crítica': return 'text-red-600';
-        default: return 'text-gray-600';
-    }
-}
 
         // Cerrar modal
 function cerrarModal() {
@@ -2240,66 +2226,17 @@ function testGraficosCompletos() {
 
         // Actualizar gráficos (VERSIÓN OPTIMIZADA CON DATOS PRE-CALCULADOS)
 function actualizarGraficos() {
+    // TEMPORALMENTE DESACTIVADO PARA DESARROLLO DE ETAPA FINAL
+    console.log('📊 Gráficos temporalmente desactivados para desarrollo de etapa final');
+    
+    // Mantener el panel oculto
     const panel = document.getElementById('panelGraficos');
-    
-    // Verificamos que existan los datos del líder antes de continuar
-    if (!datosLD || !datosLD.equipo) {
+    if (panel) {
         panel.classList.add('hidden');
-        return;
     }
-
-    panel.classList.remove('hidden');
     
-    // Obtener ID del LD seleccionado para filtrar datos
-    const idLD = ldSeleccionado || null;
-    console.log('🔍 Filtrando gráficos por LD:', idLD);
-    
-    // DEBUG: Verificar datos antes de enviar
-    console.log('🔍 DEBUG: ldSeleccionado =', ldSeleccionado);
-    console.log('🔍 DEBUG: idLD =', idLD);
-    console.log('🔍 DEBUG: typeof idLD =', typeof idLD);
-    
-    // Llamar a la función optimizada del backend
-    google.script.run
-        .withSuccessHandler(function(resultado) {
-            console.log('Resultado recibido:', resultado);
-            
-            if (resultado && resultado.success && resultado.graficos) {
-                // Matriz de Efectividad del Liderazgo (Bubble Chart)
-                if (resultado.graficos.actividadEquipo && resultado.graficos.actividadEquipo.chartData) {
-                    const ctxEstados = document.getElementById('chartEstados').getContext('2d');
-                    if (window.chartEstados instanceof Chart) {
-                        window.chartEstados.destroy();
-                    }
-                    // Rehidratar configuración antes de crear el gráfico
-                    const configRehidratada = rehidratarConfigChart(resultado.graficos.actividadEquipo.chartData);
-                    window.chartEstados = new Chart(ctxEstados, configRehidratada);
-                }
-                
-                // Flujo de Transición de Estados de Células (Área Apilada)
-                if (resultado.graficos.saludCelulas && resultado.graficos.saludCelulas.chartData) {
-                    const ctxCelulas = document.getElementById('chartCelulas').getContext('2d');
-                    if (window.chartCelulas instanceof Chart) {
-                        window.chartCelulas.destroy();
-                    }
-                    // Rehidratar configuración antes de crear el gráfico
-                    const configRehidratada = rehidratarConfigChart(resultado.graficos.saludCelulas.chartData);
-                    window.chartCelulas = new Chart(ctxCelulas, configRehidratada);
-                }
-                
-                console.log('✅ Gráficos actualizados con datos optimizados');
-            } else {
-                console.error('Error actualizando gráficos:', resultado ? resultado.error : 'Resultado nulo');
-                // Fallback a método anterior si hay error
-                actualizarGraficosFallback();
-            }
-        })
-        .withFailureHandler(function(error) {
-            console.error('Error de conexión actualizando gráficos:', error);
-            // Fallback a método anterior si hay error de conexión
-            actualizarGraficosFallback();
-        })
-        .actualizarTodosLosGraficos(idLD);
+    // Retornar sin procesar gráficos
+    return;
 }
 
 // Función de respaldo en caso de error con el sistema optimizado
