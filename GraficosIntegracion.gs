@@ -8,54 +8,86 @@
 /**
  * Obtiene toda la cadena jerárquica de un LD (todos los LCF bajo su supervisión)
  * @param {string} idLD - ID del LD para obtener su cadena completa
- * @returns {Array} Array de IDs de LCF en toda la cadena jerárquica
+ * @param {Array} lcfData - Datos de LCF precargados (opcional, evita I/O duplicado)
+ * @returns {Set} Set de IDs de LCF en toda la cadena jerárquica
  */
-function obtenerCadenaJerarquicaCompleta(idLD) {
+function obtenerCadenaJerarquicaCompleta(idLD, lcfData = null) {
   try {
     console.log(`🔍 Obteniendo cadena jerárquica completa para LD: ${idLD}`);
+    const startTime = Date.now();
     
-    // Obtener datos de gráficos
-    const datosGraficos = obtenerDatosGraficos();
-    if (!datosGraficos.success) {
-      throw new Error('No se pudieron obtener los datos de gráficos');
+    // Usar datos precargados o cargar si no se proporcionan
+    let todosLosLCF;
+    if (lcfData) {
+      todosLosLCF = lcfData;
+      console.log(`📊 Usando datos precargados: ${todosLosLCF.length} LCF`);
+    } else {
+      const datosGraficos = obtenerDatosGraficos();
+      if (!datosGraficos.success) {
+        throw new Error('No se pudieron obtener los datos de gráficos');
+      }
+      todosLosLCF = datosGraficos.data;
+      console.log(`📊 Datos cargados desde Sheets: ${todosLosLCF.length} LCF`);
     }
     
-    const todosLosLCF = datosGraficos.data;
+    // Crear mapa de supervisores en una sola pasada O(n)
+    const supervisores = todosLosLCF.reduce((map, lcf) => {
+      const supervisor = lcf.LD_ID;
+      if (!map[supervisor]) map[supervisor] = [];
+      map[supervisor].push({
+        id: lcf.LCF_ID,
+        nombre: lcf.LCF_Nombre
+      });
+      return map;
+    }, {});
+    
+    console.log(`🗺️ Mapa de supervisores creado: ${Object.keys(supervisores).length} supervisores`);
+    
+    // BFS iterativo para evitar límite de recursión
     const lcfEnCadena = new Set();
     const lcfProcesados = new Set();
+    const cola = [{ id: idLD, nivel: 0, ruta: [idLD] }];
+    let nivelesProcesados = 0;
     
-    // Función recursiva para obtener todos los LCF bajo un LD
-    function obtenerLCFBajoLD(ldId, nivel = 0) {
-      if (lcfProcesados.has(ldId)) return; // Evitar bucles infinitos
-      lcfProcesados.add(ldId);
+    while (cola.length > 0) {
+      const { id: supervisorActual, nivel, ruta } = cola.shift();
       
-      console.log(`${'  '.repeat(nivel)}🔍 Nivel ${nivel}: Buscando LCF bajo LD ${ldId}`);
+      if (lcfProcesados.has(supervisorActual)) {
+        console.log(`${'  '.repeat(nivel)}⚠️ Ciclo detectado en ${supervisorActual}, saltando...`);
+        continue;
+      }
       
-      // Buscar LCF que reporten directamente a este LD
-      const lcfDirectos = todosLosLCF.filter(lcf => lcf.LD_ID === ldId);
-      console.log(`${'  '.repeat(nivel)}📊 Encontrados ${lcfDirectos.length} LCF directos`);
+      lcfProcesados.add(supervisorActual);
+      nivelesProcesados = Math.max(nivelesProcesados, nivel);
       
-      lcfDirectos.forEach(lcf => {
-        lcfEnCadena.add(lcf.LCF_ID);
-        console.log(`${'  '.repeat(nivel)}  ✅ LCF: ${lcf.LCF_Nombre} (${lcf.LCF_ID})`);
+      const hijos = supervisores[supervisorActual] || [];
+      console.log(`${'  '.repeat(nivel)}🔍 Nivel ${nivel}: ${hijos.length} LCF bajo ${supervisorActual}`);
+      console.log(`${'  '.repeat(nivel)}📊 Ruta: ${ruta.join(' → ')}`);
+      
+      hijos.forEach(hijo => {
+        lcfEnCadena.add(hijo.id);
+        console.log(`${'  '.repeat(nivel)}  ✅ LCF: ${hijo.nombre} (${hijo.id})`);
         
-        // Recursivamente buscar LCF que reporten a este LCF
-        obtenerLCFBajoLD(lcf.LCF_ID, nivel + 1);
+        // Agregar a la cola para el siguiente nivel
+        cola.push({
+          id: hijo.id,
+          nivel: nivel + 1,
+          ruta: [...ruta, hijo.id]
+        });
       });
     }
     
-    // Iniciar búsqueda recursiva
-    obtenerLCFBajoLD(idLD);
+    const timeElapsed = Date.now() - startTime;
+    console.log(`✅ Cadena jerárquica completa: ${lcfEnCadena.size} LCF encontrados`);
+    console.log(`📊 Niveles procesados: ${nivelesProcesados}`);
+    console.log(`⏱️ Tiempo de procesamiento: ${timeElapsed}ms`);
+    console.log(`📋 LCF en cadena: ${Array.from(lcfEnCadena).join(', ')}`);
     
-    const resultado = Array.from(lcfEnCadena);
-    console.log(`✅ Cadena jerárquica completa: ${resultado.length} LCF encontrados`);
-    console.log(`📋 LCF en cadena: ${resultado.join(', ')}`);
-    
-    return resultado;
+    return lcfEnCadena;
     
   } catch (error) {
     console.error('❌ Error obteniendo cadena jerárquica:', error);
-    return [];
+    return new Set();
   }
 }
 
@@ -78,9 +110,9 @@ function actualizarGraficoActividadEquipo(idLD = null) {
     let lcfData = datosGraficos.data;
     console.log(`📊 Datos originales: ${lcfData.length} LCF`);
     if (idLD) {
-      // Obtener toda la cadena jerárquica del LD
-      const cadenaJerarquica = obtenerCadenaJerarquicaCompleta(idLD);
-      lcfData = lcfData.filter(lcf => cadenaJerarquica.includes(lcf.LCF_ID));
+      // Obtener toda la cadena jerárquica del LD usando datos precargados
+      const cadenaJerarquica = obtenerCadenaJerarquicaCompleta(idLD, lcfData);
+      lcfData = lcfData.filter(lcf => cadenaJerarquica.has(lcf.LCF_ID));
       console.log(`🔍 Filtrado por cadena jerárquica completa del LD ${idLD}: ${lcfData.length} LCF`);
     } else {
       console.log('📊 Mostrando todos los LCF (sin filtro)');

@@ -501,7 +501,7 @@ function getEstadisticasRapidas() {
               return fecha >= hace30Dias;
             }).length : 0,
             tasa_integracion_celula: datos.ingresos && datos.ingresos.length > 0 ? 
-              datos.ingresos.filter(ing => ing.En_Celula).length / datos.ingresos.length : 0
+              ((datos.ingresos.filter(ing => ing.En_Celula).length / datos.ingresos.length) * 100).toFixed(1) : 0
           },
           metricas: {
             promedio_lcf_por_ld: (datos.lideres.filter(l => l.Rol === 'LCF').length / 

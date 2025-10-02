@@ -234,6 +234,14 @@ function limpiarCacheGraficos() {
     // Forzar actualización de datos históricos
     const actualizacionHistorico = poblarDatosHistoricos();
     
+    // Limpiar caché específico de gráficos
+    if (typeof CacheService !== 'undefined') {
+      const cache = CacheService.getScriptCache();
+      cache.remove('datos_graficos_dashboard');
+      cache.remove('metricas_historicas');
+      console.log('🗑️ Cache específico de gráficos limpiado');
+    }
+    
     const resultado = {
       success: true,
       cacheLimpio: cacheLimpio,
