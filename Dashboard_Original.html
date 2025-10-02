@@ -506,20 +506,34 @@ function handleRecargaCompleta(response) {
     const modo = response.data?.modo_carga || 'Desconocido';
     console.log(`🔄 Recarga completa exitosa - Modo: ${modo}`);
     console.log('Recarga completa exitosa:', response);
-    
+
+    const listaLideres = response.data?.lideres?.lista;
+    const seleccionAnterior = ldSeleccionado;
+
     if (response && response.success && response.data) {
         // Actualizar datosActuales con la información completa
         datosActuales = response.data;
         window.datosActuales = response.data;
-        
+
+        if (Array.isArray(listaLideres)) {
+            llenarSelectorLD(listaLideres, seleccionAnterior);
+
+            if (
+                seleccionAnterior &&
+                listaLideres.some(ld => ld.ID_Lider === seleccionAnterior)
+            ) {
+                cargarDatosLD(true);
+            }
+        }
+
         // Mostrar alertas globales si existen
         mostrarAlertasGlobales();
-        
+
         // Cerrar el modal de carga
         if (Swal.isVisible()) {
             Swal.close();
         }
-        
+
         console.log(`✅ Recarga completa procesada correctamente - Modo: ${modo}`);
     } else {
         console.error('Error en recarga completa:', response ? response.error : 'Respuesta inválida');
@@ -911,8 +925,12 @@ function mostrarModalResumen(nombreLCF, data) {
 }
         
         // Llenar selector de LD (ahora recibe la lista como argumento)
-function llenarSelectorLD(listaLDs) {
+function llenarSelectorLD(listaLDs = datosActuales?.lideres?.lista, seleccionAnterior = ldSeleccionado) {
     const selector = document.getElementById('ldSelector');
+    if (!selector) return;
+
+    const valorPrevio = seleccionAnterior ?? selector.value ?? '';
+
     selector.innerHTML = '<option value="">-- Selecciona un Líder de Discípulos (LD) --</option>';
 
     if (listaLDs && listaLDs.length > 0) {
@@ -925,6 +943,16 @@ function llenarSelectorLD(listaLDs) {
         });
     } else {
         selector.innerHTML = '<option value="">-- No se pudieron cargar los LDs --</option>';
+    }
+
+    if (
+        valorPrevio &&
+        Array.from(selector.options).some(option => option.value === valorPrevio)
+    ) {
+        selector.value = valorPrevio;
+        ldSeleccionado = valorPrevio;
+    } else {
+        ldSeleccionado = selector.value || null;
     }
 }
         
