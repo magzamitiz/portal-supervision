@@ -2254,6 +2254,11 @@ function actualizarGraficos() {
     const idLD = ldSeleccionado || null;
     console.log('🔍 Filtrando gráficos por LD:', idLD);
     
+    // DEBUG: Verificar datos antes de enviar
+    console.log('🔍 DEBUG: ldSeleccionado =', ldSeleccionado);
+    console.log('🔍 DEBUG: idLD =', idLD);
+    console.log('🔍 DEBUG: typeof idLD =', typeof idLD);
+    
     // Llamar a la función optimizada del backend
     google.script.run
         .withSuccessHandler(function(resultado) {

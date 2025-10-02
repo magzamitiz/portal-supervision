@@ -430,6 +430,62 @@ function actualizarGraficoSaludCelulas(idLD = null) {
 }
 
 /**
+ * Función de debugging para verificar el filtrado de LD
+ * @param {string} idLD - ID del LD para debuggear
+ * @returns {Object} Información detallada del filtrado
+ */
+function debugFiltradoLD(idLD) {
+  try {
+    console.log(`🔍 DEBUG: Verificando filtrado para LD: ${idLD}`);
+    
+    // Obtener datos de gráficos
+    const datosGraficos = obtenerDatosGraficos();
+    if (!datosGraficos.success) {
+      throw new Error('No se pudieron obtener los datos de gráficos');
+    }
+    
+    console.log(`📊 Total de LCF en datos: ${datosGraficos.data.length}`);
+    
+    // Verificar LCF directos
+    const lcfDirectos = datosGraficos.data.filter(lcf => lcf.LD_ID === idLD);
+    console.log(`👥 LCF directos del LD ${idLD}: ${lcfDirectos.length}`);
+    lcfDirectos.forEach(lcf => {
+      console.log(`  - ${lcf.LCF_Nombre} (${lcf.LCF_ID})`);
+    });
+    
+    // Obtener cadena jerárquica completa
+    const cadenaJerarquica = obtenerCadenaJerarquicaCompleta(idLD, datosGraficos.data);
+    console.log(`🔗 Cadena jerárquica completa: ${cadenaJerarquica.size} LCF`);
+    
+    // Filtrar datos
+    const lcfFiltrados = datosGraficos.data.filter(lcf => cadenaJerarquica.has(lcf.LCF_ID));
+    console.log(`✅ LCF filtrados para gráfico: ${lcfFiltrados.length}`);
+    lcfFiltrados.forEach(lcf => {
+      console.log(`  - ${lcf.LCF_Nombre} (${lcf.LCF_ID}) - Estado: ${lcf.Estado_LCF}`);
+    });
+    
+    return {
+      success: true,
+      totalLCF: datosGraficos.data.length,
+      lcfDirectos: lcfDirectos.length,
+      cadenaCompleta: cadenaJerarquica.size,
+      lcfFiltrados: lcfFiltrados.length,
+      detalles: lcfFiltrados.map(lcf => ({
+        nombre: lcf.LCF_Nombre,
+        id: lcf.LCF_ID,
+        estado: lcf.Estado_LCF,
+        celulas: lcf.Num_Celulas,
+        efectividad: lcf.Porcentaje_Efectividad
+      }))
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en debug:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
  * Obtiene datos para el gráfico de Matriz de Efectividad del Liderazgo (Bubble Chart)
  * @param {string} idLD - ID del LD para filtrar datos (usa cadena jerárquica completa)
  * @returns {Object} Datos para gráfico de burbujas con TODA la cadena jerárquica del LD
