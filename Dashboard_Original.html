@@ -534,8 +534,13 @@ function handleRecargaCompleta(response) {
             // Restaurar selección previa si el LD sigue existiendo
             if (ldAnterior && response.data.lideres.lista.some(ld => ld.ID_Lider === ldAnterior)) {
                 ldSeleccionado = ldAnterior;
-                document.getElementById('selectorLD').value = ldAnterior;
-                console.log(`✅ Selección de LD restaurada: ${ldAnterior}`);
+                const selector = document.getElementById('ldSelector');
+                if (selector) {
+                    selector.value = ldAnterior;
+                    console.log(`✅ Selección de LD restaurada: ${ldAnterior}`);
+                } else {
+                    console.warn('⚠️ Selector ldSelector no encontrado en el DOM');
+                }
             }
         }
         
