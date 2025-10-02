@@ -758,12 +758,14 @@ function cargarDatosLCF(idLCF) {
       return { success: false, error: almasLCF.error || 'Error cargando almas del LCF' };
     }
     
-    console.log(`[SeguimientoModule] ✅ Datos LCF cargados: ${celulasLCF.length} células, ${almasLCF.data.length} almas`);
+    // ✅ CORRECCIÓN: Usar almasLCF.almas en lugar de almasLCF.data
+    const almas = almasLCF.almas || [];
+    console.log(`[SeguimientoModule] ✅ Datos LCF cargados: ${celulasLCF.length} células, ${almas.length} almas`);
     
     return {
       success: true,
       celulas: celulasLCF,
-      almas: almasLCF.data || []
+      almas: almas
     };
     
   } catch (error) {

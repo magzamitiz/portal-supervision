@@ -421,6 +421,10 @@ function cargarDatosIniciales() {
 function handleEstadisticasResponse(response) {
     if (response && response.success) {
         console.log('📊 Estadísticas rápidas recibidas');
+        
+        // ✅ CORRECCIÓN: Guardar estadísticas para reutilizar en actualizarInterfaz
+        ultimasEstadisticas = response.data;
+        
         actualizarEstadisticas(response.data); // Función que dibuja los cuadros de resumen
         
         // Actualizar timestamp si existe
@@ -714,16 +718,30 @@ function handleLideresResponse(response) {
         // ==================== ACTUALIZACIÓN DE INTERFAZ ====================
 
         // Actualizar interfaz completa
+        // Variable global para conservar estadísticas
+        let ultimasEstadisticas = null;
+        
         function actualizarInterfaz() {
             if (!datosActuales) return;
             
             actualizarTimestamp();
-            actualizarEstadisticas();
+            
+            // ✅ CORRECCIÓN: Usar estadísticas guardadas o datos actuales
+            if (ultimasEstadisticas) {
+                actualizarEstadisticas(ultimasEstadisticas);
+            } else if (datosActuales.actividad && datosActuales.metricas) {
+                actualizarEstadisticas(datosActuales);
+            } else {
+                console.warn('⚠️ No hay estadísticas disponibles para mostrar');
+            }
+            
             mostrarAlertasGlobales();
             
-            // Llenar selector solo si está vacío
-            if (document.getElementById('ldSelector').options.length <= 1) {
-                llenarSelectorLD();
+            // ✅ CORRECCIÓN: Llenar selector solo si hay datos válidos
+            if (datosActuales.lideres?.lista && datosActuales.lideres.lista.length > 0) {
+                llenarSelectorLD(datosActuales.lideres.lista);
+            } else if (document.getElementById('ldSelector').options.length <= 1) {
+                console.warn('⚠️ No hay lista de líderes disponible para el selector');
             }
         }
 
@@ -947,16 +965,21 @@ function llenarSelectorLD(listaLDs) {
     const selector = document.getElementById('ldSelector');
     selector.innerHTML = '<option value="">-- Selecciona un Líder de Discípulos (LD) --</option>';
 
-    if (listaLDs && listaLDs.length > 0) {
-        listaLDs.sort((a, b) => (a.Nombre_Lider || "").localeCompare(b.Nombre_Lider || ""));
-        listaLDs.forEach(ld => {
+    // ✅ CORRECCIÓN: Usar argumento o fallback a datosActuales
+    const listaParaUsar = listaLDs || (datosActuales?.lideres?.lista) || [];
+
+    if (listaParaUsar && listaParaUsar.length > 0) {
+        listaParaUsar.sort((a, b) => (a.Nombre_Lider || "").localeCompare(b.Nombre_Lider || ""));
+        listaParaUsar.forEach(ld => {
             const option = document.createElement('option');
             option.value = ld.ID_Lider;
             option.textContent = ld.Nombre_Lider || ld.ID_Lider;
             selector.appendChild(option);
         });
+        console.log(`✅ Selector LD llenado con ${listaParaUsar.length} líderes`);
     } else {
         selector.innerHTML = '<option value="">-- No se pudieron cargar los LDs --</option>';
+        console.warn('⚠️ No hay datos de líderes para llenar el selector');
     }
 }
         
