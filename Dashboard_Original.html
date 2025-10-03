@@ -400,63 +400,76 @@ function navegarDesdeModalA(funcionDestino, ...parametros) {
 
         // Cargar datos iniciales (Usa caché si está disponible)
 function cargarDatosIniciales() {
-    console.log('🚀 [OPTIMIZADO] Iniciando carga consolidada del dashboard...');
+    console.log('🚀 [OPTIMIZADO] Iniciando carga paralela optimizada...');
     const startTime = Date.now();
     
     // Mostrar loader con mensaje específico
-    document.getElementById('loaderStatus').textContent = 'Cargando dashboard optimizado...';
+    document.getElementById('loaderStatus').textContent = 'Ejecutando llamadas paralelas optimizadas...';
     mostrarLoader();
     
-    // UNA SOLA llamada al backend (reemplaza las 3 anteriores)
-    google.script.run
-        .withSuccessHandler(response => {
-            console.log('✅ Datos recibidos en:', Date.now() - startTime, 'ms');
-            
-            if (response.success && response.data) {
-                // Procesar estadísticas
-                if (response.data.estadisticas) {
-                    handleEstadisticasResponse({
-                        success: true,
-                        data: response.data.estadisticas
-                    });
-                }
-                
-                // Procesar lista de líderes
-                if (response.data.listaDeLideres) {
-                    handleLideresResponse({
-                        success: true,
-                        data: response.data.listaDeLideres
-                    });
-                }
-                
-                // Procesar dashboard completo
-                if (response.data.dashboard) {
-                    handleDatosCompletosResponse({
-                        success: true,
-                        data: response.data.dashboard
-                    });
-                }
-                
-                // Actualizar timestamp
-                if (response.data.timestamp) {
-                    document.getElementById('dataTimestamp').textContent = 
-                        new Date(response.data.timestamp).toLocaleString();
-                }
-                
-                console.log('✅ Dashboard cargado completamente en:', Date.now() - startTime, 'ms');
-            } else {
-                console.error('❌ Error en respuesta:', response.error);
-                handleDataFailure(response.error || 'Error desconocido');
-            }
-            
-            ocultarLoader();
+    // Llamadas paralelas para máxima velocidad usando funciones optimizadas
+    Promise.allSettled([
+        // Llamada 1: Estadísticas rápidas optimizadas
+        new Promise((resolve, reject) => {
+            google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                .getEstadisticasRapidas();
+        }),
+        
+        // Llamada 2: Lista de líderes optimizada
+        new Promise((resolve, reject) => {
+            google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                .getListaDeLideres();
+        }),
+        
+        // Llamada 3: Dashboard completo optimizado
+        new Promise((resolve, reject) => {
+            google.script.run
+                .withSuccessHandler(resolve)
+                .withFailureHandler(reject)
+                .getDashboardData();
         })
-        .withFailureHandler(error => {
-            console.error('❌ Error crítico:', error);
-            handleDataFailure(error);
-            ocultarLoader();
-        })
-        .getDashboardDataConsolidated(); // NUEVA función consolidada
+    ]).then(results => {
+        console.log('✅ Llamadas paralelas completadas en:', Date.now() - startTime, 'ms');
+        
+        // Procesar resultados
+        const [statsResult, lideresResult, dashboardResult] = results;
+        
+        // Procesar estadísticas
+        if (statsResult.status === 'fulfilled' && statsResult.value.success) {
+            handleEstadisticasResponse(statsResult.value);
+        } else {
+            console.error('❌ Error en estadísticas:', statsResult.reason);
+        }
+        
+        // Procesar líderes
+        if (lideresResult.status === 'fulfilled' && lideresResult.value.success) {
+            handleLideresResponse(lideresResult.value);
+        } else {
+            console.error('❌ Error en líderes:', lideresResult.reason);
+        }
+        
+        // Procesar dashboard
+        if (dashboardResult.status === 'fulfilled' && dashboardResult.value.success) {
+            handleDatosCompletosResponse(dashboardResult.value);
+        } else {
+            console.error('❌ Error en dashboard:', dashboardResult.reason);
+        }
+        
+        // Actualizar timestamp
+        document.getElementById('dataTimestamp').textContent = new Date().toLocaleString();
+        
+        console.log('✅ Dashboard cargado completamente en:', Date.now() - startTime, 'ms');
+        ocultarLoader();
+        
+    }).catch(error => {
+        console.error('❌ Error crítico en llamadas paralelas:', error);
+        handleDataFailure(error);
+        ocultarLoader();
+    });
 }
 
 // Nueva función para manejar la respuesta de las estadísticas
@@ -633,6 +646,7 @@ function handleErrorRecarga(error) {
 function handleLideresResponse(response) {
     if (response && response.success) {
         console.log('Lista de líderes recibida.');
+        console.log('📊 Datos de líderes:', response.data);
         llenarSelectorLD(response.data); // Función que llena el menú desplegable
     } else {
         console.error("No se pudo cargar la lista de líderes.");

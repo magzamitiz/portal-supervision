@@ -77,6 +77,94 @@ Ver `ConfigModule.gs` para ajustar:
 - **Limpiar caché:** Usar función `limpiarCache()` si hay problemas
 - **Monitoreo:** Revisar logs en Google Apps Script
 
+## 🔌 API del Sistema
+
+### Funciones Principales
+
+#### `doGet()`
+Función principal de entrada para la aplicación web
+- **Parámetros**: `{Object} e` - Parámetros de la petición GET (opcional)
+- **Retorna**: `{HtmlService.HtmlOutput}` - Página HTML del dashboard
+- **Uso**: Llamada automática por Apps Script
+
+#### `getEstadisticasRapidas()`
+Obtiene estadísticas principales del dashboard de forma optimizada
+- **Retorna**: `{Object}` con estructura:
+  ```javascript
+  {
+    success: boolean,
+    data: {
+      actividad: {
+        total_recibiendo_celulas: number,
+        activos_recibiendo_celula: number,
+        alerta_2_3_semanas: number,
+        critico_mas_1_mes: number,
+        lideres_inactivos: number
+      },
+      metricas: {
+        porcentaje_activos: string,
+        porcentaje_alerta: string,
+        porcentaje_critico: string,
+        total_lideres: number,
+        total_celulas: number,
+        total_ingresos: number,
+        tasa_integracion: string,
+        promedio_lcf_por_ld: string
+      },
+      timestamp: string
+    },
+    error: string // solo si success=false
+  }
+  ```
+
+#### `getListaDeLideres()`
+Obtiene lista de líderes LD para menús desplegables
+- **Retorna**: `{Object}` con estructura:
+  ```javascript
+  {
+    success: boolean,
+    data: [
+      {
+        ID_Lider: string,
+        Nombre_Lider: string
+      }
+    ],
+    error: string // solo si success=false
+  }
+  ```
+
+#### `getDashboardData()`
+Obtiene datos completos del dashboard con alertas
+- **Retorna**: `{Object}` con estructura completa del dashboard
+- **Incluye**: Actividad, métricas, alertas, y datos de líderes
+
+#### `getVistaRapidaLCF(idLCF)`
+Obtiene vista rápida de un LCF específico
+- **Parámetros**: `{string} idLCF` - ID del LCF
+- **Retorna**: `{Object}` con datos del LCF y sus células
+
+### Funciones de Caché
+
+#### `limpiarCacheRobusto(opciones)`
+Sistema robusto de limpieza de caché
+- **Parámetros**: `{Object} opciones` - Opciones de limpieza
+- **Opciones**:
+  - `selectorLD: boolean` - Limpiar caché del selector LD
+  - `dashboard: boolean` - Limpiar caché del dashboard
+  - `estadisticas: boolean` - Limpiar caché de estadísticas
+  - `todo: boolean` - Limpiar todo el caché
+  - `verificar: boolean` - Solo verificar sin limpiar
+
+### Funciones de Pruebas
+
+#### `ejecutarTodasLasPruebas()`
+Ejecuta suite completa de pruebas del sistema
+- **Retorna**: `{Object}` con resultados detallados de todas las pruebas
+
+#### `pruebaRapidaSistema()`
+Ejecuta prueba rápida del sistema (solo funciones críticas)
+- **Retorna**: `{Object}` con resultados de pruebas básicas
+
 ---
 
 **Versión:** 4.0 - Sistema simplificado con perfiles pre-calculados

@@ -459,137 +459,73 @@ function analizarMetricasPorPeriodo(datos, periodo) {
  * VERSIÓN CORREGIDA: Usa getCacheData() para acceder a DASHBOARD_DATA_V2
  */
 function getEstadisticasRapidas() {
-  Logger.log('[getEstadisticasRapidas] 🚀 Iniciando con sistema unificado V3...');
+  // 🚀 IMPLEMENTACIÓN OPTIMIZADA - Usar _ResumenDashboard existente
   const startTime = Date.now();
+  console.log('[getEstadisticasRapidas] 🚀 OPTIMIZADO - Usando _ResumenDashboard existente...');
   
   try {
-    // ✅ NIVEL 1: Usar nuevo sistema unificado V3
-    const cached = UnifiedCache.get(UnifiedCache.getKEYS().STATS);
-    if (cached) {
-      const timeElapsed = Date.now() - startTime;
-      Logger.log('[getEstadisticasRapidas] ✅ Cache HIT unificado V3 - ' + timeElapsed + 'ms');
-      return cached;
-    }
-    
-    // ✅ NIVEL 2: Fallback al sistema anterior (compatibilidad)
+    // Verificar caché primero
     const cache = CacheService.getScriptCache();
-    const cachedLegacy = cache.get('STATS_RAPIDAS_V2');
-    if (cachedLegacy) {
-      const timeElapsed = Date.now() - startTime;
-      Logger.log('[getEstadisticasRapidas] ✅ Cache HIT legacy - ' + timeElapsed + 'ms');
-      return JSON.parse(cachedLegacy);
+    const cachedStats = cache.get('STATS_OPTIMIZED_EXISTENTES_V1');
+    
+    if (cachedStats) {
+      const cacheTime = Date.now() - startTime;
+      console.log(`[getEstadisticasRapidas] ✅ Cache HIT - ${cacheTime}ms`);
+      return JSON.parse(cachedStats);
     }
     
-    Logger.log('[getEstadisticasRapidas] ⚠️ Cache MISS - Buscando en directorio...');
-    
-    // ✅ NIVEL 3: Usar getCacheData() que maneja DASHBOARD_DATA_V2 correctamente
-    const datos = getCacheData();
-    
-    if (datos && datos.lideres) {
-      Logger.log('[getEstadisticasRapidas] ✅ Datos encontrados en DASHBOARD_DATA_V2');
-      
-      // ✅ ACTUALIZADO: Leer desde _ResumenDashboard para obtener las nuevas métricas
-      Logger.log('[getEstadisticasRapidas] 📊 Leyendo métricas desde _ResumenDashboard...');
-      
-      let nuevasMetricas = null;
-      try {
-        const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-        const resumenSheet = spreadsheet.getSheetByName('_ResumenDashboard');
-        
-        if (resumenSheet) {
-          const valores = resumenSheet.getRange('B1:B5').getValues();
-          nuevasMetricas = {
-            total_recibiendo_celulas: parseInt(valores[0][0]) || 0,
-            activos_recibiendo_celula: parseInt(valores[1][0]) || 0,
-            alerta_2_3_semanas: parseInt(valores[2][0]) || 0,
-            critico_mas_1_mes: parseInt(valores[3][0]) || 0,
-            lideres_inactivos: parseInt(valores[4][0]) || 0
-          };
-          Logger.log('[getEstadisticasRapidas] ✅ Métricas leídas desde _ResumenDashboard:', nuevasMetricas);
-        }
-      } catch (error) {
-        Logger.log('[getEstadisticasRapidas] ⚠️ Error leyendo _ResumenDashboard:', error);
-      }
-      
-      const stats = {
-        success: true,
-        data: {
-          actividad: nuevasMetricas || {
-            total_recibiendo_celulas: 0,
-            activos_recibiendo_celula: 0,
-            alerta_2_3_semanas: 0,
-            critico_mas_1_mes: 0,
-            lideres_inactivos: 0
-          },
-          metricas: nuevasMetricas ? {
-            porcentaje_activos: nuevasMetricas.total_recibiendo_celulas > 0 ? 
-              ((nuevasMetricas.activos_recibiendo_celula / nuevasMetricas.total_recibiendo_celulas) * 100).toFixed(1) : 0,
-            porcentaje_alerta: nuevasMetricas.total_recibiendo_celulas > 0 ? 
-              ((nuevasMetricas.alerta_2_3_semanas / nuevasMetricas.total_recibiendo_celulas) * 100).toFixed(1) : 0,
-            porcentaje_critico: nuevasMetricas.total_recibiendo_celulas > 0 ? 
-              ((nuevasMetricas.critico_mas_1_mes / nuevasMetricas.total_recibiendo_celulas) * 100).toFixed(1) : 0
-          } : {},
-          timestamp: new Date().toISOString()
-        }
-      };
-      
-      // Cachear stats en sistema unificado (5 minutos)
-      UnifiedCache.set(UnifiedCache.getKEYS().STATS, stats, UnifiedCache.getTTL().STATS);
-      
-      const timeElapsed = Date.now() - startTime;
-      Logger.log('[getEstadisticasRapidas] ✅ Completado desde caché - ' + timeElapsed + 'ms');
-      return stats;
-    }
-    
-    // ✅ NIVEL 3: Fallback a _ResumenDashboard solo si realmente no hay datos en caché
-    Logger.log('[getEstadisticasRapidas] ⚠️ Sin caché ni memoria, usando conteos mínimos');
-    Logger.log('[getEstadisticasRapidas] Cargando estadísticas mínimas desde _ResumenDashboard...');
-    
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    const resumenSheet = spreadsheet.getSheetByName('_ResumenDashboard');
+    // Usar la hoja EXISTENTE _ResumenDashboard
+    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const resumenSheet = ss.getSheetByName('_ResumenDashboard');
     
     if (!resumenSheet) {
-      Logger.log('[getEstadisticasRapidas] ❌ Hoja _ResumenDashboard no encontrada');
-      return { 
-        success: false, 
-        error: 'Hoja _ResumenDashboard no encontrada',
-        data: null 
-      };
+      throw new Error('Hoja _ResumenDashboard no encontrada');
     }
     
-    const startMinimal = Date.now();
+    // Leer SOLO el rango que ya está siendo usado (B1:B5)
     const valores = resumenSheet.getRange('B1:B5').getValues();
-    const timeMinimal = Date.now() - startMinimal;
     
-    Logger.log(`[getEstadisticasRapidas] ✅ Nuevas métricas cargadas desde _ResumenDashboard en ${timeMinimal}ms`);
+    // Obtener datos adicionales mínimos
+    const lideresSheet = ss.getSheetByName(CONFIG.TABS.LIDERES);
+    const celulasSheet = ss.getSheetByName(CONFIG.TABS.CELULAS);
+    const ingresosSheet = ss.getSheetByName(CONFIG.TABS.INGRESOS);
     
-    const result = {
+    const totalLideres = lideresSheet ? lideresSheet.getLastRow() - 1 : 0;
+    const totalCelulas = celulasSheet ? celulasSheet.getLastRow() - 1 : 0;
+    const totalIngresos = ingresosSheet ? ingresosSheet.getLastRow() - 1 : 0;
+    
+    const stats = {
       success: true,
       data: {
+        // Estructura compatible con el frontend existente
         actividad: {
-          total_recibiendo_celulas: parseInt(valores[0][0]) || 0,
-          activos_recibiendo_celula: parseInt(valores[1][0]) || 0,
-          alerta_2_3_semanas: parseInt(valores[2][0]) || 0,
-          critico_mas_1_mes: parseInt(valores[3][0]) || 0,
-          lideres_inactivos: parseInt(valores[4][0]) || 0
+          total_recibiendo_celulas: valores[0][0] || 0,
+          activos_recibiendo_celula: valores[1][0] || 0,
+          alerta_2_3_semanas: valores[2][0] || 0,
+          critico_mas_1_mes: valores[3][0] || 0,
+          lideres_inactivos: valores[4][0] || 0
         },
-        // Métricas calculadas
         metricas: {
-          porcentaje_activos: valores[0][0] > 0 ? ((parseInt(valores[1][0]) / parseInt(valores[0][0])) * 100).toFixed(1) : 0,
-          porcentaje_alerta: valores[0][0] > 0 ? ((parseInt(valores[2][0]) / parseInt(valores[0][0])) * 100).toFixed(1) : 0,
-          porcentaje_critico: valores[0][0] > 0 ? ((parseInt(valores[3][0]) / parseInt(valores[0][0])) * 100).toFixed(1) : 0
+          porcentaje_activos: valores[0][0] > 0 ? ((valores[1][0] / valores[0][0]) * 100).toFixed(1) : 0,
+          porcentaje_alerta: valores[0][0] > 0 ? ((valores[2][0] / valores[0][0]) * 100).toFixed(1) : 0,
+          porcentaje_critico: valores[0][0] > 0 ? ((valores[3][0] / valores[0][0]) * 100).toFixed(1) : 0,
+          total_lideres: totalLideres,
+          total_celulas: totalCelulas,
+          total_ingresos: totalIngresos,
+          tasa_integracion: totalIngresos > 0 ? ((valores[0][0] || 0) / totalIngresos * 100).toFixed(1) : 0,
+          promedio_lcf_por_ld: totalLideres > 0 ? (totalCelulas / totalLideres).toFixed(1) : 0
         },
         timestamp: new Date().toISOString()
       }
     };
     
-    // Cachear en sistema unificado (5 minutos)
-    UnifiedCache.set(UnifiedCache.getKEYS().STATS, result, UnifiedCache.getTTL().STATS);
+    // Caché por 5 minutos (estadísticas rápidas)
+    cache.put('STATS_OPTIMIZED_EXISTENTES_V1', JSON.stringify(stats), 300);
     
-    const timeElapsed = Date.now() - startTime;
-    Logger.log(`[getEstadisticasRapidas] ✅ Completado - ${timeElapsed}ms`);
+    const totalTime = Date.now() - startTime;
+    console.log(`[getEstadisticasRapidas] ✅ Completado en ${totalTime}ms`);
     
-    return result;
+    return stats;
     
   } catch (error) {
     const timeElapsed = Date.now() - startTime;

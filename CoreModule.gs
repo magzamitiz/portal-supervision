@@ -211,59 +211,60 @@ function cargarDirectorioCompleto(forceReload = false) {
  * @returns {Object} Objeto con éxito y datos de líderes
  */
 function getListaDeLideres(spreadsheet) {
+  // 🚀 IMPLEMENTACIÓN OPTIMIZADA - Usar hoja de líderes existente
+  const startTime = Date.now();
+  console.log('[CoreModule] 🚀 getListaDeLideres OPTIMIZADO - Usando hoja existente...');
+  
   try {
-    console.log('[CoreModule] 🚀 Obteniendo lista de líderes OPTIMIZADA...');
-    const startTime = Date.now();
+    // Verificar caché primero
+    const cache = CacheService.getScriptCache();
+    const cachedList = cache.get('LIDERES_OPTIMIZED_EXISTENTES_V1');
     
-    // ✅ NIVEL 1: Intentar obtener desde caché primero (más rápido)
-    // CRÍTICO: Esta es la corrección principal - verifica caché ANTES de abrir spreadsheet
-    const datosCache = getCacheData();
-    
-    if (datosCache && datosCache.lideres && datosCache.lideres.length > 0) {
-      console.log('[CoreModule] ✅ Líderes obtenidos desde caché DASHBOARD_DATA_V2');
-      
-      // Filtrar solo líderes LD para el selector
-      const lideresParaSelector = datosCache.lideres
-        .filter(lider => lider.Rol === 'LD' && lider.ID_Lider)
-        .map(lider => ({ 
-          ID_Lider: String(lider.ID_Lider).trim(), 
-          Nombre_Lider: String(lider.Nombre_Lider).trim() 
-        }));
-
-      const timeElapsed = Date.now() - startTime;
-      console.log(`[CoreModule] ✅ ${lideresParaSelector.length} líderes LD desde caché en ${timeElapsed}ms`);
-      return { success: true, data: lideresParaSelector };
+    if (cachedList) {
+      const cacheTime = Date.now() - startTime;
+      console.log(`[CoreModule] ✅ Cache HIT - ${cacheTime}ms`);
+      return JSON.parse(cachedList);
     }
     
-    // ✅ NIVEL 2: Si no hay caché, cargar desde spreadsheet
-    console.log('[CoreModule] ⚠️ Sin caché, cargando desde spreadsheet...');
+    // Usar la hoja de líderes EXISTENTE
+    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const sheet = ss.getSheetByName(CONFIG.TABS.LIDERES);
     
-    // Reutilizar spreadsheet si se proporcionó, sino abrir uno nuevo
-    if (!spreadsheet) {
-      console.log('[CoreModule] Abriendo spreadsheet...');
-      spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
-    } else {
-      console.log('[CoreModule] Reutilizando spreadsheet proporcionado');
+    if (!sheet) {
+      throw new Error(`Hoja ${CONFIG.TABS.LIDERES} no encontrada`);
     }
     
-    const lideres = cargarLideresOptimizado(spreadsheet);
-    
-    if (!lideres || lideres.length === 0) {
-      console.log('[CoreModule] No se encontraron líderes');
+    // Verificar que la hoja tiene datos
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      console.log('[CoreModule] ⚠️ No hay datos en la hoja de líderes');
       return { success: true, data: [] };
     }
     
-    // Filtrar solo líderes LD para el selector
-    const lideresParaSelector = lideres
-      .filter(lider => lider.Rol === 'LD' && lider.ID_Lider)
-      .map(lider => ({ 
-        ID_Lider: String(lider.ID_Lider).trim(), 
-        Nombre_Lider: String(lider.Nombre_Lider).trim() 
+    // Solo columnas A (ID) y B (Nombre), saltando el header
+    // Asumiendo que la estructura es: A=ID_Lider, B=Nombre_Lider, C=Rol
+    const datos = sheet.getRange(2, 1, lastRow - 1, 3).getValues();
+    
+    const lista = datos
+      .filter(row => row[0] && row[1] && row[2] === 'LD') // Solo líderes LD
+      .map(row => ({
+        ID_Lider: row[0],
+        Nombre_Lider: row[1]
       }));
-
-    const timeElapsed = Date.now() - startTime;
-    console.log(`[CoreModule] ✅ ${lideresParaSelector.length} líderes LD encontrados en ${timeElapsed}ms`);
-    return { success: true, data: lideresParaSelector };
+    
+    const result = {
+      success: true,
+      data: lista,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Caché por 15 minutos
+    cache.put('LIDERES_OPTIMIZED_EXISTENTES_V1', JSON.stringify(result), 900);
+    
+    const totalTime = Date.now() - startTime;
+    console.log(`[CoreModule] ✅ Completado en ${totalTime}ms - ${lista.length} líderes`);
+    
+    return result;
     
   } catch (error) {
     console.error(`[CoreModule] ❌ Error en getListaDeLideres: ${error}`);
