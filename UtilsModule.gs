@@ -11,6 +11,147 @@
 // ==================== FUNCIONES AUXILIARES GLOBALES ====================
 
 /**
+ * Función helper optimizada para leer rangos de hojas de forma eficiente
+ * Evita leer filas vacías y optimiza el rendimiento
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - Hoja de cálculo
+ * @param {number} maxRows - Número máximo de filas a leer (default: 10000)
+ * @param {number} startRow - Fila de inicio (default: 1)
+ * @param {number} startCol - Columna de inicio (default: 1)
+ * @param {number} endCol - Columna final (default: null = todas)
+ * @returns {Array} Datos optimizados de la hoja
+ */
+function getOptimizedRange(sheet, maxRows = 10000, startRow = 1, startCol = 1, endCol = null) {
+  try {
+    // Verificar que la hoja existe
+    if (!sheet) {
+      console.warn('[getOptimizedRange] Hoja no proporcionada');
+      return [];
+    }
+    
+    // Obtener dimensiones reales de la hoja
+    const lastRow = Math.min(sheet.getLastRow(), maxRows);
+    const lastCol = endCol || sheet.getLastColumn();
+    
+    // Verificar que hay datos
+    if (lastRow === 0 || lastCol === 0) {
+      console.log('[getOptimizedRange] Hoja vacía, retornando array vacío');
+      return [];
+    }
+    
+    // Ajustar rangos para evitar errores
+    const actualStartRow = Math.max(1, startRow);
+    const actualEndRow = Math.min(lastRow, actualStartRow + maxRows - 1);
+    const actualStartCol = Math.max(1, startCol);
+    const actualEndCol = Math.min(lastCol, endCol || lastCol);
+    
+    if (actualEndRow < actualStartRow || actualEndCol < actualStartCol) {
+      console.warn('[getOptimizedRange] Rango inválido:', {
+        startRow: actualStartRow,
+        endRow: actualEndRow,
+        startCol: actualStartCol,
+        endCol: actualEndCol
+      });
+      return [];
+    }
+    
+    // Leer datos del rango calculado
+    const range = sheet.getRange(
+      actualStartRow, 
+      actualStartCol, 
+      actualEndRow - actualStartRow + 1, 
+      actualEndCol - actualStartCol + 1
+    );
+    
+    const data = range.getValues();
+    
+    // Encontrar la última fila real con datos (no vacía)
+    let realLastRow = data.length - 1;
+    while (realLastRow >= 0) {
+      // Verificar si la fila tiene al menos una celda no vacía
+      const hasData = data[realLastRow].some(cell => 
+        cell !== '' && cell !== null && cell !== undefined
+      );
+      if (hasData) break;
+      realLastRow--;
+    }
+    
+    // Retornar solo las filas con datos reales
+    const optimizedData = data.slice(0, realLastRow + 1);
+    
+    console.log(`[getOptimizedRange] Optimizado: ${data.length} → ${optimizedData.length} filas (${((1 - optimizedData.length/data.length) * 100).toFixed(1)}% reducción)`);
+    
+    return optimizedData;
+    
+  } catch (error) {
+    console.error('[getOptimizedRange] Error:', error);
+    return [];
+  }
+}
+
+/**
+ * Función helper para obtener solo los headers de una hoja de forma optimizada
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - Hoja de cálculo
+ * @param {number} maxCols - Número máximo de columnas a leer (default: 50)
+ * @returns {Array} Array de headers limpios
+ */
+function getOptimizedHeaders(sheet, maxCols = 50) {
+  try {
+    if (!sheet) return [];
+    
+    const lastCol = Math.min(sheet.getLastColumn(), maxCols);
+    if (lastCol === 0) return [];
+    
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    return headers.map(header => 
+      header ? header.toString().trim() : ''
+    ).filter(header => header !== '');
+    
+  } catch (error) {
+    console.error('[getOptimizedHeaders] Error:', error);
+    return [];
+  }
+}
+
+/**
+ * Función helper para obtener datos de una hoja con headers de forma optimizada
+ * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - Hoja de cálculo
+ * @param {Object} options - Opciones de lectura
+ * @returns {Object} Objeto con headers y datos optimizados
+ */
+function getOptimizedSheetData(sheet, options = {}) {
+  const {
+    maxRows = 10000,
+    startRow = 1,
+    startCol = 1,
+    endCol = null,
+    includeHeaders = true
+  } = options;
+  
+  try {
+    const headers = getOptimizedHeaders(sheet, endCol || 50);
+    const data = getOptimizedRange(sheet, maxRows, startRow, startCol, endCol);
+    
+    if (includeHeaders && data.length > 0) {
+      return {
+        headers: headers,
+        data: data,
+        rowCount: data.length
+      };
+    } else {
+      return {
+        headers: [],
+        data: data.slice(1), // Excluir fila de headers
+        rowCount: data.length - 1
+      };
+    }
+    
+  } catch (error) {
+    console.error('[getOptimizedSheetData] Error:', error);
+    return { headers: [], data: [], rowCount: 0 };
+  }
+}
+
+/**
  * Función helper para obtener el total de miembros de una célula
  * Compatible con ambas estructuras (antigua con Total_Miembros y nueva con Miembros array)
  * @param {Object} celula - Objeto de célula

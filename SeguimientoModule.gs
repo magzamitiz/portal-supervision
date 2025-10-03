@@ -62,7 +62,7 @@ function cargarSeguimientoConsolidado(spreadsheet, sheetName, lcfId) {
     if (!sheet) return [];
 
     // Solo cargar columnas A-J (rango específico)
-    const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 10).getValues();
+    const data = getOptimizedRange(sheet, 5000, 2, 1, 10);
     
     const seguimientos = [];
     for (const row of data) {
@@ -538,7 +538,7 @@ function getSeguimientoAlmasLCF_REAL(idLCF) {
       return { success: false, error: `No se pudo encontrar la información del LCF con ID ${idLCF}` };
     }
 
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
     const hojaMaestra = spreadsheet.getSheetByName('_SeguimientoConsolidado');
     
     if (!hojaMaestra) {
@@ -555,7 +555,7 @@ function getSeguimientoAlmasLCF_REAL(idLCF) {
     console.log(`[SeguimientoModule] Leyendo ${lastRow - 1} registros de seguimiento...`);
     
     // ✅ OPTIMIZACIÓN: Leer solo columnas necesarias
-    const todosLosSeguimientos = hojaMaestra.getRange(2, 1, lastRow - 1, 10).getValues();
+    const todosLosSeguimientos = getOptimizedRange(hojaMaestra, 5000, 2, 1, 10);
 
     const getBienvenidaIcon = (resultado) => {
       const res = resultado || "";

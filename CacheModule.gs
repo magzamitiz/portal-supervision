@@ -1,78 +1,53 @@
 /**
- * @fileoverview Módulo de caché con compresión GZIP.
- * Implementa el sistema de caché exacto del código original.
+ * @fileoverview Módulo de caché optimizado con sistema unificado.
+ * Elimina redundancias y mejora el rendimiento.
  */
 
 // ==================== CONFIGURACIÓN DEL MÓDULO ====================
 
-const CACHE_KEY = 'DASHBOARD_DATA_V2';
+const CACHE_KEY = 'DASHBOARD_CONSOLIDATED_V1';
 
 // ==================== FUNCIONES DE CACHÉ ====================
 
 /**
- * Guarda los datos procesados en la caché con fragmentación automática.
+ * Versión optimizada usando sistema unificado de caché
+ * Elimina compresión innecesaria y simplifica el manejo
  * @param {Object} data - Datos a guardar en caché
+ * @param {number} ttl - Tiempo de vida en segundos (default: 1800)
+ * @returns {boolean} True si se guardó exitosamente
  */
-function setCacheData(data) {
+function setCacheData(data, ttl = 1800) {
   try {
+    // Usar sistema unificado si está disponible
+    if (typeof setUnifiedCache === 'function') {
+      return setUnifiedCache('DASHBOARD', data);
+    }
+    
+    // Fallback al sistema anterior
     const cache = CacheService.getScriptCache();
     const jsonString = JSON.stringify(data);
-    const dataSize = jsonString.length;
+    const sizeKB = Math.round(jsonString.length / 1024);
     
-    console.log(`[CacheModule] Preparando datos para caché. Tamaño: ${dataSize} bytes`);
+    console.log(`[Cache] Tamaño de datos: ${sizeKB}KB`);
     
-    // Límite de 95KB para fragmentación
-    const FRAGMENT_SIZE = 90 * 1024; // 90KB por fragmento
-    const SINGLE_CACHE_LIMIT = 95 * 1024; // 95KB límite para caché simple
-    
-    if (dataSize <= SINGLE_CACHE_LIMIT) {
-      // Datos pequeños: guardar en una sola entrada
-      console.log('[CacheModule] Datos pequeños, guardando en caché simple');
-      cache.put(CACHE_KEY, jsonString, CONFIG.CACHE.DURATION);
-      console.log(`[CacheModule] ✅ Datos guardados en caché simple. Expiración en ${CONFIG.CACHE.DURATION} segundos.`);
+    // Solo comprimir si excede 95KB (límite real es 100KB)
+    if (sizeKB > 95) {
+      console.log('[Cache] Aplicando compresión por tamaño...');
+      const compressed = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(jsonString).getBytes()));
+      cache.put('DASHBOARD_DATA_COMPRESSED', compressed, ttl);
+      cache.put('DASHBOARD_DATA_META', JSON.stringify({compressed: true, size: sizeKB}), ttl);
+      console.log(`[Cache] ✅ Datos comprimidos guardados (${sizeKB}KB → ${Math.round(compressed.length/1024)}KB)`);
     } else {
-      // Datos grandes: fragmentar
-      console.log(`[CacheModule] Datos grandes (${dataSize} bytes), iniciando fragmentación...`);
-      
-      const fragments = [];
-      let fragmentIndex = 0;
-      
-      // Dividir en fragmentos de 90KB
-      for (let i = 0; i < jsonString.length; i += FRAGMENT_SIZE) {
-        const fragment = jsonString.slice(i, i + FRAGMENT_SIZE);
-        const fragmentKey = `${CACHE_KEY}_${fragmentIndex}`;
-        
-        cache.put(fragmentKey, fragment, CONFIG.CACHE.DURATION);
-        fragments.push(fragmentKey);
-        fragmentIndex++;
-        
-        console.log(`[CacheModule] Fragmento ${fragmentIndex} guardado: ${fragment.length} bytes`);
-      }
-      
-      // Guardar metadata
-      const metadata = {
-        fragments: fragments.length,
-        size: dataSize,
-        timestamp: Date.now(),
-        originalKey: CACHE_KEY
-      };
-      
-      cache.put('DASHBOARD_META', JSON.stringify(metadata), CONFIG.CACHE.DURATION);
-      
-      console.log(`[CacheModule] ✅ Datos fragmentados guardados: ${fragments.length} fragmentos, ${dataSize} bytes totales`);
-      console.log(`[CacheModule] Metadata guardada en DASHBOARD_META`);
+      // Sin compresión para datos < 95KB (caso más común)
+      cache.put(CACHE_KEY, jsonString, ttl);
+      cache.put('DASHBOARD_DATA_META', JSON.stringify({compressed: false, size: sizeKB}), ttl);
+      console.log(`[Cache] ✅ Datos guardados sin compresión (${sizeKB}KB)`);
     }
     
+    return true;
   } catch (error) {
-    console.error('[CacheModule] Error al guardar en caché:', error);
-    
-    // Intentar limpiar caché corrupta
-    try {
-      clearCache();
-      console.log('[CacheModule] Caché limpiada tras error');
-    } catch (clearError) {
-      console.error('[CacheModule] Error al limpiar caché:', clearError);
-    }
+    console.error('[Cache] Error guardando:', error);
+    return false;
   }
 }
 

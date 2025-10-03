@@ -255,6 +255,540 @@ function createEmptyAnalysis() {
   };
 }
 
+/**
+ * Función consolidada que reemplaza 3 llamadas RPC con 1 sola
+ * Objetivo: Reducir tiempo de 128s a 30s
+ * @returns {Object} Datos completos del dashboard
+ */
+function getDashboardDataConsolidated() {
+  // 🚀 INICIAR MÉTRICAS DE RENDIMIENTO
+  if (typeof PerformanceMetrics !== 'undefined') {
+    PerformanceMetrics.start('TOTAL_DASHBOARD_LOAD');
+  }
+  
+  const startTime = Date.now();
+  console.log('[CONSOLIDATED] Iniciando carga unificada...');
+  
+  // PASO 1: Verificar caché unificado
+  if (typeof PerformanceMetrics !== 'undefined') {
+    PerformanceMetrics.start('CACHE_CHECK');
+  }
+  
+  const cachedData = UnifiedCache.get(UnifiedCache.getKEYS().DASHBOARD);
+  
+  if (cachedData) {
+    const cacheTime = Date.now() - startTime;
+    console.log('[CONSOLIDATED] Cache HIT (Unified) - tiempo:', cacheTime, 'ms');
+    
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.end('CACHE_CHECK');
+      PerformanceMetrics.end('TOTAL_DASHBOARD_LOAD');
+    }
+    
+    // Incluir métricas en respuesta
+    if (cachedData.data) {
+      cachedData.data.performance = {
+        loadTime: cacheTime,
+        cacheHit: true,
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    return cachedData;
+  }
+  
+  if (typeof PerformanceMetrics !== 'undefined') {
+    PerformanceMetrics.end('CACHE_CHECK');
+  }
+  
+  console.log('[CONSOLIDATED] Cache MISS - cargando desde Sheets...');
+  
+  try {
+    // PASO 2: UNA SOLA apertura del spreadsheet usando Singleton
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.start('SPREADSHEET_OPEN');
+    }
+    
+    const spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
+    const spreadsheetTime = Date.now() - startTime;
+    console.log('[CONSOLIDATED] Spreadsheet abierto (Singleton):', spreadsheetTime, 'ms');
+    
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.end('SPREADSHEET_OPEN');
+    }
+    
+    // PASO 3: Cargar TODAS las hojas necesarias de una vez
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.start('SHEETS_LOAD');
+    }
+    
+    const batchData = {};
+    
+    // Cargar líderes
+    const lideresSheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
+    if (lideresSheet) {
+      const lastRow = Math.min(lideresSheet.getLastRow(), 5000); // Límite de seguridad
+      if (lastRow > 0) {
+        batchData.lideres = lideresSheet.getRange(1, 1, lastRow, 5).getValues();
+      }
+    }
+    
+    // Cargar células
+    const celulasSheet = spreadsheet.getSheetByName(CONFIG.TABS.CELULAS);
+    if (celulasSheet) {
+      const lastRow = Math.min(celulasSheet.getLastRow(), 5000);
+      if (lastRow > 0) {
+        batchData.celulas = celulasSheet.getRange(1, 1, lastRow, 8).getValues();
+      }
+    }
+    
+    // Cargar ingresos
+    const ingresosSheet = spreadsheet.getSheetByName(CONFIG.TABS.INGRESOS);
+    if (ingresosSheet) {
+      const lastRow = Math.min(ingresosSheet.getLastRow(), 10000);
+      if (lastRow > 0) {
+        batchData.ingresos = ingresosSheet.getRange(1, 1, lastRow, 10).getValues();
+      }
+    }
+    
+    // Cargar resumen para estadísticas
+    const resumenSheet = spreadsheet.getSheetByName('_ResumenDashboard');
+    if (resumenSheet) {
+      batchData.resumen = resumenSheet.getRange("B1:B7").getValues();
+    }
+    
+    const sheetsLoadTime = Date.now() - startTime;
+    console.log('[CONSOLIDATED] Datos cargados:', sheetsLoadTime, 'ms');
+    
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.end('SHEETS_LOAD');
+    }
+    
+    // PASO 4: Procesar todo en memoria
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.start('DATA_PROCESSING');
+    }
+    
+    const result = {
+      success: true,
+      data: {
+        // Procesar estadísticas desde resumen
+        estadisticas: processEstadisticasFromBatch(batchData),
+        
+        // Procesar lista de líderes
+        listaDeLideres: processLideresFromBatch(batchData.lideres),
+        
+        // Procesar datos completos del dashboard
+        dashboard: processDashboardFromBatch(batchData),
+        
+        // Metadata
+        timestamp: new Date().toISOString(),
+        loadTime: Date.now() - startTime,
+        
+        // Métricas de rendimiento
+        performance: {
+          loadTime: Date.now() - startTime,
+          cacheHit: false,
+          spreadsheetTime: spreadsheetTime,
+          sheetsLoadTime: sheetsLoadTime,
+          timestamp: new Date().toISOString()
+        }
+      }
+    };
+    
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.end('DATA_PROCESSING');
+    }
+    
+    // PASO 5: Guardar en caché unificado (30 minutos)
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.start('CACHE_SAVE');
+    }
+    
+    UnifiedCache.set(UnifiedCache.getKEYS().DASHBOARD, result, UnifiedCache.getTTL().DASHBOARD);
+    
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.end('CACHE_SAVE');
+      PerformanceMetrics.end('TOTAL_DASHBOARD_LOAD');
+    }
+    
+    const totalTime = Date.now() - startTime;
+    console.log('[CONSOLIDATED] ✅ Proceso completado:', totalTime, 'ms');
+    
+    // Monitoreo de rendimiento
+    if (typeof monitorDashboardPerformance === 'function') {
+      monitorDashboardPerformance();
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('[CONSOLIDATED] ❌ Error:', error);
+    
+    if (typeof PerformanceMetrics !== 'undefined') {
+      PerformanceMetrics.end('TOTAL_DASHBOARD_LOAD');
+    }
+    
+    return {
+      success: false,
+      error: error.toString(),
+      timestamp: new Date().toISOString(),
+      performance: {
+        loadTime: Date.now() - startTime,
+        cacheHit: false,
+        error: true,
+        timestamp: new Date().toISOString()
+      }
+    };
+  }
+}
+
+/**
+ * Procesa estadísticas desde datos de resumen
+ * @param {Object} batchData - Datos cargados en lote
+ * @returns {Object} Estadísticas procesadas
+ */
+function processEstadisticasFromBatch(batchData) {
+  try {
+    if (!batchData.resumen || batchData.resumen.length < 7) {
+      return {
+        lideres: { total_LD: 0, total_LCF: 0 },
+        celulas: { total_celulas: 0 },
+        ingresos: { total_historico: 0, ingresos_mes: 0, tasa_integracion_celula: "0.0" },
+        metricas: { promedio_lcf_por_ld: "0.0" },
+        timestamp: new Date().toISOString()
+      };
+    }
+    
+    const metricasValues = batchData.resumen;
+    
+    return {
+      lideres: { 
+        total_LD: metricasValues[0][0] || 0, 
+        total_LCF: metricasValues[1][0] || 0 
+      },
+      celulas: { 
+        total_celulas: metricasValues[2][0] || 0 
+      },
+      ingresos: {
+        total_historico: metricasValues[3][0] || 0,
+        ingresos_mes: metricasValues[4][0] || 0,
+        tasa_integracion_celula: ((metricasValues[6][0] || 0) * 100).toFixed(1)
+      },
+      metricas: { 
+        promedio_lcf_por_ld: metricasValues[0][0] > 0 ? 
+          ((metricasValues[1][0] || 0) / metricasValues[0][0]).toFixed(1) : "0.0"
+      },
+      timestamp: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('[CONSOLIDATED] Error procesando estadísticas:', error);
+    return {
+      lideres: { total_LD: 0, total_LCF: 0 },
+      celulas: { total_celulas: 0 },
+      ingresos: { total_historico: 0, ingresos_mes: 0, tasa_integracion_celula: "0.0" },
+      metricas: { promedio_lcf_por_ld: "0.0" },
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
+ * Procesa lista de líderes desde datos en lote
+ * @param {Array} lideresData - Datos de líderes
+ * @returns {Array} Lista de líderes LD
+ */
+function processLideresFromBatch(lideresData) {
+  try {
+    if (!lideresData || lideresData.length < 2) {
+      return [];
+    }
+    
+    const headers = lideresData[0].map(h => h.toString().trim());
+    const lideres = [];
+    
+    const columnas = {
+      idLider: headers.findIndex(h => h.includes('ID_Lider') || h.includes('ID Líder') || h.includes('ID')),
+      nombreLider: headers.findIndex(h => h.includes('Nombre_Lider') || h.includes('Nombre Líder') || h.includes('Nombre')),
+      rol: headers.findIndex(h => h.includes('Rol') || h.includes('Tipo'))
+    };
+    
+    if (columnas.idLider === -1 || columnas.rol === -1) {
+      console.error('[CONSOLIDATED] Faltan columnas críticas en líderes');
+      return [];
+    }
+    
+    for (let i = 1; i < lideresData.length; i++) {
+      const row = lideresData[i];
+      const idLider = String(row[columnas.idLider] || '').trim();
+      const rol = String(row[columnas.rol] || '').trim().toUpperCase();
+      
+      if (idLider && rol === 'LD') {
+        lideres.push({
+          ID_Lider: idLider,
+          Nombre_Lider: String(row[columnas.nombreLider] || '').trim()
+        });
+      }
+    }
+    
+    return lideres;
+  } catch (error) {
+    console.error('[CONSOLIDATED] Error procesando líderes:', error);
+    return [];
+  }
+}
+
+/**
+ * Procesa datos completos del dashboard desde datos en lote
+ * @param {Object} batchData - Datos cargados en lote
+ * @returns {Object} Datos del dashboard procesados
+ */
+function processDashboardFromBatch(batchData) {
+  try {
+    // Procesar líderes completos
+    const lideres = processLideresCompletosFromBatch(batchData.lideres);
+    
+    // Procesar células completas
+    const celulas = processCelulasCompletasFromBatch(batchData.celulas);
+    
+    // Procesar ingresos completos
+    const ingresos = processIngresosCompletosFromBatch(batchData.ingresos);
+    
+    // Calcular actividad de líderes
+    const actividadMap = calcularActividadLideres(celulas);
+    const lideresConActividad = integrarActividadLideres(lideres, actividadMap);
+    
+    // Mapear almas a células
+    const almasEnCelulasMap = mapearAlmasACelulas(celulas);
+    integrarAlmasACelulas(ingresos, almasEnCelulasMap);
+    
+    return {
+      celulas: analizarCelulas(celulas),
+      ingresos: analizarIngresos(ingresos),
+      datosBase: {
+        lideres: lideresConActividad,
+        celulas: celulas,
+        ingresos: ingresos,
+        timestamp: new Date().toISOString()
+      },
+      metricas: calcularMetricasPrincipales({
+        lideres: lideresConActividad,
+        celulas: celulas,
+        ingresos: ingresos
+      }),
+      alertas: [],
+      timestamp: new Date().toISOString(),
+      modo_carga: 'CONSOLIDATED'
+    };
+  } catch (error) {
+    console.error('[CONSOLIDATED] Error procesando dashboard:', error);
+    return createEmptyAnalysis();
+  }
+}
+
+/**
+ * Procesa líderes completos desde datos en lote
+ * @param {Array} lideresData - Datos de líderes
+ * @returns {Array} Líderes procesados
+ */
+function processLideresCompletosFromBatch(lideresData) {
+  try {
+    if (!lideresData || lideresData.length < 2) return [];
+    
+    const headers = lideresData[0].map(h => h.toString().trim());
+    
+    const columnas = {
+      idLider: headers.findIndex(h => h.includes('ID_Lider') || h.includes('ID Líder') || h.includes('ID')),
+      nombreLider: headers.findIndex(h => h.includes('Nombre_Lider') || h.includes('Nombre Líder') || h.includes('Nombre')),
+      rol: headers.findIndex(h => h.includes('Rol') || h.includes('Tipo')),
+      idLiderDirecto: headers.findIndex(h => h.includes('ID_Lider_Directo') || h.includes('Supervisor') || h.includes('ID LD')),
+      congregacion: headers.findIndex(h => h.includes('Congregación') || h.includes('Congregacion'))
+    };
+    
+    if (columnas.idLider === -1 || columnas.rol === -1) return [];
+    
+    // Preparar datos para batch processing (excluir header)
+    const dataRows = lideresData.slice(1);
+    
+    // Función de procesamiento para cada líder
+    const processLider = (row, index) => {
+      const idLider = String(row[columnas.idLider] || '').trim();
+      
+      if (!idLider) return null;
+      
+      return {
+        ID_Lider: idLider,
+        Nombre_Lider: String(row[columnas.nombreLider] || '').trim(),
+        Rol: String(row[columnas.rol] || '').trim().toUpperCase(),
+        ID_Lider_Directo: String(row[columnas.idLiderDirecto] || '').trim(),
+        Congregacion: String(row[columnas.congregacion] || '').trim(),
+        Estado_Actividad: 'Desconocido',
+        Dias_Inactivo: null,
+        Ultima_Actividad: null
+      };
+    };
+    
+    // Procesar en lotes usando batch processing
+    const lideres = processBatchLDs(dataRows, processLider).filter(l => l !== null);
+    
+    console.log(`[CONSOLIDATED] ✅ ${lideres.length} líderes procesados en batch`);
+    return lideres;
+    
+  } catch (error) {
+    console.error('[CONSOLIDATED] Error procesando líderes completos:', error);
+    return [];
+  }
+}
+
+/**
+ * Procesa células completas desde datos en lote
+ * @param {Array} celulasData - Datos de células
+ * @returns {Array} Células procesadas
+ */
+function processCelulasCompletasFromBatch(celulasData) {
+  try {
+    if (!celulasData || celulasData.length < 2) return [];
+    
+    const headers = celulasData[0].map(h => h.toString().trim());
+    const celulasMap = new Map();
+    
+    const columnas = {
+      idCelula: headers.findIndex(h => h.includes('ID Célula') || h.includes('ID_Celula') || h.includes('ID')),
+      nombreCelula: headers.findIndex(h => h.includes('Nombre Célula')),
+      idMiembro: headers.findIndex(h => h.includes('ID Miembro') || h.includes('ID_Miembro') || h.includes('ID Alma')),
+      nombreMiembro: headers.findIndex(h => h.includes('Nombre Miembro')),
+      idLCF: headers.findIndex(h => h.includes('ID LCF') || h.includes('ID_LCF')),
+      nombreLCF: headers.findIndex(h => h.includes('Nombre LCF')),
+      idLider: headers.findIndex(h => h.includes('ID_Lider') || h.includes('ID Líder') || h.includes('ID LD')),
+      estado: headers.findIndex(h => h.includes('Estado') || h.includes('Estado Célula')),
+      congregacion: headers.findIndex(h => h.includes('Congregación') || h.includes('Congregacion')),
+      ultimaActividad: headers.findIndex(h => h.includes('Ultima_Actividad') || h.includes('Última Actividad'))
+    };
+    
+    if (columnas.idCelula === -1) return [];
+    
+    // Preparar datos para batch processing (excluir header)
+    const dataRows = celulasData.slice(1);
+    
+    // Función de procesamiento para cada fila de célula
+    const processCelulaRow = (row, index) => {
+      const idCelula = String(row[columnas.idCelula] || '').trim();
+      
+      if (!idCelula) return null;
+      
+      const idMiembro = String(row[columnas.idMiembro] || '').trim();
+      
+      return {
+        idCelula: idCelula,
+        nombreCelula: String(row[columnas.nombreCelula] || '').trim(),
+        idLCF: String(row[columnas.idLCF] || '').trim(),
+        nombreLCF: String(row[columnas.nombreLCF] || '').trim(),
+        idLider: String(row[columnas.idLider] || '').trim(),
+        estado: String(row[columnas.estado] || 'Activo').trim(),
+        congregacion: String(row[columnas.congregacion] || '').trim(),
+        ultimaActividad: row[columnas.ultimaActividad] || null,
+        miembro: idMiembro ? {
+          ID_Miembro: idMiembro,
+          Nombre_Miembro: String(row[columnas.nombreMiembro] || '').trim()
+        } : null
+      };
+    };
+    
+    // Procesar en lotes usando batch processing
+    const processedRows = processBatchCelulas(dataRows, processCelulaRow).filter(r => r !== null);
+    
+    // Agrupar por ID de célula
+    processedRows.forEach(row => {
+      if (!celulasMap.has(row.idCelula)) {
+        celulasMap.set(row.idCelula, {
+          ID_Celula: row.idCelula,
+          Nombre_Celula: row.nombreCelula,
+          ID_LCF: row.idLCF,
+          Nombre_LCF: row.nombreLCF,
+          ID_Lider: row.idLider,
+          Estado: row.estado,
+          Congregacion: row.congregacion,
+          Ultima_Actividad: row.ultimaActividad,
+          Miembros: []
+        });
+      }
+      
+      if (row.miembro) {
+        celulasMap.get(row.idCelula).Miembros.push(row.miembro);
+      }
+    });
+    
+    const celulas = Array.from(celulasMap.values());
+    console.log(`[CONSOLIDATED] ✅ ${celulas.length} células procesadas en batch`);
+    return celulas;
+    
+  } catch (error) {
+    console.error('[CONSOLIDATED] Error procesando células:', error);
+    return [];
+  }
+}
+
+/**
+ * Procesa ingresos completos desde datos en lote
+ * @param {Array} ingresosData - Datos de ingresos
+ * @returns {Array} Ingresos procesados
+ */
+function processIngresosCompletosFromBatch(ingresosData) {
+  try {
+    if (!ingresosData || ingresosData.length < 2) return [];
+    
+    const headers = ingresosData[0].map(h => h.toString().trim());
+    
+    const columnas = {
+      idAlma: headers.findIndex(h => h.includes('ID_Alma') || h.includes('ID Alma') || h.includes('ID')),
+      nombreCompleto: headers.findIndex(h => h.includes('Nombre_Completo') || h.includes('Nombre Completo')),
+      telefono: headers.findIndex(h => h.includes('Telefono') || h.includes('Teléfono')),
+      idLCF: headers.findIndex(h => h.includes('ID_LCF') || h.includes('ID LCF')),
+      nombreLCF: headers.findIndex(h => h.includes('Nombre_LCF') || h.includes('Nombre LCF')),
+      fechaIngreso: headers.findIndex(h => h.includes('Fecha_Ingreso') || h.includes('Fecha Ingreso')),
+      aceptoJesus: headers.findIndex(h => h.includes('Acepto_Jesus') || h.includes('Aceptó Jesús')),
+      deseaVisita: headers.findIndex(h => h.includes('Desea_Visita') || h.includes('Desea Visita')),
+      estadoAsignacion: headers.findIndex(h => h.includes('Estado_Asignacion') || h.includes('Estado Asignación'))
+    };
+    
+    if (columnas.idAlma === -1) return [];
+    
+    // Preparar datos para batch processing (excluir header)
+    const dataRows = ingresosData.slice(1);
+    
+    // Función de procesamiento para cada ingreso
+    const processIngreso = (row, index) => {
+      const idAlma = String(row[columnas.idAlma] || '').trim();
+      
+      if (!idAlma) return null;
+      
+      return {
+        ID_Alma: idAlma,
+        Nombre_Completo: String(row[columnas.nombreCompleto] || '').trim(),
+        Telefono: String(row[columnas.telefono] || '').trim(),
+        ID_LCF: String(row[columnas.idLCF] || '').trim(),
+        Nombre_LCF: String(row[columnas.nombreLCF] || '').trim(),
+        Fecha_Ingreso: row[columnas.fechaIngreso] || null,
+        Acepto_Jesus: String(row[columnas.aceptoJesus] || '').trim(),
+        Desea_Visita: String(row[columnas.deseaVisita] || '').trim(),
+        Estado_Asignacion: String(row[columnas.estadoAsignacion] || '').trim(),
+        En_Celula: false,
+        Dias_Desde_Ingreso: 0
+      };
+    };
+    
+    // Procesar en lotes usando batch processing
+    const ingresos = processBatchIngresos(dataRows, processIngreso).filter(i => i !== null);
+    
+    console.log(`[CONSOLIDATED] ✅ ${ingresos.length} ingresos procesados en batch`);
+    return ingresos;
+    
+  } catch (error) {
+    console.error('[CONSOLIDATED] Error procesando ingresos:', error);
+    return [];
+  }
+}
+
 // ==================== FUNCIONES DE UTILIDAD ====================
 
 /**
@@ -295,7 +829,7 @@ function validarConectividad() {
     // Validar hoja principal
     if (sheets.DIRECTORIO) {
       try {
-        const ss = SpreadsheetApp.openById(sheets.DIRECTORIO);
+        const ss = getSpreadsheetManager().getSpreadsheet(sheets.DIRECTORIO);
         resultados.directorio = {
           status: 'OK',
           titulo: ss.getName(),
@@ -312,7 +846,7 @@ function validarConectividad() {
     // Validar hojas externas si están configuradas
     if (sheets.REPORTE_CELULAS) {
       try {
-        const ss = SpreadsheetApp.openById(sheets.REPORTE_CELULAS);
+        const ss = getSpreadsheetManager().getSpreadsheet(sheets.REPORTE_CELULAS);
         resultados.reporte_celulas = {
           status: 'OK',
           titulo: ss.getName()

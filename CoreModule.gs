@@ -133,10 +133,10 @@ function cargarDirectorioCompleto(forceReload = false) {
   try {
     checkTimeout();
     
-    // ✅ OPTIMIZACIÓN: Abrir spreadsheet UNA SOLA VEZ
-    const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    // ✅ OPTIMIZACIÓN: Abrir spreadsheet UNA SOLA VEZ usando Singleton
+    const spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
     const ssOpenTime = Date.now() - startTime;
-    console.log(`[CoreModule] Spreadsheet abierto en ${ssOpenTime}ms`);
+    console.log(`[CoreModule] Spreadsheet abierto (Singleton) en ${ssOpenTime}ms`);
     
     // USAR FUNCIONES OPTIMIZADAS
     const lideresStart = Date.now();
@@ -241,7 +241,7 @@ function getListaDeLideres(spreadsheet) {
     // Reutilizar spreadsheet si se proporcionó, sino abrir uno nuevo
     if (!spreadsheet) {
       console.log('[CoreModule] Abriendo spreadsheet...');
-      spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+      spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
     } else {
       console.log('[CoreModule] Reutilizando spreadsheet proporcionado');
     }
@@ -288,7 +288,7 @@ function getIngresosData(lcfId) {
     }
     
     const spreadsheetId = (typeof CONFIG !== 'undefined' && CONFIG.SHEETS && CONFIG.SHEETS.DIRECTORIO) ? CONFIG.SHEETS.DIRECTORIO : '1dwuqpyMXWHJvnJHwDHCqFMvgdYhypE2W1giH6bRZMKc';
-    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const spreadsheet = getSpreadsheetManager().getSpreadsheet(spreadsheetId);
     const sheetName = (typeof CONFIG !== 'undefined' && CONFIG.TABS && CONFIG.TABS.INGRESOS) ? CONFIG.TABS.INGRESOS : 'Ingresos';
     const sheet = spreadsheet.getSheetByName(sheetName);
     
@@ -391,7 +391,7 @@ function cargarEstadoLideres(spreadsheet) {
   try {
     // Reutilizar spreadsheet si se proporcionó, sino abrir uno nuevo
     if (!spreadsheet) {
-      spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+      spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
     }
     
     const sheet = spreadsheet.getSheetByName(CONFIG.TABS.ESTADO_LIDERES);
@@ -408,7 +408,7 @@ function cargarEstadoLideres(spreadsheet) {
     }
     
     // Leer datos: A2:I (ID_Lider a Perfil_Lider) - ✅ TODAS las columnas
-    const data = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+    const data = getOptimizedRange(sheet, 5000, 2, 1, 9);
     console.log(`[CoreModule] 📊 Procesando ${data.length} líderes de _EstadoLideres`);
     
     data.forEach(row => {
@@ -588,9 +588,9 @@ function getDatosLDBasico(idLD) {
   checkTimeout();
   console.log('[CoreModule] Cargando modo básico para LD:', idLD);
   
-  const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+  const spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
   const sheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
-  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
+    const data = getOptimizedRange(sheet, 5000, 2, 1, 5);
   
   const ldRow = data.find(row => String(row[0]).trim() === idLD && String(row[2]).trim() === 'LD');
   if (!ldRow) {
@@ -992,14 +992,14 @@ function darDeBajaAlmasEnLote(idAlmasArray) {
     
     console.log(`[CoreModule] Iniciando operación darDeBajaAlmasEnLote para ${idAlmasArray.length} almas.`);
 
-    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const ss = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
     const sheet = ss.getSheetByName(CONFIG.TABS.INGRESOS);
     
     if (!sheet) {
       throw new Error(`La hoja '${CONFIG.TABS.INGRESOS}' no fue encontrada.`);
     }
 
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => String(h).trim());
+    const headers = getOptimizedHeaders(sheet, 20);
     const idAlmaColIndex = headers.indexOf('ID_Alma');
     const estadoColIndex = headers.indexOf('Estado');
 
@@ -1007,7 +1007,7 @@ function darDeBajaAlmasEnLote(idAlmasArray) {
       throw new Error("Columnas 'ID_Alma' o 'Estado' no encontradas en la hoja de Ingresos.");
     }
 
-    const idColumnValues = sheet.getRange(2, idAlmaColIndex + 1, sheet.getLastRow() - 1, 1).getValues();
+    const idColumnValues = getOptimizedRange(sheet, 10000, 2, idAlmaColIndex + 1, idAlmaColIndex + 1);
     const idMap = new Map();
     idColumnValues.forEach((row, index) => {
       if (row[0]) {
@@ -1092,7 +1092,7 @@ function buscarLDRapido(idLD) {
 
     // Si no se obtuvo por SpreadsheetManager, abrir directamente
     if (!spreadsheet) {
-      spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+      spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
       console.log('[CoreModule] Abriendo spreadsheet directamente');
     }
 
@@ -1106,8 +1106,7 @@ function buscarLDRapido(idLD) {
     }
 
     // Optimización: limitar búsqueda a las primeras 200 filas
-    const maxRows = Math.min(sheet.getLastRow() - 1, 200);
-    const data = sheet.getRange(2, 1, maxRows, 5).getValues();
+    const data = getOptimizedRange(sheet, 200, 2, 1, 5);
     
     // 4. Buscar fila donde:
     // - Columna A (índice 0) = idLD
@@ -1216,7 +1215,7 @@ function testCorrecionListaLideres() {
   console.log('');
   console.log('=== TEST 3: Reutilizando spreadsheet ===');
   clearCache();
-  const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+  const ss = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
   const t4 = Date.now();
   const resultado3 = getListaDeLideres(ss);
   const time4 = Date.now() - t4;

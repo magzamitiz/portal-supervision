@@ -1,0 +1,429 @@
+/**
+ * @fileoverview Configuración unificada de caché para optimización
+ * Centraliza todas las claves de caché y elimina redundancias
+ */
+
+// ==================== CONFIGURACIÓN UNIFICADA DE CACHÉ ====================
+
+const UNIFIED_CACHE = {
+  // Clave principal consolidada (reemplaza múltiples claves obsoletas)
+  DASHBOARD: {
+    KEY: 'UNIFIED_DASHBOARD_V3',
+    TTL: 1800,  // 30 minutos
+    DESCRIPTION: 'Datos completos del dashboard (estadísticas + líderes + dashboard)',
+    COMPRESS_THRESHOLD: 100000 // 100KB en bytes
+  },
+  
+  // Estadísticas rápidas (TTL más corto para datos dinámicos)
+  STATS: {
+    KEY: 'UNIFIED_STATS_V3',
+    TTL: 300,   // 5 minutos
+    DESCRIPTION: 'Estadísticas rápidas del dashboard',
+    COMPRESS_THRESHOLD: 50000  // 50KB en bytes
+  },
+  
+  // Lista de líderes (TTL largo para datos estables)
+  LEADERS: {
+    KEY: 'UNIFIED_LEADERS_V3',
+    TTL: 1800,  // 30 minutos
+    DESCRIPTION: 'Lista completa de líderes',
+    COMPRESS_THRESHOLD: 100000 // 100KB en bytes
+  },
+  
+  // Claves específicas para casos especiales
+  LEADER_DETAILS: {
+    PREFIX: 'LD_DETAIL_',
+    TTL: 900,   // 15 minutos
+    DESCRIPTION: 'Detalles específicos de líderes'
+  },
+  
+  LCF_DETAILS: {
+    PREFIX: 'LCF_DETAIL_',
+    TTL: 600,   // 10 minutos
+    DESCRIPTION: 'Detalles específicos de LCFs'
+  },
+  
+  INGRESOS_LCF: {
+    PREFIX: 'INGRESOS_LCF_',
+    TTL: 300,   // 5 minutos
+    DESCRIPTION: 'Ingresos por LCF específico'
+  },
+  
+  // Claves temporales para tests
+  TEMPORAL: {
+    PREFIX: 'TEMP_',
+    TTL: 60,    // 1 minuto
+    DESCRIPTION: 'Datos temporales para pruebas'
+  },
+  
+  // Claves obsoletas a eliminar
+  LEGACY_KEYS: [
+    'STATS_RAPIDAS_V2',           // TTL 30s causa invalidación constante
+    'DASHBOARD_DATA_V2',          // Redundante con DASHBOARD_CONSOLIDATED_V1
+    'DASHBOARD_DATA_V3',          // Redundante
+    'DASHBOARD_META',             // Metadata obsoleta
+    'DASHBOARD_DATA_COMPRESSED',  // Solo para casos > 95KB
+    'DIRECTORIO_COMPLETO',        // Reemplazado por DASHBOARD_CONSOLIDATED_V1
+    'ESTADO_LIDERES_CACHE',       // Reemplazado por DASHBOARD_CONSOLIDATED_V1
+    'datos_graficos_dashboard',   // Obsoleta
+    'metricas_historicas'         // Obsoleta
+  ],
+  
+  // Función para limpiar caché legacy
+  cleanLegacyCache: function() {
+    const cache = CacheService.getScriptCache();
+    let cleanedCount = 0;
+    
+    console.log('[UnifiedCache] Limpiando claves obsoletas...');
+    
+    UNIFIED_CACHE.LEGACY_KEYS.forEach(key => {
+      try {
+        if (cache.get(key)) {
+          cache.remove(key);
+          cleanedCount++;
+          console.log(`[UnifiedCache] ✅ Limpiado: ${key}`);
+        }
+      } catch(e) {
+        // Ignorar errores de claves no existentes
+      }
+    });
+    
+    // Limpiar claves dinámicas obsoletas
+    const dynamicKeys = [
+      'LD_OPT_FULL_', 'LD_OPT_BASIC_', 'LCF_OPT_',
+      'LD_FULL_', 'LD_BASIC_', 'LD_QUICK_'
+    ];
+    
+    dynamicKeys.forEach(prefix => {
+      for (let i = 0; i < 100; i++) {
+        const key = `${prefix}LD-00${i}`;
+        try {
+          if (cache.get(key)) {
+            cache.remove(key);
+            cleanedCount++;
+          }
+        } catch(e) {
+          // Ignorar errores
+        }
+      }
+    });
+    
+    console.log(`[UnifiedCache] ✅ Limpieza completada: ${cleanedCount} claves eliminadas`);
+    return cleanedCount;
+  },
+  
+  // Función para obtener estadísticas del caché
+  getCacheStats: function() {
+    const cache = CacheService.getScriptCache();
+    const stats = {
+      totalKeys: 0,
+      activeKeys: [],
+      legacyKeys: [],
+      totalSize: 0
+    };
+    
+    // Verificar claves principales
+    const mainKeys = [
+      UNIFIED_CACHE.DASHBOARD.KEY,
+      'DASHBOARD_DATA_META'
+    ];
+    
+    mainKeys.forEach(key => {
+      const data = cache.get(key);
+      if (data) {
+        stats.activeKeys.push({
+          key: key,
+          size: data.length,
+          type: 'main'
+        });
+        stats.totalSize += data.length;
+        stats.totalKeys++;
+      }
+    });
+    
+    // Verificar claves legacy
+    UNIFIED_CACHE.LEGACY_KEYS.forEach(key => {
+      const data = cache.get(key);
+      if (data) {
+        stats.legacyKeys.push({
+          key: key,
+          size: data.length,
+          type: 'legacy'
+        });
+        stats.totalSize += data.length;
+        stats.totalKeys++;
+      }
+    });
+    
+    return stats;
+  }
+};
+
+// ==================== CLASE UNIFIED CACHE ====================
+
+/**
+ * Clase para manejo unificado de caché con optimizaciones
+ */
+class UnifiedCache {
+  constructor() {
+    // Inicializar propiedades estáticas si no existen
+    if (!UnifiedCache.KEYS) {
+      UnifiedCache.KEYS = {
+        DASHBOARD: 'UNIFIED_DASHBOARD_V3',
+        STATS: 'UNIFIED_STATS_V3',
+        LEADERS: 'UNIFIED_LEADERS_V3'
+      };
+    }
+    if (!UnifiedCache.TTL) {
+      UnifiedCache.TTL = {
+        DASHBOARD: 1800,  // 30 minutos
+        STATS: 300,        // 5 minutos
+        LEADERS: 1800      // 30 minutos
+      };
+    }
+  }
+  
+  // Métodos estáticos getter
+  static getKEYS() {
+    if (!UnifiedCache.KEYS) {
+      UnifiedCache.KEYS = {
+        DASHBOARD: 'UNIFIED_DASHBOARD_V3',
+        STATS: 'UNIFIED_STATS_V3',
+        LEADERS: 'UNIFIED_LEADERS_V3'
+      };
+    }
+    return UnifiedCache.KEYS;
+  }
+  
+  static getTTL() {
+    if (!UnifiedCache.TTL) {
+      UnifiedCache.TTL = {
+        DASHBOARD: 1800,  // 30 minutos
+        STATS: 300,        // 5 minutos
+        LEADERS: 1800      // 30 minutos
+      };
+    }
+    return UnifiedCache.TTL;
+  }
+  
+  /**
+   * Obtiene datos del caché con fallback inteligente
+   * @param {string} key - Clave del caché
+   * @returns {Object|null} Datos recuperados o null
+   */
+  static get(key) {
+    try {
+      const cache = CacheService.getScriptCache();
+      const data = cache.get(key);
+      
+      if (!data) {
+        console.log(`[UnifiedCache] ❌ No encontrado: ${key}`);
+        return null;
+      }
+      
+      // Verificar si está comprimido
+      if (data.startsWith('COMPRESSED:')) {
+        console.log(`[UnifiedCache] 🔄 Descomprimiendo: ${key}`);
+        const compressedData = data.substring(11); // Remover prefijo 'COMPRESSED:'
+        const blob = Utilities.newBlob(Utilities.base64Decode(compressedData), 'application/x-gzip');
+        const decompressed = blob.unzip();
+        const result = JSON.parse(decompressed.getDataAsString());
+        console.log(`[UnifiedCache] ✅ Descomprimido: ${key}`);
+        return result;
+      } else {
+        console.log(`[UnifiedCache] ✅ Recuperado: ${key}`);
+        return JSON.parse(data);
+      }
+      
+    } catch (error) {
+      console.error(`[UnifiedCache] ❌ Error recuperando ${key}:`, error);
+      return null;
+    }
+  }
+  
+  /**
+   * Guarda datos en caché con compresión inteligente
+   * @param {string} key - Clave del caché
+   * @param {Object} data - Datos a guardar
+   * @param {number} ttl - Tiempo de vida en segundos
+   * @returns {boolean} True si se guardó exitosamente
+   */
+  static set(key, data, ttl) {
+    try {
+      const cache = CacheService.getScriptCache();
+      const jsonString = JSON.stringify(data);
+      const sizeBytes = jsonString.length;
+      
+      console.log(`[UnifiedCache] 💾 Guardando: ${key} (${Math.round(sizeBytes/1024)}KB)`);
+      
+      // Determinar si comprimir basado en tamaño
+      const config = this.getConfigForKey(key);
+      const shouldCompress = sizeBytes > (config?.COMPRESS_THRESHOLD || 100000);
+      
+      if (shouldCompress) {
+        console.log(`[UnifiedCache] 🗜️ Comprimiendo: ${key} (${sizeBytes} bytes > ${config?.COMPRESS_THRESHOLD || 100000})`);
+        const compressed = Utilities.gzip(Utilities.newBlob(jsonString));
+        const compressedData = 'COMPRESSED:' + Utilities.base64Encode(compressed.getBytes());
+        cache.put(key, compressedData, ttl);
+        console.log(`[UnifiedCache] ✅ Guardado comprimido: ${key}`);
+      } else {
+        console.log(`[UnifiedCache] ✅ Guardado sin compresión: ${key}`);
+        cache.put(key, jsonString, ttl);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error(`[UnifiedCache] ❌ Error guardando ${key}:`, error);
+      return false;
+    }
+  }
+  
+  /**
+   * Invalida caché por patrón
+   * @param {string} pattern - Patrón de claves a invalidar
+   * @returns {number} Número de claves invalidadas
+   */
+  static invalidate(pattern) {
+    try {
+      const cache = CacheService.getScriptCache();
+      let invalidatedCount = 0;
+      
+      // Obtener todas las claves del caché
+      const allKeys = cache.getKeys();
+      
+      allKeys.forEach(key => {
+        if (key.includes(pattern)) {
+          cache.remove(key);
+          invalidatedCount++;
+          console.log(`[UnifiedCache] 🗑️ Invalidado: ${key}`);
+        }
+      });
+      
+      console.log(`[UnifiedCache] ✅ Invalidación completada: ${invalidatedCount} claves`);
+      return invalidatedCount;
+    } catch (error) {
+      console.error(`[UnifiedCache] ❌ Error invalidando ${pattern}:`, error);
+      return 0;
+    }
+  }
+  
+  /**
+   * Obtiene configuración para una clave específica
+   * @param {string} key - Clave del caché
+   * @returns {Object} Configuración de la clave
+   */
+  static getConfigForKey(key) {
+    for (const [type, config] of Object.entries(UNIFIED_CACHE)) {
+      if (config.KEY === key) {
+        return config;
+      }
+    }
+    return { COMPRESS_THRESHOLD: 100000 };
+  }
+  
+  /**
+   * Limpia todas las claves legacy
+   * @returns {number} Número de claves limpiadas
+   */
+  static cleanLegacy() {
+    return UNIFIED_CACHE.cleanLegacyCache();
+  }
+  
+  /**
+   * Obtiene estadísticas del caché
+   * @returns {Object} Estadísticas del caché
+   */
+  static getStats() {
+    return UNIFIED_CACHE.getCacheStats();
+  }
+}
+
+// ==================== FUNCIONES DE UTILIDAD ====================
+
+/**
+ * Obtiene una clave de caché con prefijo y TTL apropiados
+ * @param {string} type - Tipo de caché (DASHBOARD, LEADER_DETAILS, etc.)
+ * @param {string} identifier - Identificador específico (opcional)
+ * @returns {Object} Configuración de la clave
+ */
+function getCacheConfig(type, identifier = '') {
+  const config = UNIFIED_CACHE[type];
+  if (!config) {
+    throw new Error(`Tipo de caché no válido: ${type}`);
+  }
+  
+  const key = identifier ? `${config.PREFIX}${identifier}` : config.KEY;
+  
+  return {
+    key: key,
+    ttl: config.TTL,
+    description: config.DESCRIPTION
+  };
+}
+
+/**
+ * Guarda datos en caché usando configuración unificada
+ * @param {string} type - Tipo de caché
+ * @param {Object} data - Datos a guardar
+ * @param {string} identifier - Identificador específico (opcional)
+ * @returns {boolean} True si se guardó exitosamente
+ */
+function setUnifiedCache(type, data, identifier = '') {
+  try {
+    const config = getCacheConfig(type, identifier);
+    const cache = CacheService.getScriptCache();
+    const jsonString = JSON.stringify(data);
+    
+    cache.put(config.key, jsonString, config.ttl);
+    console.log(`[UnifiedCache] ✅ Guardado: ${config.key} (${config.ttl}s)`);
+    return true;
+  } catch (error) {
+    console.error(`[UnifiedCache] ❌ Error guardando ${type}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Recupera datos del caché usando configuración unificada
+ * @param {string} type - Tipo de caché
+ * @param {string} identifier - Identificador específico (opcional)
+ * @returns {Object|null} Datos recuperados o null
+ */
+function getUnifiedCache(type, identifier = '') {
+  try {
+    const config = getCacheConfig(type, identifier);
+    const cache = CacheService.getScriptCache();
+    const data = cache.get(config.key);
+    
+    if (data) {
+      console.log(`[UnifiedCache] ✅ Recuperado: ${config.key}`);
+      return JSON.parse(data);
+    }
+    
+    console.log(`[UnifiedCache] ❌ No encontrado: ${config.key}`);
+    return null;
+  } catch (error) {
+    console.error(`[UnifiedCache] ❌ Error recuperando ${type}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Limpia caché específico por tipo
+ * @param {string} type - Tipo de caché a limpiar
+ * @param {string} identifier - Identificador específico (opcional)
+ * @returns {boolean} True si se limpió exitosamente
+ */
+function clearUnifiedCache(type, identifier = '') {
+  try {
+    const config = getCacheConfig(type, identifier);
+    const cache = CacheService.getScriptCache();
+    
+    cache.remove(config.key);
+    console.log(`[UnifiedCache] ✅ Limpiado: ${config.key}`);
+    return true;
+  } catch (error) {
+    console.error(`[UnifiedCache] ❌ Error limpiando ${type}:`, error);
+    return false;
+  }
+}

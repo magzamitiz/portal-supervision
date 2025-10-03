@@ -459,24 +459,30 @@ function analizarMetricasPorPeriodo(datos, periodo) {
  * VERSIÓN CORREGIDA: Usa getCacheData() para acceder a DASHBOARD_DATA_V2
  */
 function getEstadisticasRapidas() {
-  Logger.log('[getEstadisticasRapidas] 🚀 Iniciando...');
+  Logger.log('[getEstadisticasRapidas] 🚀 Iniciando con sistema unificado V3...');
   const startTime = Date.now();
   
   try {
-    const cache = CacheService.getScriptCache();
-    
-    // ✅ NIVEL 1: Caché específico de stats rápidas (30s TTL)
-    const cached = cache.get('STATS_RAPIDAS_V2');
+    // ✅ NIVEL 1: Usar nuevo sistema unificado V3
+    const cached = UnifiedCache.get(UnifiedCache.getKEYS().STATS);
     if (cached) {
       const timeElapsed = Date.now() - startTime;
-      Logger.log('[getEstadisticasRapidas] ✅ Cache HIT - ' + timeElapsed + 'ms');
-      return JSON.parse(cached);
+      Logger.log('[getEstadisticasRapidas] ✅ Cache HIT unificado V3 - ' + timeElapsed + 'ms');
+      return cached;
+    }
+    
+    // ✅ NIVEL 2: Fallback al sistema anterior (compatibilidad)
+    const cache = CacheService.getScriptCache();
+    const cachedLegacy = cache.get('STATS_RAPIDAS_V2');
+    if (cachedLegacy) {
+      const timeElapsed = Date.now() - startTime;
+      Logger.log('[getEstadisticasRapidas] ✅ Cache HIT legacy - ' + timeElapsed + 'ms');
+      return JSON.parse(cachedLegacy);
     }
     
     Logger.log('[getEstadisticasRapidas] ⚠️ Cache MISS - Buscando en directorio...');
     
-    // ✅ NIVEL 2: Usar getCacheData() que maneja DASHBOARD_DATA_V2 correctamente
-    // CRÍTICO: Esta es la corrección principal - usa getCacheData() en lugar de cache.get('DIRECTORIO_COMPLETO')
+    // ✅ NIVEL 3: Usar getCacheData() que maneja DASHBOARD_DATA_V2 correctamente
     const datos = getCacheData();
     
     if (datos && datos.lideres) {
@@ -527,8 +533,8 @@ function getEstadisticasRapidas() {
         }
       };
       
-      // Cachear stats por 30 segundos
-      cache.put('STATS_RAPIDAS_V2', JSON.stringify(stats), 30);
+      // Cachear stats en sistema unificado (5 minutos)
+      UnifiedCache.set(UnifiedCache.getKEYS().STATS, stats, UnifiedCache.getTTL().STATS);
       
       const timeElapsed = Date.now() - startTime;
       Logger.log('[getEstadisticasRapidas] ✅ Completado desde caché - ' + timeElapsed + 'ms');
@@ -577,8 +583,8 @@ function getEstadisticasRapidas() {
       }
     };
     
-    // Cachear por 30 segundos
-    cache.put('STATS_RAPIDAS_V2', JSON.stringify(result), 30);
+    // Cachear en sistema unificado (5 minutos)
+    UnifiedCache.set(UnifiedCache.getKEYS().STATS, result, UnifiedCache.getTTL().STATS);
     
     const timeElapsed = Date.now() - startTime;
     Logger.log(`[getEstadisticasRapidas] ✅ Completado - ${timeElapsed}ms`);

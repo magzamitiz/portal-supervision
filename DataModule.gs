@@ -280,7 +280,7 @@ function cargarLideresOptimizado(spreadsheet) {
   
   if (!spreadsheet) {
     console.log('[DataModule] ADVERTENCIA: Spreadsheet no recibido, abriendo nuevo');
-    spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
   }
   
   try {
@@ -295,7 +295,7 @@ function cargarLideresOptimizado(spreadsheet) {
     const lastRow = sheet.getLastRow();
     if (lastRow < 2) return [];
     
-    const data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+    const data = getOptimizedRange(sheet, 5000, 2, 1, 5);
     const lideres = [];
     
     for (let i = 0; i < data.length; i++) {
@@ -335,7 +335,7 @@ function cargarCelulasOptimizado(spreadsheet) {
   
   if (!spreadsheet) {
     console.log('[DataModule] ADVERTENCIA: Spreadsheet no recibido, abriendo nuevo');
-    spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
   }
   
   try {
@@ -464,7 +464,7 @@ function cargarIngresosOptimizado(spreadsheet) {
   
   if (!spreadsheet) {
     console.log('[DataModule] ADVERTENCIA: Spreadsheet no recibido, abriendo nuevo');
-    spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
   }
   
   try {
@@ -482,7 +482,7 @@ function cargarIngresosOptimizado(spreadsheet) {
       return [];
     }
     
-    const data = sheet.getRange(2, 1, lastRow - 1, 20).getValues();
+    const data = getOptimizedRange(sheet, 10000, 2, 1, 20);
     const ingresos = [];
     
     for (let i = 0; i < data.length; i++) {
