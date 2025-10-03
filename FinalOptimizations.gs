@@ -72,8 +72,9 @@ function getDashboardDataOptimized(forceReload = false) {
       loadTime: Date.now() - startTime
     };
     
-    // Guardar en caché con compresión inteligente
+    // Guardar en caché con compresión inteligente y registro de claves
     setCacheData(data);
+    registrarClaveCache('DASHBOARD_DATA_V2');
     
     console.log(`[FinalOptimizations] Dashboard cargado en ${data.loadTime}ms`);
     return data;
@@ -253,6 +254,7 @@ function getDatosLDOptimized(idLD, modoCompleto = false) {
       // Guardar en caché con tiempo extendido
       const cacheTime = modoCompleto ? 900 : 600; // 15 min completo, 10 min básico
       cache.put(cacheKey, JSON.stringify(result), cacheTime);
+      registrarClaveCache(cacheKey, 'LEADER_CACHE_KEYS');
     }
     
     console.log(`[FinalOptimizations] LD cargado en ${result.loadTime || 0}ms`);
@@ -294,6 +296,7 @@ function getVistaRapidaLCFOptimized(idLCF) {
       
       // Guardar en caché con tiempo extendido
       cache.put(cacheKey, JSON.stringify(result), 600); // 10 minutos
+      registrarClaveCache(cacheKey, 'LEADER_CACHE_KEYS');
     }
     
     console.log(`[FinalOptimizations] Vista rápida LCF cargada en ${result.loadTime || 0}ms`);
@@ -306,7 +309,7 @@ function getVistaRapidaLCFOptimized(idLCF) {
 }
 
 /**
- * Optimización final: Limpieza de caché inteligente
+ * Optimización final: Limpieza de caché inteligente con claves reales
  * @returns {Object} Resultado de la limpieza
  */
 function limpiarCacheInteligente() {
@@ -314,56 +317,59 @@ function limpiarCacheInteligente() {
     console.log('[FinalOptimizations] Iniciando limpieza inteligente de caché...');
     
     const cache = CacheService.getScriptCache();
+    const properties = PropertiesService.getScriptProperties();
     const startTime = Date.now();
-    
-    // Obtener todas las claves de caché (simulado)
-    const cacheKeys = [
-      'DASHBOARD_DATA_V2',
-      'LD_OPT_FULL_',
-      'LD_OPT_BASIC_',
-      'LCF_OPT_'
-    ];
     
     let cleanedCount = 0;
     
-    // Limpiar caché principal
-    cache.remove('DASHBOARD_DATA_V2');
-    cleanedCount++;
-    
-    // Limpiar caché de LD (aproximado)
-    for (let i = 0; i < 100; i++) {
-      const key = `LD_OPT_FULL_${i}`;
+    // 1. Limpiar caché principal
+    const mainKeys = ['DASHBOARD_DATA_V2', 'STATS_RAPIDAS_V2'];
+    mainKeys.forEach(key => {
       if (cache.get(key)) {
         cache.remove(key);
         cleanedCount++;
       }
-    }
+    });
     
-    for (let i = 0; i < 100; i++) {
-      const key = `LD_OPT_BASIC_${i}`;
+    // 2. Obtener claves reales del PropertiesService
+    const storedKeys = properties.getProperty('CACHE_KEYS');
+    const realKeys = storedKeys ? JSON.parse(storedKeys) : [];
+    
+    console.log(`[FinalOptimizations] Encontradas ${realKeys.length} claves reales en caché`);
+    
+    // 3. Limpiar claves reales
+    realKeys.forEach(key => {
       if (cache.get(key)) {
         cache.remove(key);
         cleanedCount++;
       }
-    }
+    });
     
-    // Limpiar caché de LCF (aproximado)
-    for (let i = 0; i < 100; i++) {
-      const key = `LCF_OPT_${i}`;
-      if (cache.get(key)) {
-        cache.remove(key);
-        cleanedCount++;
-      }
+    // 4. Limpiar metadata del PropertiesService
+    properties.deleteProperty('CACHE_KEYS');
+    
+    // 5. Limpiar claves de líderes específicos (LD_QUICK_*, LD_FULL_*, etc.)
+    const leaderKeys = properties.getProperty('LEADER_CACHE_KEYS');
+    if (leaderKeys) {
+      const leaderKeyList = JSON.parse(leaderKeys);
+      leaderKeyList.forEach(key => {
+        if (cache.get(key)) {
+          cache.remove(key);
+          cleanedCount++;
+        }
+      });
+      properties.deleteProperty('LEADER_CACHE_KEYS');
     }
     
     const cleanTime = Date.now() - startTime;
     
-    console.log(`[FinalOptimizations] Caché limpiada: ${cleanedCount} elementos en ${cleanTime}ms`);
+    console.log(`[FinalOptimizations] ✅ Caché limpiada: ${cleanedCount} elementos en ${cleanTime}ms`);
     
     return {
       success: true,
       cleanedCount: cleanedCount,
       cleanTime: cleanTime,
+      realKeysCleaned: realKeys.length,
       timestamp: new Date().toISOString()
     };
     
@@ -414,4 +420,77 @@ function getMetricasRendimiento() {
   }
 }
 
-console.log('⚡ FinalOptimizations cargado - Optimizaciones finales disponibles');
+/**
+ * Registra una clave de caché en PropertiesService para limpieza inteligente
+ * @param {string} clave - Clave de caché a registrar
+ * @param {string} tipo - Tipo de registro ('CACHE_KEYS' o 'LEADER_CACHE_KEYS')
+ */
+function registrarClaveCache(clave, tipo = 'CACHE_KEYS') {
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const storedKeys = properties.getProperty(tipo);
+    const keys = storedKeys ? JSON.parse(storedKeys) : [];
+    
+    if (!keys.includes(clave)) {
+      keys.push(clave);
+      properties.setProperty(tipo, JSON.stringify(keys));
+      console.log(`[FinalOptimizations] Clave registrada: ${clave} (${tipo})`);
+    }
+  } catch (error) {
+    console.error('[FinalOptimizations] Error registrando clave de caché:', error);
+  }
+}
+
+/**
+ * Obtiene información detallada del estado de caché
+ * @returns {Object} Estado completo del caché
+ */
+function getEstadoCacheDetallado() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const properties = PropertiesService.getScriptProperties();
+    
+    // Obtener claves registradas
+    const cacheKeys = properties.getProperty('CACHE_KEYS');
+    const leaderKeys = properties.getProperty('LEADER_CACHE_KEYS');
+    
+    const realCacheKeys = cacheKeys ? JSON.parse(cacheKeys) : [];
+    const realLeaderKeys = leaderKeys ? JSON.parse(leaderKeys) : [];
+    
+    // Verificar qué claves están realmente en caché
+    let cacheHits = 0;
+    let cacheMisses = 0;
+    
+    [...realCacheKeys, ...realLeaderKeys].forEach(key => {
+      if (cache.get(key)) {
+        cacheHits++;
+      } else {
+        cacheMisses++;
+      }
+    });
+    
+    return {
+      success: true,
+      data: {
+        timestamp: new Date().toISOString(),
+        totalKeys: realCacheKeys.length + realLeaderKeys.length,
+        cacheHits: cacheHits,
+        cacheMisses: cacheMisses,
+        hitRate: realCacheKeys.length + realLeaderKeys.length > 0 ? 
+          Math.round((cacheHits / (realCacheKeys.length + realLeaderKeys.length)) * 100) : 0,
+        mainCacheKeys: realCacheKeys.length,
+        leaderCacheKeys: realLeaderKeys.length,
+        keys: {
+          main: realCacheKeys,
+          leaders: realLeaderKeys
+        }
+      }
+    };
+    
+  } catch (error) {
+    console.error('[FinalOptimizations] Error obteniendo estado de caché:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+console.log('⚡ FinalOptimizations cargado - Optimizaciones finales + Sistema de caché inteligente');

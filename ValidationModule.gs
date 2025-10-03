@@ -23,7 +23,9 @@ const VALIDACION_CONFIG = {
     'ActividadModule',
     'ExternalDataModule',
     'TimeoutModule',
-    'CacheModule'
+    'CacheModule',
+    'FinalOptimizations', // ✅ AGREGADO: Módulo de optimizaciones finales
+    'ProductionMonitoring' // ✅ AGREGADO: Módulo de monitoreo de producción
   ]
 };
 
@@ -633,4 +635,357 @@ function generarReporteValidacion(resultados) {
   }
 }
 
-console.log('✅ ValidationModule cargado - Sistema de validación unificado');
+// ==================== VALIDACIONES ESPECÍFICAS PARA NUEVAS FUNCIONES ====================
+
+/**
+ * Valida las funciones de actividad de líderes
+ * @returns {Object} Resultado de la validación
+ */
+function validarFuncionesActividad() {
+  const startTime = Date.now();
+  const verificaciones = [];
+  
+  try {
+    console.log('[ValidationModule] Validando funciones de actividad...');
+    
+    // Verificar que calcularActividadLideres existe
+    if (typeof calcularActividadLideres === 'function') {
+      verificaciones.push({
+        item: 'calcularActividadLideres existe',
+        success: true,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Probar con datos de prueba
+      try {
+        const celulasPrueba = [
+          { ID_Lider: 'LD-001', Estado: 'Activa', Miembros: [{ ID_Miembro: 'A001' }] },
+          { ID_Lider: 'LD-001', Estado: 'Inactiva', Miembros: [] },
+          { ID_Lider: 'LD-002', Estado: 'Activa', Miembros: [{ ID_Miembro: 'A002' }] }
+        ];
+        
+        const actividad = calcularActividadLideres(celulasPrueba);
+        
+        verificaciones.push({
+          item: 'calcularActividadLideres funciona',
+          success: actividad instanceof Map && actividad.size > 0,
+          valor: `${actividad.size} líderes procesados`,
+          tiempo: Date.now() - startTime
+        });
+      } catch (error) {
+        verificaciones.push({
+          item: 'calcularActividadLideres funciona',
+          success: false,
+          error: error.toString(),
+          tiempo: Date.now() - startTime
+        });
+      }
+    } else {
+      verificaciones.push({
+        item: 'calcularActividadLideres existe',
+        success: false,
+        error: 'Función no encontrada',
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    // Verificar que integrarActividadLideres existe
+    if (typeof integrarActividadLideres === 'function') {
+      verificaciones.push({
+        item: 'integrarActividadLideres existe',
+        success: true,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Probar con datos de prueba
+      try {
+        const lideresPrueba = [
+          { ID_Lider: 'LD-001', Nombre_Lider: 'Test LD 1' },
+          { ID_Lider: 'LD-002', Nombre_Lider: 'Test LD 2' }
+        ];
+        const actividadMap = new Map();
+        actividadMap.set('LD-001', { totalCelulas: 2, celulasActivas: 1 });
+        
+        const resultado = integrarActividadLideres(lideresPrueba, actividadMap);
+        
+        verificaciones.push({
+          item: 'integrarActividadLideres funciona',
+          success: Array.isArray(resultado) && resultado.length === 2,
+          valor: `${resultado.length} líderes procesados`,
+          tiempo: Date.now() - startTime
+        });
+      } catch (error) {
+        verificaciones.push({
+          item: 'integrarActividadLideres funciona',
+          success: false,
+          error: error.toString(),
+          tiempo: Date.now() - startTime
+        });
+      }
+    } else {
+      verificaciones.push({
+        item: 'integrarActividadLideres existe',
+        success: false,
+        error: 'Función no encontrada',
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    const exitosos = verificaciones.filter(v => v.success).length;
+    
+    return {
+      success: exitosos === verificaciones.length,
+      nombre: 'Funciones de Actividad',
+      verificaciones: verificaciones,
+      exitosos: exitosos,
+      total: verificaciones.length,
+      tiempo: Date.now() - startTime
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      nombre: 'Funciones de Actividad',
+      error: error.toString(),
+      tiempo: Date.now() - startTime
+    };
+  }
+}
+
+/**
+ * Valida las funciones de caché inteligente
+ * @returns {Object} Resultado de la validación
+ */
+function validarCacheInteligente() {
+  const startTime = Date.now();
+  const verificaciones = [];
+  
+  try {
+    console.log('[ValidationModule] Validando sistema de caché inteligente...');
+    
+    // Verificar que limpiarCacheInteligente existe
+    if (typeof limpiarCacheInteligente === 'function') {
+      verificaciones.push({
+        item: 'limpiarCacheInteligente existe',
+        success: true,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Probar la función
+      try {
+        const resultado = limpiarCacheInteligente();
+        
+        verificaciones.push({
+          item: 'limpiarCacheInteligente funciona',
+          success: resultado.success === true,
+          valor: `${resultado.cleanedCount || 0} elementos limpiados`,
+          tiempo: Date.now() - startTime
+        });
+      } catch (error) {
+        verificaciones.push({
+          item: 'limpiarCacheInteligente funciona',
+          success: false,
+          error: error.toString(),
+          tiempo: Date.now() - startTime
+        });
+      }
+    } else {
+      verificaciones.push({
+        item: 'limpiarCacheInteligente existe',
+        success: false,
+        error: 'Función no encontrada',
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    // Verificar que registrarClaveCache existe
+    if (typeof registrarClaveCache === 'function') {
+      verificaciones.push({
+        item: 'registrarClaveCache existe',
+        success: true,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Probar la función
+      try {
+        registrarClaveCache('TEST_KEY_' + Date.now());
+        
+        verificaciones.push({
+          item: 'registrarClaveCache funciona',
+          success: true,
+          valor: 'Clave registrada correctamente',
+          tiempo: Date.now() - startTime
+        });
+      } catch (error) {
+        verificaciones.push({
+          item: 'registrarClaveCache funciona',
+          success: false,
+          error: error.toString(),
+          tiempo: Date.now() - startTime
+        });
+      }
+    } else {
+      verificaciones.push({
+        item: 'registrarClaveCache existe',
+        success: false,
+        error: 'Función no encontrada',
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    // Verificar que getEstadoCacheDetallado existe
+    if (typeof getEstadoCacheDetallado === 'function') {
+      verificaciones.push({
+        item: 'getEstadoCacheDetallado existe',
+        success: true,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Probar la función
+      try {
+        const estado = getEstadoCacheDetallado();
+        
+        verificaciones.push({
+          item: 'getEstadoCacheDetallado funciona',
+          success: estado.success === true,
+          valor: `${estado.data?.totalKeys || 0} claves registradas`,
+          tiempo: Date.now() - startTime
+        });
+      } catch (error) {
+        verificaciones.push({
+          item: 'getEstadoCacheDetallado funciona',
+          success: false,
+          error: error.toString(),
+          tiempo: Date.now() - startTime
+        });
+      }
+    } else {
+      verificaciones.push({
+        item: 'getEstadoCacheDetallado existe',
+        success: false,
+        error: 'Función no encontrada',
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    const exitosos = verificaciones.filter(v => v.success).length;
+    
+    return {
+      success: exitosos === verificaciones.length,
+      nombre: 'Sistema de Caché Inteligente',
+      verificaciones: verificaciones,
+      exitosos: exitosos,
+      total: verificaciones.length,
+      tiempo: Date.now() - startTime
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      nombre: 'Sistema de Caché Inteligente',
+      error: error.toString(),
+      tiempo: Date.now() - startTime
+    };
+  }
+}
+
+/**
+ * Valida las funciones de monitoreo de producción
+ * @returns {Object} Resultado de la validación
+ */
+function validarMonitoreoProduccion() {
+  const startTime = Date.now();
+  const verificaciones = [];
+  
+  try {
+    console.log('[ValidationModule] Validando monitoreo de producción...');
+    
+    // Verificar que ejecutarMonitoreoProduccion existe
+    if (typeof ejecutarMonitoreoProduccion === 'function') {
+      verificaciones.push({
+        item: 'ejecutarMonitoreoProduccion existe',
+        success: true,
+        tiempo: Date.now() - startTime
+      });
+    } else {
+      verificaciones.push({
+        item: 'ejecutarMonitoreoProduccion existe',
+        success: false,
+        error: 'Función no encontrada',
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    // Verificar que verificarEstadoCache existe (versión actualizada)
+    if (typeof verificarEstadoCache === 'function') {
+      verificaciones.push({
+        item: 'verificarEstadoCache existe',
+        success: true,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Probar la función
+      try {
+        const estado = verificarEstadoCache();
+        
+        verificaciones.push({
+          item: 'verificarEstadoCache funciona',
+          success: estado.success !== undefined,
+          valor: estado.nombre || 'Función ejecutada',
+          tiempo: Date.now() - startTime
+        });
+      } catch (error) {
+        verificaciones.push({
+          item: 'verificarEstadoCache funciona',
+          success: false,
+          error: error.toString(),
+          tiempo: Date.now() - startTime
+        });
+      }
+    } else {
+      verificaciones.push({
+        item: 'verificarEstadoCache existe',
+        success: false,
+        error: 'Función no encontrada',
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    // Verificar que generarReporteEstadoStakeholders existe
+    if (typeof generarReporteEstadoStakeholders === 'function') {
+      verificaciones.push({
+        item: 'generarReporteEstadoStakeholders existe',
+        success: true,
+        tiempo: Date.now() - startTime
+      });
+    } else {
+      verificaciones.push({
+        item: 'generarReporteEstadoStakeholders existe',
+        success: false,
+        error: 'Función no encontrada',
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    const exitosos = verificaciones.filter(v => v.success).length;
+    
+    return {
+      success: exitosos === verificaciones.length,
+      nombre: 'Monitoreo de Producción',
+      verificaciones: verificaciones,
+      exitosos: exitosos,
+      total: verificaciones.length,
+      tiempo: Date.now() - startTime
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      nombre: 'Monitoreo de Producción',
+      error: error.toString(),
+      tiempo: Date.now() - startTime
+    };
+  }
+}
+
+console.log('✅ ValidationModule cargado - Sistema de validación unificado + Nuevas funciones');

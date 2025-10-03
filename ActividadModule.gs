@@ -118,4 +118,125 @@ function integrarAlmasACelulas(ingresos, almasEnCelulasMap) {
   }
 }
 
-console.log('📊 ActividadModule cargado (versión simplificada) - Solo mapeo de almas a células');
+// ==================== FUNCIONES DE ACTIVIDAD DE LÍDERES ====================
+
+/**
+ * Calcula actividad de líderes basada en células
+ * @param {Array<Object>} celulas - Array de células
+ * @returns {Map<string, Object>} Mapa de actividad por ID de líder
+ */
+function calcularActividadLideres(celulas) {
+  console.log(`[ActividadModule] 🔍 Calculando actividad de líderes basada en ${celulas.length} células...`);
+  
+  const actividadMap = new Map();
+  
+  celulas.forEach(celula => {
+    const idLider = celula.ID_Lider;
+    if (!idLider) return;
+    
+    if (!actividadMap.has(idLider)) {
+      actividadMap.set(idLider, {
+        totalCelulas: 0,
+        celulasActivas: 0,
+        celulasInactivas: 0,
+        totalMiembros: 0,
+        ultimaActividad: null,
+        congregacion: celula.Congregacion || 'Sin congregación'
+      });
+    }
+    
+    const actividad = actividadMap.get(idLider);
+    actividad.totalCelulas++;
+    
+    // Determinar si la célula está activa
+    const esActiva = celula.Estado === 'Activa' || 
+                     celula.Estado === 'Activo' || 
+                     (celula.Miembros && celula.Miembros.length > 0);
+    
+    if (esActiva) {
+      actividad.celulasActivas++;
+    } else {
+      actividad.celulasInactivas++;
+    }
+    
+    // Contar miembros
+    const miembros = celula.Miembros ? celula.Miembros.length : 0;
+    actividad.totalMiembros += miembros;
+    
+    // Actualizar última actividad
+    if (celula.Ultima_Actividad) {
+      const fechaActividad = new Date(celula.Ultima_Actividad);
+      if (!actividad.ultimaActividad || fechaActividad > actividad.ultimaActividad) {
+        actividad.ultimaActividad = fechaActividad;
+      }
+    }
+  });
+  
+  // Calcular métricas adicionales
+  actividadMap.forEach((actividad, idLider) => {
+    actividad.tasaActividad = actividad.totalCelulas > 0 ? 
+      Math.round((actividad.celulasActivas / actividad.totalCelulas) * 100) : 0;
+    
+    actividad.promedioMiembros = actividad.totalCelulas > 0 ? 
+      Math.round(actividad.totalMiembros / actividad.totalCelulas) : 0;
+    
+    // Determinar estado de actividad
+    if (actividad.tasaActividad >= 80) {
+      actividad.estadoActividad = 'Excelente';
+    } else if (actividad.tasaActividad >= 60) {
+      actividad.estadoActividad = 'Bueno';
+    } else if (actividad.tasaActividad >= 40) {
+      actividad.estadoActividad = 'Regular';
+    } else {
+      actividad.estadoActividad = 'Necesita Atención';
+    }
+  });
+  
+  console.log(`[ActividadModule] ✅ Actividad calculada para ${actividadMap.size} líderes`);
+  return actividadMap;
+}
+
+/**
+ * Integra actividad calculada con datos de líderes
+ * @param {Array<Object>} lideres - Array de líderes
+ * @param {Map<string, Object>} actividadMap - Mapa de actividad
+ * @returns {Array<Object>} Líderes con actividad integrada
+ */
+function integrarActividadLideres(lideres, actividadMap) {
+  console.log(`[ActividadModule] 🔍 Integrando actividad con ${lideres.length} líderes...`);
+  
+  const lideresConActividad = lideres.map(lider => {
+    const actividad = actividadMap.get(lider.ID_Lider) || {
+      totalCelulas: 0,
+      celulasActivas: 0,
+      celulasInactivas: 0,
+      totalMiembros: 0,
+      ultimaActividad: null,
+      congregacion: 'Sin congregación',
+      tasaActividad: 0,
+      promedioMiembros: 0,
+      estadoActividad: 'Sin Datos'
+    };
+    
+    return {
+      ...lider,
+      actividad: actividad,
+      // Métricas adicionales para el dashboard
+      metricasActividad: {
+        totalCelulas: actividad.totalCelulas,
+        celulasActivas: actividad.celulasActivas,
+        celulasInactivas: actividad.celulasInactivas,
+        totalMiembros: actividad.totalMiembros,
+        tasaActividad: actividad.tasaActividad,
+        promedioMiembros: actividad.promedioMiembros,
+        estadoActividad: actividad.estadoActividad,
+        ultimaActividad: actividad.ultimaActividad
+      }
+    };
+  });
+  
+  console.log(`[ActividadModule] ✅ Integración completada para ${lideresConActividad.length} líderes`);
+  return lideresConActividad;
+}
+
+console.log('📊 ActividadModule cargado - Mapeo de almas a células + Actividad de líderes');

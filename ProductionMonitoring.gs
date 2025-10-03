@@ -255,7 +255,7 @@ function verificarRendimientoProduccion() {
 }
 
 /**
- * Verifica el estado de la caché
+ * Verifica el estado de la caché usando claves reales
  * @returns {Object} Resultado de la verificación de caché
  */
 function verificarEstadoCache() {
@@ -263,70 +263,116 @@ function verificarEstadoCache() {
   const verificaciones = [];
   
   try {
-    console.log('[ProductionMonitoring] Verificando estado de caché...');
+    console.log('[ProductionMonitoring] Verificando estado de caché con claves reales...');
     
     const cache = CacheService.getScriptCache();
+    const properties = PropertiesService.getScriptProperties();
     
     // Verificar caché principal
     try {
       const dashboardCache = cache.get('DASHBOARD_DATA_V2');
+      const statsCache = cache.get('STATS_RAPIDAS_V2');
+      
       verificaciones.push({
-        item: 'Caché dashboard',
+        item: 'Caché dashboard principal',
         success: true,
         valor: dashboardCache ? 'Disponible' : 'Vacía',
         tiempo: Date.now() - startTime
       });
+      
+      verificaciones.push({
+        item: 'Caché estadísticas',
+        success: true,
+        valor: statsCache ? 'Disponible' : 'Vacía',
+        tiempo: Date.now() - startTime
+      });
     } catch (error) {
       verificaciones.push({
-        item: 'Caché dashboard',
+        item: 'Caché principal',
         success: false,
         error: error.toString()
       });
     }
     
-    // Verificar caché de LD
+    // Verificar claves reales registradas
     try {
-      let ldCacheCount = 0;
-      for (let i = 0; i < 50; i++) {
-        if (cache.get(`LD_OPT_FULL_${i}`) || cache.get(`LD_OPT_BASIC_${i}`)) {
-          ldCacheCount++;
-        }
-      }
+      const cacheKeys = properties.getProperty('CACHE_KEYS');
+      const leaderKeys = properties.getProperty('LEADER_CACHE_KEYS');
+      
+      const realCacheKeys = cacheKeys ? JSON.parse(cacheKeys) : [];
+      const realLeaderKeys = leaderKeys ? JSON.parse(leaderKeys) : [];
+      
+      // Verificar claves principales
+      let mainCacheHits = 0;
+      realCacheKeys.forEach(key => {
+        if (cache.get(key)) mainCacheHits++;
+      });
       
       verificaciones.push({
-        item: 'Caché LD',
+        item: 'Claves principales registradas',
         success: true,
-        valor: `${ldCacheCount} elementos`,
+        valor: `${mainCacheHits}/${realCacheKeys.length} activas`,
         tiempo: Date.now() - startTime
       });
+      
+      // Verificar claves de líderes
+      let leaderCacheHits = 0;
+      realLeaderKeys.forEach(key => {
+        if (cache.get(key)) leaderCacheHits++;
+      });
+      
+      verificaciones.push({
+        item: 'Claves de líderes registradas',
+        success: true,
+        valor: `${leaderCacheHits}/${realLeaderKeys.length} activas`,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Verificar tasa de acierto general
+      const totalKeys = realCacheKeys.length + realLeaderKeys.length;
+      const totalHits = mainCacheHits + leaderCacheHits;
+      const hitRate = totalKeys > 0 ? Math.round((totalHits / totalKeys) * 100) : 0;
+      
+      verificaciones.push({
+        item: 'Tasa de acierto de caché',
+        success: hitRate >= 50, // Al menos 50% de acierto
+        valor: `${hitRate}%`,
+        limite: '50%',
+        tiempo: Date.now() - startTime
+      });
+      
     } catch (error) {
       verificaciones.push({
-        item: 'Caché LD',
+        item: 'Claves registradas',
         success: false,
         error: error.toString()
       });
     }
     
-    // Verificar caché de LCF
+    // Verificar integridad del sistema de registro
     try {
-      let lcfCacheCount = 0;
-      for (let i = 0; i < 50; i++) {
-        if (cache.get(`LCF_OPT_${i}`)) {
-          lcfCacheCount++;
-        }
+      const estadoDetallado = getEstadoCacheDetallado();
+      if (estadoDetallado.success) {
+        verificaciones.push({
+          item: 'Sistema de registro de claves',
+          success: true,
+          valor: 'Funcionando correctamente',
+          tiempo: Date.now() - startTime
+        });
+      } else {
+        verificaciones.push({
+          item: 'Sistema de registro de claves',
+          success: false,
+          error: estadoDetallado.error,
+          tiempo: Date.now() - startTime
+        });
       }
-      
-      verificaciones.push({
-        item: 'Caché LCF',
-        success: true,
-        valor: `${lcfCacheCount} elementos`,
-        tiempo: Date.now() - startTime
-      });
     } catch (error) {
       verificaciones.push({
-        item: 'Caché LCF',
+        item: 'Sistema de registro de claves',
         success: false,
-        error: error.toString()
+        error: error.toString(),
+        tiempo: Date.now() - startTime
       });
     }
     
@@ -334,7 +380,7 @@ function verificarEstadoCache() {
     
     return {
       success: exitosos === verificaciones.length,
-      nombre: 'Estado de Caché',
+      nombre: 'Estado de Caché (Claves Reales)',
       verificaciones: verificaciones,
       exitosos: exitosos,
       total: verificaciones.length,
@@ -344,7 +390,7 @@ function verificarEstadoCache() {
   } catch (error) {
     return {
       success: false,
-      nombre: 'Estado de Caché',
+      nombre: 'Estado de Caché (Claves Reales)',
       error: error.toString(),
       tiempo: Date.now() - startTime
     };
