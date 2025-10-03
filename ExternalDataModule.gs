@@ -25,63 +25,9 @@ const CONFIG_SEGUIMIENTO = {
  * @returns {Array} Array de asistentes
  */
 function cargarMaestroAsistentes() {
-  try {
-    const ss = SpreadsheetApp.openById(CONFIG_SEGUIMIENTO.SHEETS.REPORTE_CELULAS);
-    const sheet = ss.getSheetByName(CONFIG_SEGUIMIENTO.TABS.MAESTRO_ASISTENTES);
-    
-    if (!sheet) {
-      console.warn('No se encontró la hoja Maestro_Asistentes');
-      return [];
-    }
-    
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-    
-    const headers = data[0];
-    const asistentes = [];
-    
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const asistente = {
-        ID_Asistente: String(row[0] || '').trim(),
-        Nombre: String(row[1] || '').trim(),
-        Temas_Completados: String(row[2] || '0'),
-        Temas_Faltantes: String(row[3] || '12'),
-        Porcentaje: parseFloat(row[4] || 0),
-        Estado: String(row[5] || 'Sin datos').trim(),
-        Fecha_Primer_Tema: row[6],
-        Fecha_Ultimo_Tema: row[7],
-        Dias_Inactivo: parseInt(row[8] || 0),
-        Celula_Principal: String(row[9] || '').trim(),
-        // Temas individuales
-        temas: {
-          tema1: String(row[10] || ''),
-          tema2: String(row[11] || ''),
-          tema3: String(row[12] || ''),
-          tema4: String(row[13] || ''),
-          tema5: String(row[14] || ''),
-          tema6: String(row[15] || ''),
-          tema7: String(row[16] || ''),
-          tema8: String(row[17] || ''),
-          tema9: String(row[18] || ''),
-          tema10: String(row[19] || ''),
-          tema11: String(row[20] || ''),
-          tema12: String(row[21] || '')
-        }
-      };
-      
-      if (asistente.ID_Asistente) {
-        asistentes.push(asistente);
-      }
-    }
-    
-    console.log(`[ExternalDataModule] ${asistentes.length} asistentes cargados`);
-    return asistentes;
-    
-  } catch (error) {
-    console.error('[ExternalDataModule] Error cargando maestro de asistentes:', error);
-    return [];
-  }
+  // ✅ DESACTIVADO: Función no se usa en el dashboard principal para optimizar rendimiento
+  console.warn('[ExternalDataModule] cargarMaestroAsistentes desactivada - no se usa en dashboard principal');
+  return [];
 }
 
 /**
