@@ -61,7 +61,7 @@ function getCacheData() {
     
     // PASO 1: Buscar metadata para determinar tipo de caché
     console.log('[CacheModule] Verificando metadata de caché...');
-    const metadataStr = cache.get('DASHBOARD_META');
+    const metadataStr = cache.get('DASHBOARD_DATA_META');
     
     if (metadataStr) {
       console.log('[CacheModule] Metadata encontrada, procesando fragmentos...');
@@ -175,7 +175,7 @@ function clearCache() {
     console.log('[CacheModule] Iniciando limpieza inteligente de caché...');
     
     // PASO 1: Leer metadata para saber cuántos fragmentos existen
-    const metadataStr = cache.get('DASHBOARD_META');
+    const metadataStr = cache.get('DASHBOARD_DATA_META');
     if (metadataStr) {
       try {
         const metadata = JSON.parse(metadataStr);
@@ -286,7 +286,7 @@ function hasCacheData() {
     const cache = CacheService.getScriptCache();
     
     // Verificar metadata de fragmentación
-    const metadataStr = cache.get('DASHBOARD_META');
+    const metadataStr = cache.get('DASHBOARD_DATA_META');
     if (metadataStr) {
       console.log('[CacheModule] Datos fragmentados detectados en caché');
       return true;
@@ -318,7 +318,7 @@ function getCacheInfo() {
     const now = Date.now();
     
     // Verificar metadata de fragmentación
-    const metadataStr = cache.get('DASHBOARD_META');
+    const metadataStr = cache.get('DASHBOARD_DATA_META');
     if (metadataStr) {
       try {
         const metadata = JSON.parse(metadataStr);

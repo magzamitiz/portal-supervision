@@ -208,7 +208,7 @@
             </div>
         
         <!-- GRÁFICOS TEMPORALMENTE DESACTIVADOS PARA DESARROLLO DE ETAPA FINAL -->
-        <div id="panelGraficos" class="hidden mt-8" style="display: none !important;">
+        <div id="panelGraficos" class="mt-8">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-lg shadow-md p-6 min-w-0 relative">
                     <h3 class="text-lg font-semibold mb-4">Matriz de Efectividad del Liderazgo</h3>
@@ -1059,7 +1059,7 @@ function llenarSelectorLD(listaLDs) {
             mostrarResumenLD();
             // ✅ ALERTAS ELIMINADAS: Sistema de alertas innecesario removido
             mostrarEquipoLD();
-            // actualizarGraficos(); // TEMPORALMENTE DESACTIVADO PARA DESARROLLO DE ETAPA FINAL
+            actualizarGraficos(datosLD); // ✅ REACTIVADO - Gráficos funcionando
         }
         
         // Actualizar la función mostrarResumenLD para incluir la estructura
@@ -2250,18 +2250,24 @@ function testGraficosCompletos() {
 }
 
         // Actualizar gráficos (VERSIÓN OPTIMIZADA CON DATOS PRE-CALCULADOS)
-function actualizarGraficos() {
-    // TEMPORALMENTE DESACTIVADO PARA DESARROLLO DE ETAPA FINAL
-    console.log('📊 Gráficos temporalmente desactivados para desarrollo de etapa final');
+function actualizarGraficos(datosLD) {
+    console.log('📊 Actualizando gráficos...');
     
-    // Mantener el panel oculto
+    if (!datosLD || !datosLD.equipo) {
+        console.log('Sin datos para gráficos');
+        return;
+    }
+
+    // Mostrar panel de gráficos
     const panel = document.getElementById('panelGraficos');
     if (panel) {
-        panel.classList.add('hidden');
+        panel.classList.remove('hidden');
+        panel.style.display = 'block';
     }
     
-    // Retornar sin procesar gráficos
-    return;
+    // Actualizar gráficos con los datos
+    actualizarChartEstados(datosLD.equipo);
+    actualizarChartCelulas(datosLD.celulas);
 }
 
 // Función de respaldo en caso de error con el sistema optimizado
