@@ -11,13 +11,29 @@ const CACHE_KEY = 'DASHBOARD_CONSOLIDATED_V1';
 const FALLBACK_CACHE = {
   enabled: false,
   
-  // Verificar si CacheService funciona
+  // Verificar si CacheService funciona - CORREGIDO
   checkCacheService() {
     try {
       const cache = CacheService.getScriptCache();
-      const testResult = cache.put('TEST_FALLBACK', 'test', 1);
-      return testResult === true;
+      const testKey = 'TEST_CACHE_CHECK_' + Date.now();
+      const testValue = 'test_' + Date.now();
+      
+      // Write-Read-Delete pattern (no depende del return value)
+      cache.put(testKey, testValue, 60);
+      const retrieved = cache.get(testKey);
+      
+      if (retrieved !== testValue) {
+        console.warn('[Cache] ⚠️ CacheService no funcional: read mismatch');
+        return false;
+      }
+      
+      // Cleanup
+      cache.remove(testKey);
+      
+      console.log('[Cache] ✅ CacheService funcional detectado');
+      return true;
     } catch (error) {
+      console.warn('[Cache] ⚠️ CacheService no funcional:', error);
       return false;
     }
   },
@@ -30,19 +46,30 @@ const FALLBACK_CACHE = {
     }
   },
   
-  // Guardar datos usando PropertiesService
+  // Guardar datos usando PropertiesService - MEJORADO
   put(key, value, ttl) {
     if (!this.enabled) return false;
     
     try {
+      // Validar tamaño antes de intentar guardar
       const data = {
         value: value,
         expires: Date.now() + (ttl * 1000)
       };
-      PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(data));
+      const jsonData = JSON.stringify(data);
+      
+      if (jsonData.length > 9000) {
+        console.error(`[Cache] ❌ Fallback: Valor muy grande (${jsonData.length} bytes) para PropertiesService`);
+        console.error(`[Cache] 💡 Límite: 9000 bytes, Clave: ${key}`);
+        return false;
+      }
+      
+      PropertiesService.getScriptProperties().setProperty(key, jsonData);
+      console.log(`[Cache] ✅ Fallback guardado: ${key} (${jsonData.length} bytes)`);
       return true;
     } catch (error) {
-      console.error('[Cache] Error en fallback put:', error);
+      console.error('[Cache] ❌ Error en fallback put:', error);
+      console.error(`[Cache] 🔍 Clave: ${key}, Tamaño: ${value ? value.length : 'N/A'}`);
       return false;
     }
   },
@@ -109,9 +136,8 @@ function setCacheData(data, ttl = 1800) {
     
     try {
       cache = CacheService.getScriptCache();
-      // Verificar si realmente funciona
-      const testResult = cache.put('TEST_CACHE', 'test', 1);
-      if (!testResult) {
+      // Verificar si realmente funciona usando la función corregida
+      if (!FALLBACK_CACHE.checkCacheService()) {
         console.warn('[Cache] ⚠️ CacheService no funcional, usando fallback');
         useFallback = true;
       }
@@ -128,16 +154,28 @@ function setCacheData(data, ttl = 1800) {
     // Decisión: Fragmentar si supera 50KB (más conservador que 95KB)
     const FRAGMENT_THRESHOLD = 50000; // 50KB en bytes
     
+    // 🔧 CORRECCIÓN: Tamaño de fragmento compatible con PropertiesService
+    const FRAGMENT_SIZE = useFallback ? 8000 : 50000; // 8KB para fallback, 50KB para CacheService
+    const MAX_FALLBACK_SIZE = 72000; // 9 fragmentos × 8KB = 72KB máximo para fallback
+    
     if (sizeBytes > FRAGMENT_THRESHOLD) {
       console.log('[Cache] 📦 Fragmentando datos grandes...');
       
-      const FRAGMENT_SIZE = 50000; // 50KB por fragmento
+      // 🚨 VALIDACIÓN: Rechazar datos muy grandes en fallback
+      if (useFallback && sizeBytes > MAX_FALLBACK_SIZE) {
+        console.warn(`[Cache] ⚠️ Datos muy grandes (${sizeKB}KB) para fallback, rechazando`);
+        console.warn(`[Cache] 💡 Límite fallback: ${Math.round(MAX_FALLBACK_SIZE/1024)}KB`);
+        return false; // Forzar recálculo en lugar de llenar PropertiesService
+      }
       const fragments = [];
       
-      // Dividir en fragmentos de 50KB
+      // Dividir en fragmentos del tamaño apropiado
       for (let i = 0; i < jsonString.length; i += FRAGMENT_SIZE) {
         fragments.push(jsonString.slice(i, i + FRAGMENT_SIZE));
       }
+      
+      console.log(`[Cache] 📊 Fragmentos: ${fragments.length}, Tamaño: ${FRAGMENT_SIZE} bytes cada uno`);
+      console.log(`[Cache] 🎯 Backend: ${useFallback ? 'PropertiesService' : 'CacheService'}`);
       
       // Guardar cada fragmento con índice
       for (let i = 0; i < fragments.length; i++) {
@@ -242,9 +280,8 @@ function getCacheData() {
     
     try {
       cache = CacheService.getScriptCache();
-      // Verificar si realmente funciona
-      const testResult = cache.put('TEST_CACHE_GET', 'test', 1);
-      if (!testResult) {
+      // Verificar si realmente funciona usando la función corregida
+      if (!FALLBACK_CACHE.checkCacheService()) {
         console.warn('[Cache] ⚠️ CacheService no funcional, usando fallback');
         useFallback = true;
       }
@@ -473,6 +510,27 @@ function clearCache() {
       }
     }
     
+    // 🔧 CORRECCIÓN: Limpiar fallback si está habilitado
+    if (FALLBACK_CACHE && FALLBACK_CACHE.enabled) {
+      console.log('[CacheModule] 🧹 Limpiando fallback (PropertiesService)...');
+      
+      // Limpiar claves principales
+      FALLBACK_CACHE.remove(CACHE_KEY);
+      FALLBACK_CACHE.remove('DASHBOARD_DATA_META');
+      FALLBACK_CACHE.remove('DASHBOARD_META');
+      
+      // Limpiar fragmentos fallback
+      for (let i = 0; i < 20; i++) {
+        FALLBACK_CACHE.remove(`${CACHE_KEY}_${i}`);
+      }
+      
+      // Limpiar claves temporales de verificación
+      FALLBACK_CACHE.remove('TEST_FALLBACK');
+      FALLBACK_CACHE.remove('TEST_CACHE_CHECK_' + Date.now());
+      
+      console.log('[CacheModule]   ✅ Fallback limpiado');
+    }
+    
     console.log('[CacheModule] ✅ Limpieza completa exitosa');
     console.log(`[CacheModule] 📊 Tipo: ${cacheType}, Fragmentos: ${fragmentsRemoved}`);
     
@@ -524,6 +582,24 @@ function clearCacheEmergency(cache) {
   cache.remove('DASHBOARD_META');
   cache.remove('DASHBOARD_DATA_META');
   cache.remove(CACHE_KEY);
+  
+  // 🔧 CORRECCIÓN: Limpiar fallback en emergencia también
+  if (FALLBACK_CACHE && FALLBACK_CACHE.enabled) {
+    console.log('[CacheModule] 🧹 Limpieza de emergencia: fallback');
+    
+    FALLBACK_CACHE.remove(CACHE_KEY);
+    FALLBACK_CACHE.remove('DASHBOARD_DATA_META');
+    FALLBACK_CACHE.remove('DASHBOARD_META');
+    
+    // Limpiar fragmentos fallback
+    for (let i = 0; i < 20; i++) {
+      FALLBACK_CACHE.remove(`${CACHE_KEY}_${i}`);
+    }
+    
+    // Limpiar claves temporales
+    FALLBACK_CACHE.remove('TEST_FALLBACK');
+    FALLBACK_CACHE.remove('TEST_CACHE_CHECK_' + Date.now());
+  }
   
   console.log('[CacheModule] ✅ Limpieza de emergencia completada');
   return fragmentsFound;
@@ -995,6 +1071,138 @@ function testFallbackCache() {
   
   console.log('\n' + '='.repeat(40));
   console.log('✅ Test de fallback completado');
+}
+
+/**
+ * Test de regresión completo del sistema de caché corregido
+ */
+function testCacheCompleto() {
+  console.log('🧪 TEST COMPLETO DEL SISTEMA DE CACHÉ');
+  console.log('='.repeat(60));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: {},
+    exito: true
+  };
+  
+  // Test 1: CacheService debe ser detectado correctamente
+  console.log('\n📋 TEST 1: Detección de CacheService');
+  try {
+    const cacheWorks = FALLBACK_CACHE.checkCacheService();
+    console.log(`CacheService detectado: ${cacheWorks ? '✅' : '❌'}`);
+    resultados.tests.deteccion_cache = cacheWorks;
+    
+    if (!cacheWorks) {
+      console.log('⚠️ CacheService no funcional, usando fallback');
+    }
+  } catch (error) {
+    console.error('❌ Error en detección:', error);
+    resultados.tests.deteccion_cache = false;
+    resultados.exito = false;
+  }
+  
+  // Test 2: Datos pequeños (< 8KB) deben funcionar
+  console.log('\n📋 TEST 2: Datos pequeños');
+  try {
+    clearCache();
+    const smallData = { test: 'x'.repeat(7000), timestamp: Date.now() };
+    const saved = setCacheData(smallData, 60);
+    const retrieved = getCacheData();
+    const match = retrieved && retrieved.test === smallData.test;
+    
+    console.log(`Guardado: ${saved ? '✅' : '❌'}`);
+    console.log(`Recuperado: ${match ? '✅' : '❌'}`);
+    
+    resultados.tests.datos_pequenos = saved && match;
+    if (!resultados.tests.datos_pequenos) resultados.exito = false;
+  } catch (error) {
+    console.error('❌ Error en datos pequeños:', error);
+    resultados.tests.datos_pequenos = false;
+    resultados.exito = false;
+  }
+  
+  // Test 3: Datos medianos (8-72KB) con fallback
+  console.log('\n📋 TEST 3: Datos medianos (fallback)');
+  try {
+    clearCache();
+    const mediumData = { test: 'y'.repeat(50000), timestamp: Date.now() };
+    const saved = setCacheData(mediumData, 60);
+    const retrieved = getCacheData();
+    const match = retrieved && retrieved.test === mediumData.test;
+    
+    console.log(`Guardado: ${saved ? '✅' : '❌'}`);
+    console.log(`Recuperado: ${match ? '✅' : '❌'}`);
+    
+    resultados.tests.datos_medianos = saved && match;
+    if (!resultados.tests.datos_medianos) resultados.exito = false;
+  } catch (error) {
+    console.error('❌ Error en datos medianos:', error);
+    resultados.tests.datos_medianos = false;
+    resultados.exito = false;
+  }
+  
+  // Test 4: Datos muy grandes (>72KB) deben ser rechazados en fallback
+  console.log('\n📋 TEST 4: Datos muy grandes (deben ser rechazados)');
+  try {
+    clearCache();
+    const largeData = { test: 'z'.repeat(80000), timestamp: Date.now() };
+    const saved = setCacheData(largeData, 60);
+    
+    // Si fallback está activo, debe rechazar datos muy grandes
+    const shouldReject = FALLBACK_CACHE.enabled;
+    const correctBehavior = shouldReject ? !saved : saved;
+    
+    console.log(`Datos grandes: ${saved ? 'Guardados' : 'Rechazados'}`);
+    console.log(`Comportamiento correcto: ${correctBehavior ? '✅' : '❌'}`);
+    
+    resultados.tests.datos_grandes = correctBehavior;
+    if (!resultados.tests.datos_grandes) resultados.exito = false;
+  } catch (error) {
+    console.error('❌ Error en datos grandes:', error);
+    resultados.tests.datos_grandes = false;
+    resultados.exito = false;
+  }
+  
+  // Test 5: clearCache debe limpiar ambos sistemas
+  console.log('\n📋 TEST 5: Limpieza completa');
+  try {
+    // Guardar datos primero
+    setCacheData({ test: 'cleanup_test' }, 60);
+    
+    // Limpiar
+    const clearResult = clearCache();
+    
+    // Verificar que no hay datos
+    const afterClear = getCacheData();
+    const isClean = !afterClear;
+    
+    console.log(`Limpieza exitosa: ${clearResult.success ? '✅' : '❌'}`);
+    console.log(`Datos eliminados: ${isClean ? '✅' : '❌'}`);
+    
+    resultados.tests.limpieza_completa = clearResult.success && isClean;
+    if (!resultados.tests.limpieza_completa) resultados.exito = false;
+  } catch (error) {
+    console.error('❌ Error en limpieza:', error);
+    resultados.tests.limpieza_completa = false;
+    resultados.exito = false;
+  }
+  
+  // Resumen final
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 RESUMEN DE TESTS');
+  console.log('='.repeat(60));
+  
+  Object.keys(resultados.tests).forEach(test => {
+    const resultado = resultados.tests[test];
+    const icon = resultado ? '✅' : '❌';
+    console.log(`${icon} ${test}: ${resultado ? 'PASS' : 'FAIL'}`);
+  });
+  
+  console.log('\n' + (resultados.exito ? '🎉 TODOS LOS TESTS PASARON' : '⚠️ ALGUNOS TESTS FALLARON'));
+  console.log(`📅 Timestamp: ${resultados.timestamp}`);
+  
+  return resultados;
 }
 
 console.log('📦 CacheModule cargado - Sistema de caché con fragmentación automática');
