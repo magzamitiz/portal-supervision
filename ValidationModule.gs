@@ -61,7 +61,7 @@ function runValidationTests() {
     resultados.modulos.ingresos = validarModuloIngresos();
     resultados.modulos.seguimiento = validarModuloSeguimiento();
     resultados.modulos.metricas = validarModuloMetricas();
-    resultados.modulos.alertas = validarModuloAlertas();
+    // resultados.modulos.alertas = validarModuloAlertas(); // ✅ ELIMINADO: Validación innecesaria removida
     
     // Validaciones de compatibilidad
     resultados.compatibilidad = validarCompatibilidadAPI();
@@ -336,32 +336,7 @@ function validarModuloMetricas() {
   return resultado;
 }
 
-/**
- * Valida el módulo de alertas
- */
-function validarModuloAlertas() {
-  console.log('[ValidationModule] Validando AlertasModule...');
-  
-  const resultado = {
-    nombre: 'AlertasModule',
-    exitoso: true,
-    funciones: [],
-    errores: []
-  };
-  
-  try {
-    // Validar que las funciones de alertas existan
-    resultado.funciones.push(validarFuncion('AlertasModule', true)); // Placeholder
-    
-    resultado.exitoso = resultado.funciones.every(f => f.exitoso);
-    
-  } catch (error) {
-    resultado.exitoso = false;
-    resultado.errores.push(error.message);
-  }
-  
-  return resultado;
-}
+// ✅ ALERTAS ELIMINADAS: Validación de AlertasModule innecesaria removida para mejorar rendimiento
 
 // ==================== VALIDACIONES DE COMPATIBILIDAD ====================
 

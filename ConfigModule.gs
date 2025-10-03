@@ -11,10 +11,11 @@
  */
 const CONFIG = {
   SHEETS: {
-    DIRECTORIO: '1dwuqpyMXWHJvnJHwDHCqFMvgdYhypE2W1giH6bRZMKc'
-    // ✅ SIMPLIFICADO: Solo usamos el libro DIRECTORIO
-    // Los otros libros (REPORTE_CELULAS, VISITAS_BENDICION, REGISTRO_INTERACCIONES) 
-    // no se usan en el dashboard principal y causan lentitud innecesaria
+    DIRECTORIO: '1dwuqpyMXWHJvnJHwDHCqFMvgdYhypE2W1giH6bRZMKc',
+    REPORTE_CELULAS: '18wOkxTauLETdpkEy5qsd0shlZUf8FsfQg9oCN8-pCxI',
+    REGISTRO_INTERACCIONES: '1Rzx4k6ipkFvVpTYdisjAYSwGuIgyWiYFBsYu4RHFWPs',
+    VISITAS_BENDICION: '1md72JN8LOJCpBLrPIGP9HQG8GQ1RzFFE-hAOlawQ2eg'
+    // ✅ CORREGIDO: IDs agregados para compatibilidad con DeploymentPrep.gs
   },
 
   // VERIFICA QUE ESTOS NOMBRES COINCIDAN EXACTAMENTE CON TUS PESTAÑAS

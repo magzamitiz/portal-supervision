@@ -53,19 +53,19 @@ function getEstadoAplicacion() {
       status: 'OK',
       modulos_cargados: [
         'SpreadsheetManager',
-        'DataQueries', 
+        'DataModule', // ✅ CORREGIDO: DataQueries → DataModule
         'LideresModule',
         'CelulasModule',
         'IngresosModule',
         'SeguimientoModule',
         'MetricasModule',
-        'AlertasModule',
+        // 'AlertasModule', // ✅ ELIMINADO: Módulo innecesario removido
         'CacheModule',
         'TimeoutModule',
         'ExternalDataModule',
-        'UtilityModule',
-        'NormalizacionModule',
-        'AnalisisModule',
+        'UtilsModule', // ✅ CORREGIDO: UtilityModule → UtilsModule
+        // 'NormalizacionModule', // ✅ ELIMINADO: Funciones están en UtilsModule
+        // 'AnalisisModule', // ✅ ELIMINADO: Módulo no existe
         'MainModule'
       ],
       configuracion: getConfiguracion(),
@@ -198,7 +198,7 @@ function getDashboardData(forceReload = false) {
       ingresos: analizarIngresos(directorioData.ingresos || []),
       datosBase: directorioData,
       metricas: calcularMetricasPrincipales(directorioData),
-      alertas: generarAlertasRapidas(),
+      alertas: [],
       timestamp: directorioData.timestamp,
       modo_carga: modo
     };
@@ -429,10 +429,7 @@ function forceReloadDashboardData() {
       throw new Error('Error obteniendo estadísticas: ' + stats.error);
     }
     
-    // 3. Obtener alertas (función rápida)
-    const alertas = generarAlertasRapidas();
-    
-    // 4. Crear análisis con datos frescos desde Google Sheets
+    // 3. Crear análisis con datos frescos desde Google Sheets
     const analisis = {
       // Usar datos de actividad (estructura real de getEstadisticasRapidas)
       actividad: stats.data.actividad || {},
@@ -440,7 +437,7 @@ function forceReloadDashboardData() {
       lideres: {
         lista: lideresLD // ✅ Datos frescos desde Google Sheets
       },
-      alertas: alertas || [],
+      alertas: [],
       timestamp: stats.data.timestamp,
       modo_optimizado: true,
       modo_carga: 'RECARGA FORZADA (datos frescos desde Google Sheets)'
@@ -468,58 +465,7 @@ function forceReloadDashboardData() {
   }
 }
 
-/**
- * Genera alertas de forma rápida sin cargar todos los datos
- * @returns {Array} Lista de alertas
- */
-function generarAlertasRapidas() {
-  try {
-    console.log('[MainModule] Generando alertas rápidas...');
-    
-    // Generar alertas básicas sin depender de análisis complejo
-    
-    // Si no hay caché, generar alertas básicas
-    const alertas = [];
-    
-    // Verificar si hay datos en _ResumenDashboard
-    try {
-      const spreadsheet = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-      const resumenSheet = spreadsheet.getSheetByName('_ResumenDashboard');
-      
-      if (resumenSheet) {
-        const valores = resumenSheet.getRange('B1:B7').getValues();
-        const totalLD = parseInt(valores[0][0]) || 0;
-        const totalLCF = parseInt(valores[1][0]) || 0;
-        
-        if (totalLD === 0) {
-          alertas.push({
-            tipo: 'warning',
-            titulo: 'Sin Líderes de Discipulado',
-            mensaje: 'No se encontraron Líderes de Discipulado en el sistema',
-            timestamp: new Date().toISOString()
-          });
-        }
-        
-        if (totalLCF === 0) {
-          alertas.push({
-            tipo: 'warning',
-            titulo: 'Sin Líderes de Casas de FE',
-            mensaje: 'No se encontraron Líderes de Casas de FE en el sistema',
-            timestamp: new Date().toISOString()
-          });
-        }
-      }
-    } catch (error) {
-      console.log('[MainModule] No se pudieron generar alertas desde _ResumenDashboard:', error);
-    }
-    
-    return alertas;
-    
-  } catch (error) {
-    console.error('[MainModule] Error generando alertas rápidas:', error);
-    return [];
-  }
-}
+// ✅ ALERTAS ELIMINADAS: Sistema de alertas innecesario removido para mejorar rendimiento
 
 
 
