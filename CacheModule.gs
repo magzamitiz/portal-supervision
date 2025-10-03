@@ -18,10 +18,11 @@ const FALLBACK_CACHE = {
       const testKey = 'TEST_CACHE_CHECK_' + Date.now();
       const testValue = 'test_' + Date.now();
       
-      // Write-Read-Delete pattern (no depende del return value)
+      // Write-Read-Delete pattern
       cache.put(testKey, testValue, 60);
       const retrieved = cache.get(testKey);
       
+      // Verificar que la lectura funcione (put() puede retornar null, undefined, etc.)
       if (retrieved !== testValue) {
         console.warn('[Cache] ⚠️ CacheService no funcional: read mismatch');
         return false;
@@ -43,6 +44,9 @@ const FALLBACK_CACHE = {
     if (!this.checkCacheService()) {
       console.warn('[Cache] ⚠️ CacheService no funcional, activando fallback con PropertiesService');
       this.enabled = true;
+    } else {
+      console.log('[Cache] ✅ CacheService funcional, usando servicio nativo');
+      this.enabled = false;
     }
   },
   
@@ -1203,6 +1207,139 @@ function testCacheCompleto() {
   console.log(`📅 Timestamp: ${resultados.timestamp}`);
   
   return resultados;
+}
+
+/**
+ * Test específico para diagnosticar problemas de CacheService
+ */
+function diagnosticarCacheService() {
+  console.log('🔍 DIAGNÓSTICO ESPECÍFICO DE CACHESERVICE');
+  console.log('='.repeat(50));
+  
+  const cache = CacheService.getScriptCache();
+  
+  // Test 1: Clave temporal única
+  console.log('\n📝 TEST 1: Clave temporal única');
+  const testKey1 = 'TEST_TEMP_' + Date.now();
+  const testValue1 = 'test_value_' + Date.now();
+  
+  console.log(`Clave: "${testKey1}"`);
+  console.log(`Valor: "${testValue1}"`);
+  
+  const putResult1 = cache.put(testKey1, testValue1, 60);
+  console.log(`cache.put() resultado: ${putResult1} (tipo: ${typeof putResult1})`);
+  
+  const getResult1 = cache.get(testKey1);
+  console.log(`cache.get() resultado: "${getResult1}"`);
+  console.log(`Coincide: ${getResult1 === testValue1 ? '✅' : '❌'}`);
+  
+  cache.remove(testKey1);
+  console.log('Clave temporal eliminada');
+  
+  // Test 2: Clave fija (como la real)
+  console.log('\n📝 TEST 2: Clave fija (como CACHE_KEY)');
+  const testKey2 = 'DASHBOARD_CONSOLIDATED_V1';
+  const testValue2 = 'test_fixed_value';
+  
+  console.log(`Clave: "${testKey2}"`);
+  console.log(`Valor: "${testValue2}"`);
+  
+  const putResult2 = cache.put(testKey2, testValue2, 60);
+  console.log(`cache.put() resultado: ${putResult2} (tipo: ${typeof putResult2})`);
+  
+  const getResult2 = cache.get(testKey2);
+  console.log(`cache.get() resultado: "${getResult2}"`);
+  console.log(`Coincide: ${getResult2 === testValue2 ? '✅' : '❌'}`);
+  
+  cache.remove(testKey2);
+  console.log('Clave fija eliminada');
+  
+  // Test 3: Diferentes tamaños
+  console.log('\n📝 TEST 3: Diferentes tamaños');
+  const sizes = [100, 1000, 7000, 50000];
+  
+  sizes.forEach(size => {
+    const testKey = `TEST_SIZE_${size}`;
+    const testValue = 'x'.repeat(size);
+    
+    console.log(`\nTamaño: ${size} bytes`);
+    const putResult = cache.put(testKey, testValue, 60);
+    console.log(`  put(): ${putResult} (tipo: ${typeof putResult})`);
+    
+    if (putResult !== false) {
+      const getResult = cache.get(testKey);
+      const match = getResult === testValue;
+      console.log(`  get(): ${match ? '✅' : '❌'}`);
+      cache.remove(testKey);
+    }
+  });
+  
+  console.log('\n' + '='.repeat(50));
+  console.log('✅ Diagnóstico completado');
+}
+
+/**
+ * Test final para verificar que el sistema funciona correctamente
+ */
+function testSistemaFinal() {
+  console.log('🧪 TEST FINAL DEL SISTEMA CORREGIDO');
+  console.log('='.repeat(50));
+  
+  // Reinicializar el sistema
+  FALLBACK_CACHE.init();
+  
+  console.log(`\n📊 Estado del sistema:`);
+  console.log(`- CacheService funcional: ${!FALLBACK_CACHE.enabled ? '✅' : '❌'}`);
+  console.log(`- Fallback activo: ${FALLBACK_CACHE.enabled ? '✅' : '❌'}`);
+  
+  // Test 1: Datos pequeños
+  console.log('\n📝 TEST 1: Datos pequeños');
+  clearCache();
+  
+  const smallData = { test: 'Hola mundo', timestamp: Date.now() };
+  const saved = setCacheData(smallData, 60);
+  const retrieved = getCacheData();
+  const match = retrieved && retrieved.test === smallData.test;
+  
+  console.log(`Guardado: ${saved ? '✅' : '❌'}`);
+  console.log(`Recuperado: ${match ? '✅' : '❌'}`);
+  console.log(`Backend usado: ${FALLBACK_CACHE.enabled ? 'PropertiesService' : 'CacheService'}`);
+  
+  // Test 2: Datos medianos
+  console.log('\n📝 TEST 2: Datos medianos');
+  clearCache();
+  
+  const mediumData = { test: 'x'.repeat(30000), timestamp: Date.now() };
+  const saved2 = setCacheData(mediumData, 60);
+  const retrieved2 = getCacheData();
+  const match2 = retrieved2 && retrieved2.test === mediumData.test;
+  
+  console.log(`Guardado: ${saved2 ? '✅' : '❌'}`);
+  console.log(`Recuperado: ${match2 ? '✅' : '❌'}`);
+  console.log(`Backend usado: ${FALLBACK_CACHE.enabled ? 'PropertiesService' : 'CacheService'}`);
+  
+  // Test 3: Limpieza
+  console.log('\n📝 TEST 3: Limpieza completa');
+  const clearResult = clearCache();
+  const afterClear = getCacheData();
+  const isClean = !afterClear;
+  
+  console.log(`Limpieza exitosa: ${clearResult.success ? '✅' : '❌'}`);
+  console.log(`Datos eliminados: ${isClean ? '✅' : '❌'}`);
+  
+  // Resumen final
+  console.log('\n' + '='.repeat(50));
+  console.log('📊 RESUMEN FINAL');
+  console.log('='.repeat(50));
+  console.log(`✅ Sistema de caché: ${(saved && match && saved2 && match2 && isClean) ? 'FUNCIONAL' : 'CON PROBLEMAS'}`);
+  console.log(`🎯 Backend principal: ${FALLBACK_CACHE.enabled ? 'PropertiesService (fallback)' : 'CacheService (nativo)'}`);
+  console.log(`📈 Performance: ${FALLBACK_CACHE.enabled ? 'Buena (fallback)' : 'Óptima (nativo)'}`);
+  
+  return {
+    funcional: saved && match && saved2 && match2 && isClean,
+    backend: FALLBACK_CACHE.enabled ? 'fallback' : 'native',
+    timestamp: new Date().toISOString()
+  };
 }
 
 console.log('📦 CacheModule cargado - Sistema de caché con fragmentación automática');
