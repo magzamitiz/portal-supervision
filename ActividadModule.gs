@@ -114,7 +114,25 @@ function integrarAlmasACelulas(ingresos, almasEnCelulasMap) {
   // ⚠️ ALERTA si 0 almas asignadas
   if (almasAsignadas === 0 && ingresos.length > 0 && almasEnCelulasMap.size > 0) {
     console.warn(`[ActividadModule] ⚠️ PROBLEMA: 0 almas asignadas cuando hay ${almasEnCelulasMap.size} en el mapa`);
-    console.warn(`[ActividadModule] 🔍 Ejecutar diagnosticoUrgente() para más detalles`);
+    console.warn(`[ActividadModule] 🔍 Ejecutando diagnóstico automático...`);
+    
+    // ✅ SOLUCIÓN: Ejecutar diagnóstico automático y corrección
+    const diagnostico = diagnosticoUrgente(ingresos, almasEnCelulasMap);
+    
+    // Intentar corrección automática si es posible
+    if (diagnostico.coincidencias_limpias > diagnostico.coincidencias_exactas) {
+      console.log(`[ActividadModule] 🔧 Aplicando corrección automática con normalización...`);
+      const almasCorregidas = corregirMapeoConNormalizacion(ingresos, almasEnCelulasMap);
+      console.log(`[ActividadModule] ✅ ${almasCorregidas} almas corregidas automáticamente`);
+    } else if (diagnostico.coincidencias_exactas > 0) {
+      console.log(`[ActividadModule] 🔧 Aplicando corrección con IDs exactos...`);
+      const almasCorregidas = corregirMapeoExacto(ingresos, almasEnCelulasMap);
+      console.log(`[ActividadModule] ✅ ${almasCorregidas} almas corregidas con IDs exactos`);
+    } else {
+      console.log(`[ActividadModule] ⚠️ No se pudo aplicar corrección automática`);
+      console.log(`[ActividadModule] 💡 Verificar formato de IDs en ingresos y células`);
+      console.log(`[ActividadModule] 🔍 Ejecutar diagnosticarMapeoAlmas() para análisis detallado`);
+    }
   }
 }
 
@@ -237,6 +255,214 @@ function integrarActividadLideres(lideres, actividadMap) {
   
   console.log(`[ActividadModule] ✅ Integración completada para ${lideresConActividad.length} líderes`);
   return lideresConActividad;
+}
+
+/**
+ * ✅ SOLUCIÓN: Función de diagnóstico urgente para problemas de mapeo
+ * Identifica discrepancias entre IDs de ingresos y células
+ */
+function diagnosticoUrgente(ingresos, almasEnCelulasMap) {
+  console.log('🔍 DIAGNÓSTICO URGENTE: Analizando problema de mapeo de almas');
+  console.log('='.repeat(60));
+  
+  // 1. Analizar IDs en ingresos
+  console.log('📊 ANÁLISIS DE INGRESOS:');
+  const idsIngresos = ingresos.slice(0, 10).map(ing => ({
+    id: ing.ID_Alma,
+    tipo: typeof ing.ID_Alma,
+    limpio: ing.ID_Alma ? String(ing.ID_Alma).trim() : null
+  }));
+  
+  console.log('Primeros 10 IDs en ingresos:');
+  idsIngresos.forEach((item, i) => {
+    console.log(`  ${i+1}. "${item.id}" (${item.tipo}) → "${item.limpio}"`);
+  });
+  
+  // 2. Analizar IDs en mapa de células
+  console.log('');
+  console.log('📊 ANÁLISIS DE MAPA DE CÉLULAS:');
+  const idsMapa = Array.from(almasEnCelulasMap.keys()).slice(0, 10);
+  console.log('Primeros 10 IDs en mapa:');
+  idsMapa.forEach((id, i) => {
+    console.log(`  ${i+1}. "${id}" (${typeof id})`);
+  });
+  
+  // 3. Buscar coincidencias exactas
+  console.log('');
+  console.log('🔍 BÚSQUEDA DE COINCIDENCIAS:');
+  let coincidenciasExactas = 0;
+  let coincidenciasLimpias = 0;
+  
+  ingresos.slice(0, 10).forEach(ing => {
+    const idOriginal = ing.ID_Alma;
+    const idLimpio = idOriginal ? String(idOriginal).trim() : null;
+    
+    const coincidenciaExacta = almasEnCelulasMap.has(idOriginal);
+    const coincidenciaLimpia = idLimpio ? almasEnCelulasMap.has(idLimpio) : false;
+    
+    if (coincidenciaExacta) coincidenciasExactas++;
+    if (coincidenciaLimpia) coincidenciasLimpias++;
+    
+    if (coincidenciaExacta || coincidenciaLimpia) {
+      console.log(`  ✅ "${idOriginal}" → ${coincidenciaExacta ? 'EXACTA' : 'LIMPIA'}`);
+    }
+  });
+  
+  // 4. Recomendaciones
+  console.log('');
+  console.log('💡 RECOMENDACIONES:');
+  console.log(`Coincidencias exactas: ${coincidenciasExactas}/10`);
+  console.log(`Coincidencias limpias: ${coincidenciasLimpias}/10`);
+  
+  if (coincidenciasExactas === 0 && coincidenciasLimpias === 0) {
+    console.log('❌ PROBLEMA: No hay coincidencias entre formatos de ID');
+    console.log('🔧 SOLUCIÓN: Verificar normalización de IDs en ambas fuentes');
+  } else if (coincidenciasLimpias > coincidenciasExactas) {
+    console.log('✅ SOLUCIÓN: Usar normalización de IDs (trim)');
+  } else {
+    console.log('✅ SOLUCIÓN: Usar IDs exactos');
+  }
+  
+  return {
+    coincidencias_exactas: coincidenciasExactas,
+    coincidencias_limpias: coincidenciasLimpias,
+    total_ingresos: ingresos.length,
+    total_mapa: almasEnCelulasMap.size
+  };
+}
+
+/**
+ * Corrige mapeo usando IDs exactos
+ */
+function corregirMapeoExacto(ingresos, almasEnCelulasMap) {
+  console.log('🔧 Corrigiendo mapeo con IDs exactos...');
+  
+  let almasCorregidas = 0;
+  
+  ingresos.forEach(ing => {
+    const idOriginal = ing.ID_Alma;
+    
+    if (almasEnCelulasMap.has(idOriginal)) {
+      // Asignar directamente
+      ing.celula_asignada = almasEnCelulasMap.get(idOriginal);
+      almasCorregidas++;
+    }
+  });
+  
+  console.log(`✅ ${almasCorregidas} almas corregidas con IDs exactos`);
+  return almasCorregidas;
+}
+
+/**
+ * Función de diagnóstico mejorada para mapeo de almas - VERSIÓN DEFINITIVA
+ */
+function diagnosticarMapeoAlmas() {
+  console.log('🔍 DIAGNÓSTICO DEFINITIVO: Analizando mapeo de almas');
+  console.log('='.repeat(60));
+  
+  try {
+    const { ingresos, celulas } = cargarDirectorioCompleto();
+    
+    // Verificar formato de IDs en ingresos
+    console.log('📊 ANÁLISIS DE INGRESOS:');
+    const idsIngresos = ingresos.slice(0, 5).map(ing => ({
+      id: ing.ID_Alma,
+      tipo: typeof ing.ID_Alma,
+      limpio: ing.ID_Alma ? String(ing.ID_Alma).trim() : null
+    }));
+    
+    console.log('Primeros 5 IDs en ingresos:');
+    idsIngresos.forEach((item, i) => {
+      console.log(`  ${i+1}. "${item.id}" (${item.tipo}) → "${item.limpio}"`);
+    });
+    
+    // Verificar formato de IDs en células
+    console.log('');
+    console.log('📊 ANÁLISIS DE CÉLULAS:');
+    const idsEnCelulas = [];
+    celulas.forEach(cel => {
+      if (cel.miembros) {
+        cel.miembros.forEach(m => {
+          if (m.id && idsEnCelulas.length < 5) {
+            idsEnCelulas.push({
+              id: m.id,
+              tipo: typeof m.id,
+              limpio: m.id ? String(m.id).trim() : null
+            });
+          }
+        });
+      }
+    });
+    
+    console.log('Primeros 5 IDs en células:');
+    idsEnCelulas.forEach((item, i) => {
+      console.log(`  ${i+1}. "${item.id}" (${item.tipo}) → "${item.limpio}"`);
+    });
+    
+    // Normalización de IDs
+    function normalizeId(id) {
+      if (!id) return null;
+      return String(id).trim().toUpperCase().replace(/^M-/, '');
+    }
+    
+    // Intentar mapeo con normalización
+    let coincidencias = 0;
+    ingresos.forEach(ing => {
+      const idNorm = normalizeId(ing.ID_Alma);
+      const encontrado = idsEnCelulas.some(cel => 
+        normalizeId(cel.id) === idNorm
+      );
+      if (encontrado) coincidencias++;
+    });
+    
+    console.log(`Coincidencias con normalización: ${coincidencias}/${ingresos.length}`);
+    return coincidencias;
+    
+  } catch (error) {
+    console.error('❌ Error en diagnóstico:', error);
+    return 0;
+  }
+}
+
+/**
+ * ✅ SOLUCIÓN: Corrección automática del mapeo con normalización
+ */
+function corregirMapeoConNormalizacion(ingresos, almasEnCelulasMap) {
+  console.log('🔧 CORRECCIÓN AUTOMÁTICA: Aplicando normalización de IDs...');
+  
+  let almasCorregidas = 0;
+  
+  // Normalización de IDs
+  function normalizeId(id) {
+    if (!id) return null;
+    return String(id).trim().toUpperCase().replace(/^M-/, '');
+  }
+  
+  // Crear mapa normalizado
+  const mapaNormalizado = new Map();
+  for (const [idOriginal, idCelula] of almasEnCelulasMap) {
+    const idNormalizado = normalizeId(idOriginal);
+    if (idNormalizado) {
+      mapaNormalizado.set(idNormalizado, idCelula);
+    }
+  }
+  
+  // Aplicar corrección a ingresos
+  ingresos.forEach(ingreso => {
+    if (ingreso.ID_Alma && !ingreso.En_Celula) {
+      const idNormalizado = normalizeId(ingreso.ID_Alma);
+      const idCelula = idNormalizado ? mapaNormalizado.get(idNormalizado) : null;
+      
+      if (idCelula) {
+        ingreso.ID_Celula = idCelula;
+        ingreso.En_Celula = true;
+        almasCorregidas++;
+      }
+    }
+  });
+  
+  console.log(`✅ CORRECCIÓN COMPLETADA: ${almasCorregidas} almas corregidas`);
+  return almasCorregidas;
 }
 
 console.log('📊 ActividadModule cargado - Mapeo de almas a células + Actividad de líderes');

@@ -11,7 +11,7 @@ const UNIFIED_CACHE = {
     KEY: 'UNIFIED_DASHBOARD_V3',
     TTL: 1800,  // 30 minutos
     DESCRIPTION: 'Datos completos del dashboard (estadísticas + líderes + dashboard)',
-    COMPRESS_THRESHOLD: 100000 // 100KB en bytes
+    COMPRESS_THRESHOLD: 50000 // 50KB en bytes (más conservador)
   },
   
   // Estadísticas rápidas (TTL más corto para datos dinámicos)
@@ -27,7 +27,7 @@ const UNIFIED_CACHE = {
     KEY: 'UNIFIED_LEADERS_V3',
     TTL: 1800,  // 30 minutos
     DESCRIPTION: 'Lista completa de líderes',
-    COMPRESS_THRESHOLD: 100000 // 100KB en bytes
+    COMPRESS_THRESHOLD: 50000 // 50KB en bytes (más conservador)
   },
   
   // Claves específicas para casos especiales
@@ -273,8 +273,8 @@ class UnifiedCache {
       if (sizeBytes > 100000) {
         console.log(`[UnifiedCache] ⚠️ Datos muy grandes (${sizeBytes} bytes), dividiendo...`);
         
-        // Dividir datos grandes en fragmentos
-        const chunks = this._splitData(jsonString, 90000); // 90KB por fragmento
+        // ✅ SOLUCIÓN: Fragmentos de 50KB máximo (mitad del límite)
+        const chunks = this._splitData(jsonString, 50000); // 50KB por fragmento (mitad del límite)
         let success = true;
         
         for (let i = 0; i < chunks.length; i++) {
@@ -347,7 +347,7 @@ class UnifiedCache {
         return config;
       }
     }
-    return { COMPRESS_THRESHOLD: 100000 };
+    return { COMPRESS_THRESHOLD: 50000 };
   }
   
   /**

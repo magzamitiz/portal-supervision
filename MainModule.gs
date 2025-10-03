@@ -198,46 +198,60 @@ function getDashboardData(forceReload = false) {
     // Solo abrir el spreadsheet una vez
     const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
     
-    // Leer de hojas EXISTENTES
+    // ✅ SOLUCIÓN: Solo leer de _ResumenDashboard - UNA SOLA LECTURA
     const resumenSheet = ss.getSheetByName('_ResumenDashboard');
-    const seguimientoSheet = ss.getSheetByName('_SeguimientoConsolidado');
-    const lideresSheet = ss.getSheetByName(CONFIG.TABS.LIDERES);
-    const celulasSheet = ss.getSheetByName(CONFIG.TABS.CELULAS);
-    const ingresosSheet = ss.getSheetByName(CONFIG.TABS.INGRESOS);
     
     if (!resumenSheet) {
       throw new Error('Hoja _ResumenDashboard no encontrada');
     }
     
-    // Leer métricas básicas desde _ResumenDashboard (rango B1:B5)
-    const metricasValues = resumenSheet.getRange('B1:B5').getValues();
+    // ✅ SOLUCIÓN: Leer rango extendido para obtener TODOS los datos necesarios
+    // Estructura esperada de _ResumenDashboard:
+    // B1: Total Recibiendo Células
+    // B2: Activos Recibiendo Célula
+    // B3: Alerta 2-3 Semanas  
+    // B4: Crítico Más 1 Mes
+    // B5: Líderes Inactivos
+    // B6: Total Líderes (LD)
+    // B7: Total LCF
+    // B8: Total Células
+    // B9: Total Ingresos
+    // B10: Tasa Integración
+    const metricasValues = resumenSheet.getRange('B1:B10').getValues();
     
-    // Leer datos adicionales necesarios para el dashboard
-    const totalLideres = lideresSheet ? lideresSheet.getLastRow() - 1 : 0;
-    const totalCelulas = celulasSheet ? celulasSheet.getLastRow() - 1 : 0;
-    const totalIngresos = ingresosSheet ? ingresosSheet.getLastRow() - 1 : 0;
+    // ✅ SOLUCIÓN: Usar solo datos precalculados de _ResumenDashboard
+    const totalRecibiendoCelulas = metricasValues[0][0] || 0;
+    const activosRecibiendoCelula = metricasValues[1][0] || 0;
+    const alerta2_3Semanas = metricasValues[2][0] || 0;
+    const criticoMas1Mes = metricasValues[3][0] || 0;
+    const lideresInactivos = metricasValues[4][0] || 0;
+    const totalLideres = metricasValues[5][0] || 0;      // B6: Total LD
+    const totalLCF = metricasValues[6][0] || 0;          // B7: Total LCF
+    const totalCelulas = metricasValues[7][0] || 0;      // B8: Total Células
+    const totalIngresos = metricasValues[8][0] || 0;     // B9: Total Ingresos
+    const tasaIntegracion = metricasValues[9][0] || 0;   // B10: Tasa Integración
     
-    // Construir respuesta usando datos precalculados + mínimos cálculos
+    // ✅ SOLUCIÓN: Construir respuesta usando SOLO datos precalculados
     const result = {
       success: true,
       data: {
         actividad: {
-          totalLideres: totalLideres,
-          lideresActivos: totalLideres, // Asumir todos activos por ahora
-          totalCelulas: totalCelulas,
-          celulasActivas: totalCelulas, // Asumir todas activas por ahora
-          totalAlmas: totalIngresos,
-          almasEnCelulas: metricasValues[0][0] || 0, // Total Recibiendo Células
+          totalLideres: totalLideres,                    // ✅ Desde _ResumenDashboard
+          lideresActivos: totalLideres - lideresInactivos, // ✅ Calculado desde precalculados
+          totalCelulas: totalCelulas,                    // ✅ Desde _ResumenDashboard
+          celulasActivas: totalCelulas,                  // ✅ Asumir todas activas
+          totalAlmas: totalIngresos,                     // ✅ Desde _ResumenDashboard
+          almasEnCelulas: totalRecibiendoCelulas,        // ✅ Desde _ResumenDashboard
           nuevasEsteMes: 0 // Se puede calcular si es necesario
         },
         metricas: {
-          totalRecibiendoCelulas: metricasValues[0][0] || 0,
-          activosRecibiendoCelula: metricasValues[1][0] || 0,
-          alerta2_3Semanas: metricasValues[2][0] || 0,
-          criticoMas1Mes: metricasValues[3][0] || 0,
-          lideresInactivos: metricasValues[4][0] || 0,
-          tasaIntegracion: totalIngresos > 0 ? ((metricasValues[0][0] || 0) / totalIngresos * 100).toFixed(1) : 0,
-          promedioLCFporLD: totalLideres > 0 ? (totalCelulas / totalLideres).toFixed(1) : 0
+          totalRecibiendoCelulas: totalRecibiendoCelulas,    // ✅ Desde _ResumenDashboard
+          activosRecibiendoCelula: activosRecibiendoCelula,  // ✅ Desde _ResumenDashboard
+          alerta2_3Semanas: alerta2_3Semanas,               // ✅ Desde _ResumenDashboard
+          criticoMas1Mes: criticoMas1Mes,                   // ✅ Desde _ResumenDashboard
+          lideresInactivos: lideresInactivos,               // ✅ Desde _ResumenDashboard
+          tasaIntegracion: tasaIntegracion,                 // ✅ Desde _ResumenDashboard
+          promedioLCFporLD: totalLideres > 0 ? (totalLCF / totalLideres).toFixed(1) : 0
         },
         alertas: [
           {
@@ -368,45 +382,44 @@ function getDashboardDataConsolidated() {
       PerformanceMetrics.end('SPREADSHEET_OPEN');
     }
     
-    // PASO 3: Cargar TODAS las hojas necesarias de una vez
+    // ✅ SOLUCIÓN: Solo cargar _ResumenDashboard - UNA SOLA LECTURA
     if (typeof PerformanceMetrics !== 'undefined') {
       PerformanceMetrics.start('SHEETS_LOAD');
     }
     
     const batchData = {};
     
-    // Cargar líderes
-    const lideresSheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
-    if (lideresSheet) {
-      const lastRow = Math.min(lideresSheet.getLastRow(), 5000); // Límite de seguridad
-      if (lastRow > 0) {
-        batchData.lideres = lideresSheet.getRange(1, 1, lastRow, 5).getValues();
-      }
-    }
-    
-    // Cargar células
-    const celulasSheet = spreadsheet.getSheetByName(CONFIG.TABS.CELULAS);
-    if (celulasSheet) {
-      const lastRow = Math.min(celulasSheet.getLastRow(), 5000);
-      if (lastRow > 0) {
-        batchData.celulas = celulasSheet.getRange(1, 1, lastRow, 8).getValues();
-      }
-    }
-    
-    // Cargar ingresos
-    const ingresosSheet = spreadsheet.getSheetByName(CONFIG.TABS.INGRESOS);
-    if (ingresosSheet) {
-      const lastRow = Math.min(ingresosSheet.getLastRow(), 10000);
-      if (lastRow > 0) {
-        batchData.ingresos = ingresosSheet.getRange(1, 1, lastRow, 10).getValues();
-      }
-    }
-    
-    // Cargar resumen para estadísticas
+    // ✅ SOLUCIÓN: Solo leer _ResumenDashboard con estructura completa
     const resumenSheet = spreadsheet.getSheetByName('_ResumenDashboard');
-    if (resumenSheet) {
-      batchData.resumen = resumenSheet.getRange("B1:B7").getValues();
+    if (!resumenSheet) {
+      throw new Error('Hoja _ResumenDashboard no encontrada');
     }
+    
+    // Leer estructura completa de _ResumenDashboard
+    // A1:B20 para incluir nombres de métricas y valores
+    const resumenData = resumenSheet.getRange("A1:B20").getValues();
+    
+    // Convertir a mapa de métricas por nombre
+    const metricas = {};
+    resumenData.forEach(row => {
+      if (row[0] && row[0].toString().trim()) {
+        metricas[row[0].toString().trim()] = row[1] || 0;
+      }
+    });
+    
+    // Mapear datos desde _ResumenDashboard
+    batchData.resumen = {
+      total_recibiendo_celulas: metricas['Total Recibiendo Células'] || 0,
+      activos_recibiendo_celula: metricas['Activos Recibiendo Célula'] || 0,
+      alerta_2_3_semanas: metricas['Alerta 2-3 Semanas'] || 0,
+      critico_mas_1_mes: metricas['Crítico Más 1 Mes'] || 0,
+      lideres_inactivos: metricas['Líderes Inactivos'] || 0,
+      total_lideres: metricas['Total Líderes (LD)'] || 0,
+      total_lcf: metricas['Total LCF'] || 0,
+      total_celulas: metricas['Total Células'] || 0,
+      total_ingresos: metricas['Total Ingresos'] || 0,
+      tasa_integracion: metricas['Tasa Integración'] || 0
+    };
     
     const sheetsLoadTime = Date.now() - startTime;
     console.log('[CONSOLIDATED] Datos cargados:', sheetsLoadTime, 'ms');

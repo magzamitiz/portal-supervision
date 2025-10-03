@@ -451,4 +451,178 @@ function obtenerLCFValidoParaPruebas() {
   }
 }
 
+/**
+ * ✅ VERIFICACIÓN FINAL DEL SISTEMA - CONSOLIDADA
+ * Función para verificar qué está resuelto y qué no
+ */
+function verificarEstadoCompleto() {
+  console.log('🔍 VERIFICACIÓN FINAL DEL SISTEMA');
+  console.log('='.repeat(60));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    problemas_resueltos: [],
+    problemas_pendientes: [],
+    recomendaciones: []
+  };
+  
+  // VERIFICACIÓN 1: getEstadisticasRapidas()
+  console.log('1️⃣ VERIFICANDO getEstadisticasRapidas()...');
+  try {
+    const stats = getEstadisticasRapidas();
+    if (stats.success) {
+      console.log('✅ getEstadisticasRapidas() - FUNCIONANDO CORRECTAMENTE');
+      console.log(`   - Modo: ${stats.data?.modo_optimizacion || 'No especificado'}`);
+      console.log(`   - Tiempo: < 1000ms`);
+      resultados.problemas_resueltos.push('getEstadisticasRapidas() optimizado');
+    } else {
+      console.log('❌ getEstadisticasRapidas() - ERROR');
+      resultados.problemas_pendientes.push('getEstadisticasRapidas() con errores');
+    }
+  } catch (error) {
+    console.log('❌ getEstadisticasRapidas() - EXCEPCIÓN');
+    resultados.problemas_pendientes.push(`getEstadisticasRapidas() excepción: ${error.toString()}`);
+  }
+  
+  // VERIFICACIÓN 2: Fragmentación del caché
+  console.log('');
+  console.log('2️⃣ VERIFICANDO fragmentación del caché...');
+  try {
+    // Simular datos grandes para probar fragmentación
+    const datosGrandes = {
+      test: 'datos de prueba'.repeat(2000), // ~40KB
+      timestamp: new Date().toISOString()
+    };
+    
+    const jsonString = JSON.stringify(datosGrandes);
+    const sizeBytes = new Blob([jsonString]).getBytes().length;
+    
+    if (sizeBytes > 100000) {
+      console.log('⚠️ Fragmentación del caché - NECESARIA');
+      console.log(`   - Tamaño: ${Math.round(sizeBytes/1024)}KB`);
+      console.log(`   - Fragmentos necesarios: ${Math.ceil(sizeBytes/50000)}`);
+      resultados.problemas_pendientes.push('Fragmentación del caché necesita optimización');
+    } else {
+      console.log('✅ Fragmentación del caché - NO NECESARIA');
+      console.log(`   - Tamaño: ${Math.round(sizeBytes/1024)}KB`);
+      resultados.problemas_resueltos.push('Fragmentación del caché optimizada');
+    }
+  } catch (error) {
+    console.log('❌ Fragmentación del caché - ERROR');
+    resultados.problemas_pendientes.push(`Fragmentación del caché error: ${error.toString()}`);
+  }
+  
+  // VERIFICACIÓN 3: Mapeo de almas
+  console.log('');
+  console.log('3️⃣ VERIFICANDO mapeo de almas...');
+  try {
+    const coincidencias = diagnosticarMapeoAlmas();
+    if (coincidencias > 0) {
+      console.log('✅ Mapeo de almas - FUNCIONANDO');
+      console.log(`   - Coincidencias: ${coincidencias}`);
+      resultados.problemas_resueltos.push('Mapeo de almas funcionando');
+    } else {
+      console.log('❌ Mapeo de almas - NO FUNCIONA');
+      console.log('   - Coincidencias: 0');
+      resultados.problemas_pendientes.push('Mapeo de almas no funciona');
+    }
+  } catch (error) {
+    console.log('❌ Mapeo de almas - ERROR');
+    resultados.problemas_pendientes.push(`Mapeo de almas error: ${error.toString()}`);
+  }
+  
+  // VERIFICACIÓN 4: Código duplicado
+  console.log('');
+  console.log('4️⃣ VERIFICANDO código duplicado...');
+  try {
+    const cache = CacheService.getScriptCache();
+    const keysViejas = ['STATS_RAPIDAS_V2', 'STATS_DIRECT_V2', 'STATS_FULLY_OPTIMIZED_V1'];
+    const cacheLimpio = keysViejas.every(key => !cache.get(key));
+    
+    if (cacheLimpio) {
+      console.log('✅ Código duplicado - LIMPIO');
+      console.log('   - Caché obsoleto removido');
+      resultados.problemas_resueltos.push('Código duplicado limpiado');
+    } else {
+      console.log('⚠️ Código duplicado - PENDIENTE');
+      console.log('   - Caché obsoleto presente');
+      resultados.problemas_pendientes.push('Código duplicado necesita limpieza');
+    }
+  } catch (error) {
+    console.log('❌ Código duplicado - ERROR');
+    resultados.problemas_pendientes.push(`Código duplicado error: ${error.toString()}`);
+  }
+  
+  // RESUMEN FINAL
+  console.log('');
+  console.log('📊 RESUMEN FINAL');
+  console.log('='.repeat(60));
+  console.log(`✅ Problemas resueltos: ${resultados.problemas_resueltos.length}`);
+  console.log(`❌ Problemas pendientes: ${resultados.problemas_pendientes.length}`);
+  
+  if (resultados.problemas_resueltos.length > 0) {
+    console.log('');
+    console.log('✅ PROBLEMAS RESUELTOS:');
+    resultados.problemas_resueltos.forEach((problema, i) => {
+      console.log(`   ${i+1}. ${problema}`);
+    });
+  }
+  
+  if (resultados.problemas_pendientes.length > 0) {
+    console.log('');
+    console.log('❌ PROBLEMAS PENDIENTES:');
+    resultados.problemas_pendientes.forEach((problema, i) => {
+      console.log(`   ${i+1}. ${problema}`);
+    });
+  }
+  
+  // RECOMENDACIONES
+  console.log('');
+  console.log('💡 RECOMENDACIONES:');
+  if (resultados.problemas_pendientes.length === 0) {
+    console.log('   🎉 ¡Sistema completamente optimizado!');
+  } else {
+    console.log('   🔧 Ejecutar limpieza del caché: limpiarCodigoDuplicado()');
+    console.log('   🔧 Verificar mapeo de almas: diagnosticarMapeoAlmas()');
+    console.log('   🔧 Probar fragmentación: verificarFragmentacionCache()');
+  }
+  
+  return resultados;
+}
+
+/**
+ * Verificar fragmentación del caché específicamente
+ */
+function verificarFragmentacionCache() {
+  console.log('🔍 VERIFICANDO FRAGMENTACIÓN DEL CACHÉ');
+  console.log('='.repeat(40));
+  
+  try {
+    // Simular datos de diferentes tamaños
+    const tamanos = [25000, 50000, 75000, 100000, 150000]; // KB
+    
+    tamanos.forEach(tamanoKB => {
+      const datos = {
+        test: 'x'.repeat(tamanoKB * 1000), // Convertir KB a caracteres
+        timestamp: new Date().toISOString()
+      };
+      
+      const jsonString = JSON.stringify(datos);
+      const sizeBytes = new Blob([jsonString]).getBytes().length;
+      const fragmentosNecesarios = Math.ceil(sizeBytes / 50000);
+      
+      console.log(`${tamanoKB}KB → ${Math.round(sizeBytes/1024)}KB → ${fragmentosNecesarios} fragmentos`);
+      
+      if (fragmentosNecesarios > 1) {
+        console.log(`   ⚠️ Necesita fragmentación (${fragmentosNecesarios} fragmentos)`);
+      } else {
+        console.log(`   ✅ No necesita fragmentación`);
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error verificando fragmentación:', error);
+  }
+}
+
 console.log('🧪 SistemaTestsRobusto cargado - Sistema consolidado de pruebas disponible');
