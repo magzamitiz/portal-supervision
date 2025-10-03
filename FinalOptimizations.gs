@@ -139,7 +139,12 @@ function processCelulasOptimized(rawData) {
     idMiembro: findCol(headers, ['ID Miembro', 'ID_Miembro', 'ID Alma']),
     nombreMiembro: findCol(headers, ['Nombre Miembro']),
     idLCF: findCol(headers, ['ID LCF', 'ID_LCF']),
-    nombreLCF: findCol(headers, ['Nombre LCF'])
+    nombreLCF: findCol(headers, ['Nombre LCF']),
+    // ✅ AGREGADO: Campos de líder necesarios para calcularActividadLideres
+    idLider: findCol(headers, ['ID_Lider', 'ID Líder', 'ID LD', 'ID LD Supervisor']),
+    estado: findCol(headers, ['Estado', 'Estado Célula', 'Estado_Celula']),
+    congregacion: findCol(headers, ['Congregación', 'Congregacion', 'Congregacion_Celula']),
+    ultimaActividad: findCol(headers, ['Ultima_Actividad', 'Última Actividad', 'Fecha_Actividad', 'Ultima_Actividad_Celula'])
   };
   
   if (columnas.idCelula === -1) return [];
@@ -158,6 +163,11 @@ function processCelulasOptimized(rawData) {
           Nombre_Celula: String(row[columnas.nombreCelula] || '').trim(),
           ID_LCF: String(row[columnas.idLCF] || '').trim(),
           Nombre_LCF: String(row[columnas.nombreLCF] || '').trim(),
+          // ✅ AGREGADO: Campos de líder necesarios para calcularActividadLideres
+          ID_Lider: String(row[columnas.idLider] || '').trim(),
+          Estado: String(row[columnas.estado] || 'Activo').trim(),
+          Congregacion: String(row[columnas.congregacion] || '').trim(),
+          Ultima_Actividad: row[columnas.ultimaActividad] || null,
           Miembros: []
         });
       }

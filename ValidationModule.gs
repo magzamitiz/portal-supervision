@@ -988,4 +988,215 @@ function validarMonitoreoProduccion() {
   }
 }
 
+/**
+ * Valida que las correcciones de processCelulasOptimized funcionan correctamente
+ * @returns {Object} Resultado de la validación
+ */
+function validarCorreccionesActividadLideres() {
+  const startTime = Date.now();
+  const verificaciones = [];
+  
+  try {
+    console.log('[ValidationModule] Validando correcciones de actividad de líderes...');
+    
+    // 1. Verificar que processCelulasOptimized incluye campos de líder
+    console.log('   🔍 Probando processCelulasOptimized con datos de prueba...');
+    
+    // Crear datos de prueba que simulen la hoja de Google Sheets
+    const datosPruebaCelulas = [
+      ['ID Célula', 'Nombre Célula', 'ID Líder', 'Estado', 'Congregación', 'ID LCF', 'Nombre LCF', 'ID Miembro', 'Nombre Miembro'],
+      ['C-001', 'Célula Test 1', 'LD-001', 'Activa', 'Norte', 'LCF-001', 'Test LCF 1', 'A-001', 'Alma Test 1'],
+      ['C-002', 'Célula Test 2', 'LD-002', 'Inactiva', 'Sur', 'LCF-002', 'Test LCF 2', 'A-002', 'Alma Test 2'],
+      ['C-003', 'Célula Test 3', 'LD-001', 'Activa', 'Norte', 'LCF-001', 'Test LCF 1', 'A-003', 'Alma Test 3']
+    ];
+    
+    try {
+      const celulasProcesadas = processCelulasOptimized(datosPruebaCelulas);
+      
+      // Verificar que se procesaron las células
+      verificaciones.push({
+        item: 'processCelulasOptimized procesa células',
+        success: celulasProcesadas.length > 0,
+        valor: `${celulasProcesadas.length} células procesadas`,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Verificar que las células tienen campos de líder
+      const primeraCelula = celulasProcesadas[0];
+      const tieneIDLider = primeraCelula && primeraCelula.ID_Lider !== undefined;
+      const tieneEstado = primeraCelula && primeraCelula.Estado !== undefined;
+      const tieneCongregacion = primeraCelula && primeraCelula.Congregacion !== undefined;
+      
+      verificaciones.push({
+        item: 'Células tienen ID_Lider',
+        success: tieneIDLider,
+        valor: tieneIDLider ? `ID: ${primeraCelula.ID_Lider}` : 'Campo faltante',
+        tiempo: Date.now() - startTime
+      });
+      
+      verificaciones.push({
+        item: 'Células tienen Estado',
+        success: tieneEstado,
+        valor: tieneEstado ? `Estado: ${primeraCelula.Estado}` : 'Campo faltante',
+        tiempo: Date.now() - startTime
+      });
+      
+      verificaciones.push({
+        item: 'Células tienen Congregacion',
+        success: tieneCongregacion,
+        valor: tieneCongregacion ? `Congregación: ${primeraCelula.Congregacion}` : 'Campo faltante',
+        tiempo: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      verificaciones.push({
+        item: 'processCelulasOptimized funciona',
+        success: false,
+        error: error.toString(),
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    // 2. Verificar que calcularActividadLideres funciona con los datos corregidos
+    console.log('   🔍 Probando calcularActividadLideres con datos corregidos...');
+    
+    try {
+      const celulasConLider = [
+        {
+          ID_Celula: 'C-001',
+          ID_Lider: 'LD-001',
+          Estado: 'Activa',
+          Congregacion: 'Norte',
+          Miembros: [{ ID_Miembro: 'A-001' }]
+        },
+        {
+          ID_Celula: 'C-002',
+          ID_Lider: 'LD-002',
+          Estado: 'Inactiva',
+          Congregacion: 'Sur',
+          Miembros: []
+        },
+        {
+          ID_Celula: 'C-003',
+          ID_Lider: 'LD-001',
+          Estado: 'Activa',
+          Congregacion: 'Norte',
+          Miembros: [{ ID_Miembro: 'A-003' }]
+        }
+      ];
+      
+      const actividadMap = calcularActividadLideres(celulasConLider);
+      
+      verificaciones.push({
+        item: 'calcularActividadLideres genera mapa',
+        success: actividadMap instanceof Map && actividadMap.size > 0,
+        valor: `${actividadMap.size} líderes en el mapa`,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Verificar métricas específicas
+      if (actividadMap.has('LD-001')) {
+        const actividadLD001 = actividadMap.get('LD-001');
+        verificaciones.push({
+          item: 'LD-001 tiene métricas correctas',
+          success: actividadLD001.totalCelulas === 2 && actividadLD001.celulasActivas === 2,
+          valor: `Total: ${actividadLD001.totalCelulas}, Activas: ${actividadLD001.celulasActivas}`,
+          tiempo: Date.now() - startTime
+        });
+      }
+      
+      if (actividadMap.has('LD-002')) {
+        const actividadLD002 = actividadMap.get('LD-002');
+        verificaciones.push({
+          item: 'LD-002 tiene métricas correctas',
+          success: actividadLD002.totalCelulas === 1 && actividadLD002.celulasActivas === 0,
+          valor: `Total: ${actividadLD002.totalCelulas}, Activas: ${actividadLD002.celulasActivas}`,
+          tiempo: Date.now() - startTime
+        });
+      }
+      
+    } catch (error) {
+      verificaciones.push({
+        item: 'calcularActividadLideres funciona',
+        success: false,
+        error: error.toString(),
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    // 3. Verificar integración completa
+    console.log('   🔍 Probando integración completa...');
+    
+    try {
+      const lideresPrueba = [
+        { ID_Lider: 'LD-001', Nombre_Lider: 'Test LD 1' },
+        { ID_Lider: 'LD-002', Nombre_Lider: 'Test LD 2' }
+      ];
+      
+      const celulasConLider = [
+        {
+          ID_Celula: 'C-001',
+          ID_Lider: 'LD-001',
+          Estado: 'Activa',
+          Congregacion: 'Norte',
+          Miembros: [{ ID_Miembro: 'A-001' }]
+        },
+        {
+          ID_Celula: 'C-002',
+          ID_Lider: 'LD-002',
+          Estado: 'Inactiva',
+          Congregacion: 'Sur',
+          Miembros: []
+        }
+      ];
+      
+      const actividadMap = calcularActividadLideres(celulasConLider);
+      const lideresConActividad = integrarActividadLideres(lideresPrueba, actividadMap);
+      
+      verificaciones.push({
+        item: 'Integración completa funciona',
+        success: lideresConActividad.length === 2 && lideresConActividad[0].actividad,
+        valor: `${lideresConActividad.length} líderes con actividad integrada`,
+        tiempo: Date.now() - startTime
+      });
+      
+      // Verificar que los líderes tienen métricas de actividad
+      const tieneMetricas = lideresConActividad.every(l => l.actividad && typeof l.actividad.totalCelulas === 'number');
+      verificaciones.push({
+        item: 'Líderes tienen métricas de actividad',
+        success: tieneMetricas,
+        valor: tieneMetricas ? 'Todos los líderes tienen métricas' : 'Faltan métricas',
+        tiempo: Date.now() - startTime
+      });
+      
+    } catch (error) {
+      verificaciones.push({
+        item: 'Integración completa funciona',
+        success: false,
+        error: error.toString(),
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    const exitosos = verificaciones.filter(v => v.success).length;
+    
+    return {
+      nombre: 'Correcciones de Actividad de Líderes',
+      resultado: exitosos === verificaciones.length ? 'PASS' : 'FAIL',
+      verificaciones: verificaciones,
+      exitosos: exitosos,
+      total: verificaciones.length,
+      tiempo: Date.now() - startTime
+    };
+    
+  } catch (error) {
+    return {
+      nombre: 'Correcciones de Actividad de Líderes',
+      resultado: 'ERROR',
+      error: error.toString(),
+      tiempo: Date.now() - startTime
+    };
+  }
+}
+
 console.log('✅ ValidationModule cargado - Sistema de validación unificado + Nuevas funciones');
