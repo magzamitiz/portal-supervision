@@ -7,12 +7,20 @@ function verificacionFinalSistema() {
   console.log('🔍 VERIFICACIÓN FINAL DEL SISTEMA');
   console.log('='.repeat(60) + '\n');
   
+  // Obtener LCF para todas las pruebas
+  const lcfPrueba = obtenerLCFValidoParaPruebas();
+  if (!lcfPrueba) {
+    console.error('❌ No hay LCFs para ejecutar pruebas');
+    return { success: false, error: 'Sistema sin LCFs' };
+  }
+  console.log(`📌 Usando LCF de prueba: ${lcfPrueba}\n`);
+  
   const pruebas = [];
   
   // 1. Verificar función getResumenLCF
   console.log('1️⃣ Verificando getResumenLCF...');
   try {
-    const resumen = getResumenLCF('LCF-1001');
+    const resumen = getResumenLCF(lcfPrueba);
     if (resumen.success && resumen.data && 
         typeof resumen.data.totalAlmas === 'number' &&
         typeof resumen.data.conBienvenida === 'number' &&
@@ -47,7 +55,7 @@ function verificacionFinalSistema() {
   // 3. Verificar getSeguimientoAlmasLCF_REAL
   console.log('3️⃣ Verificando getSeguimientoAlmasLCF_REAL...');
   try {
-    const seguimiento = getSeguimientoAlmasLCF_REAL('LCF-1001');
+    const seguimiento = getSeguimientoAlmasLCF_REAL(lcfPrueba);
     if (seguimiento.success && seguimiento.almas && seguimiento.lcf) {
       console.log('   ✅ getSeguimientoAlmasLCF_REAL funciona correctamente');
       pruebas.push({ nombre: 'getSeguimientoAlmasLCF_REAL', resultado: 'PASS' });

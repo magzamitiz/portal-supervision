@@ -5,10 +5,14 @@
 
 /**
  * Función de prueba para verificar la generación de PDF
- * @param {string} idLCF - ID del LCF a probar
  * @returns {Object} Resultado de la prueba
  */
-function probarGeneracionPDF(idLCF = 'LCF-1026') {
+function probarGeneracionPDF() {
+  const idLCF = obtenerLCFValidoParaPruebas();
+  if (!idLCF) {
+    console.error('❌ No hay LCFs disponibles para pruebas');
+    return { success: false, error: 'Sin LCFs en el sistema' };
+  }
   try {
     console.log(`🧪 Probando generación de PDF para: ${idLCF}`);
     

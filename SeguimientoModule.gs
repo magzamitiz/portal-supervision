@@ -701,8 +701,6 @@ function getVistaRapidaLCF(idLCF) {
 function getResumenLCF(idLCF) {
   try {
     console.log(`[SeguimientoModule] Obteniendo resumen para LCF: ${idLCF}`);
-    
-    // Obtener seguimiento completo
     const seguimiento = getSeguimientoAlmasLCF_REAL(idLCF);
     
     if (!seguimiento.success) {
@@ -710,70 +708,69 @@ function getResumenLCF(idLCF) {
       return seguimiento;
     }
     
-    // ✅ CORRECCIÓN: Acceder directamente a las propiedades sin .data
+    // ✅ CORRECCIÓN 1: Acceder directamente a almas en la raíz
     const almas = seguimiento.almas || [];
-    const lcf = seguimiento.lcf;
     
-    // ✅ CORRECCIÓN: Convertir snake_case a camelCase para el frontend
-    let resumenFormateado;
-    
-    if (seguimiento.resumen) {
-      // Mapear campos de snake_case a camelCase
-      resumenFormateado = {
-        totalAlmas: seguimiento.resumen.total_almas || almas.length,
-        conBienvenida: seguimiento.resumen.con_bienvenida || 0,
-        conVisita: seguimiento.resumen.con_visita || 0,
-        enCelula: seguimiento.resumen.en_celula || 0,
-        altaPrioridad: seguimiento.resumen.alta_prioridad || 0,
-        promedioDiasSinContacto: seguimiento.resumen.promedio_dias_sin_contacto || 0,
-        tasaBienvenida: seguimiento.resumen.tasa_bienvenida || 0,
-        tasaVisita: seguimiento.resumen.tasa_visita || 0,
-        tasaIntegracion: seguimiento.resumen.tasa_integracion || 0
-      };
-    } else {
-      // Calcular manualmente si no hay resumen
-      const conBienvenida = almas.filter(a => 
-        a.Bienvenida && a.Bienvenida.completado
-      ).length;
+    // ✅ CORRECCIÓN 2: Calcular métricas usando las propiedades correctas
+    const metrics = (() => {
+      const totalAlmas = almas.length;
       
-      const conVisita = almas.filter(a => 
-        a.Visita_Bendicion && a.Visita_Bendicion.completado
-      ).length;
+      // Usar Bienvenida.completado en lugar de Tiene_Bienvenida
+      const conBienvenida = almas.filter(a => a.Bienvenida?.completado).length;
       
-      const enCelula = almas.filter(a => 
+      // Usar Visita_Bendicion.completado en lugar de Tiene_Visita
+      const conVisita = almas.filter(a => a.Visita_Bendicion?.completado).length;
+      
+      // Usar En_Celula o Progreso_Celulas.completados
+      const enCelula = almas.filter(a =>
         a.En_Celula || (a.Progreso_Celulas && a.Progreso_Celulas.completados > 0)
       ).length;
       
-      const totalAlmas = almas.length;
+      // Usar Dias_Sin_Seguimiento directamente
+      const altaPrioridad = almas.filter(a => (a.Dias_Sin_Seguimiento || 0) > 14).length;
       
-      resumenFormateado = {
-        totalAlmas: totalAlmas,
-        conBienvenida: conBienvenida,
-        conVisita: conVisita,
-        enCelula: enCelula,
-        altaPrioridad: almas.filter(a => a.Dias_Sin_Seguimiento > 14).length,
-        promedioDiasSinContacto: totalAlmas > 0 ? 
-          Math.round(almas.reduce((sum, a) => sum + (a.Dias_Sin_Seguimiento || 0), 0) / totalAlmas) : 0,
-        tasaBienvenida: totalAlmas > 0 ? Math.round((conBienvenida / totalAlmas) * 100) : 0,
-        tasaVisita: totalAlmas > 0 ? Math.round((conVisita / totalAlmas) * 100) : 0,
-        tasaIntegracion: totalAlmas > 0 ? Math.round((enCelula / totalAlmas) * 100) : 0
+      const promedio = totalAlmas
+        ? Math.round(almas.reduce((sum, a) => sum + (a.Dias_Sin_Seguimiento || 0), 0) / totalAlmas)
+        : 0;
+      
+      return {
+        totalAlmas,
+        conBienvenida,
+        conVisita,
+        enCelula,
+        altaPrioridad,
+        promedioDiasSinContacto: promedio,
+        tasaBienvenida: totalAlmas ? Math.round((conBienvenida / totalAlmas) * 100) : 0,
+        tasaVisita: totalAlmas ? Math.round((conVisita / totalAlmas) * 100) : 0,
+        tasaIntegracion: totalAlmas ? Math.round((enCelula / totalAlmas) * 100) : 0
       };
-    }
+    })();
     
-    // ✅ ESTRUCTURA CORRECTA: data contiene directamente las métricas
+    // ✅ CORRECCIÓN 3: Normalizar snake_case a camelCase
+    const resumen = seguimiento.resumen || {};
+    const normalizado = {
+      totalAlmas: resumen.total_almas ?? metrics.totalAlmas,
+      conBienvenida: resumen.con_bienvenida ?? metrics.conBienvenida,
+      conVisita: resumen.con_visita ?? metrics.conVisita,
+      enCelula: resumen.en_celula ?? metrics.enCelula,
+      altaPrioridad: resumen.alta_prioridad ?? metrics.altaPrioridad,
+      promedioDiasSinContacto: resumen.promedio_dias_sin_contacto ?? metrics.promedioDiasSinContacto,
+      tasaBienvenida: resumen.tasa_bienvenida ?? metrics.tasaBienvenida,
+      tasaVisita: resumen.tasa_visita ?? metrics.tasaVisita,
+      tasaIntegracion: resumen.tasa_integracion ?? metrics.tasaIntegracion
+    };
+    
+    // ✅ ESTRUCTURA FINAL: Exactamente lo que espera el frontend
     return {
       success: true,
-      data: resumenFormateado,
-      lcf: lcf,
+      data: normalizado,
+      lcf: seguimiento.lcf,
       timestamp: new Date().toISOString()
     };
     
   } catch (error) {
     console.error('[SeguimientoModule] Error crítico en getResumenLCF:', error);
-    return { 
-      success: false, 
-      error: `Error obteniendo resumen: ${error.toString()}` 
-    };
+    return { success: false, error: `Error obteniendo resumen: ${error}` };
   }
 }
 
@@ -830,10 +827,14 @@ function cargarDatosLCF(idLCF) {
 
 /**
  * Función de prueba para verificar la carga de datos LCF
- * @param {string} idLCF - ID del LCF para probar (opcional)
  * @returns {Object} Resultado de la prueba
  */
-function testCargarDatosLCF(idLCF = 'LCF-1026') {
+function testCargarDatosLCF() {
+  const idLCF = obtenerLCFValidoParaPruebas();
+  if (!idLCF) {
+    console.error('❌ No hay LCFs disponibles para pruebas');
+    return { success: false, error: 'Sin LCFs en el sistema' };
+  }
   try {
     console.log(`🧪 TEST: Probando cargarDatosLCF(${idLCF})`);
     
@@ -858,15 +859,23 @@ function testCargarDatosLCF(idLCF = 'LCF-1026') {
 
 /**
  * Función de prueba para verificar corrección de getResumenLCF
- * @param {string} idLCF - ID del LCF a probar (opcional)
  * @returns {Object} Resultado de la prueba
  */
-function testGetResumenLCF_Correccion(idLCF = 'LCF-1001') {
+function testGetResumenLCF_Correccion() {
   console.log('\n========================================');
   console.log('🧪 TEST: Verificando corrección de getResumenLCF');
   console.log('========================================\n');
   
   try {
+    // Obtener LCF dinámicamente
+    const idLCF = obtenerLCFValidoParaPruebas();
+    if (!idLCF) {
+      console.error('❌ No hay LCFs disponibles para pruebas');
+      return { success: false, error: 'Sin LCFs en el sistema' };
+    }
+    
+    console.log(`🧪 Probando con LCF: ${idLCF}`);
+    
     // Ejecutar la función corregida
     const resultado = getResumenLCF(idLCF);
     

@@ -303,15 +303,15 @@ function analizarIngresos(ingresos) {
     };
     
     const hoy = new Date();
-    const hoyFormateado = Utilities.formatDate(hoy, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+    const hoyFormateada = Utilities.formatDate(hoy, CONFIG.TIMEZONE || Session.getScriptTimeZone(), 'yyyy-MM-dd');
     
     ingresos.forEach(ingreso => {
       // Análisis temporal
       if (ingreso.Timestamp) {
         const fechaIngreso = new Date(ingreso.Timestamp);
-        const fechaFormateada = Utilities.formatDate(fechaIngreso, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+        const fechaFormateada = Utilities.formatDate(fechaIngreso, CONFIG.TIMEZONE || Session.getScriptTimeZone(), 'yyyy-MM-dd');
         
-        if (fechaFormateada === hoyFormateado) {
+        if (fechaFormateada === hoyFormateada) {
           analisis.ingresos_hoy++;
         }
         
