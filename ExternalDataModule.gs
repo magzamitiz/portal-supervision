@@ -1,27 +1,26 @@
 /**
  * @fileoverview Módulo para carga de datos externos.
- * Implementa las funciones de carga de datos externos exactas del código original.
+ * ⚠️ DESACTIVADO: Este módulo no se usa en el dashboard principal para optimizar rendimiento.
+ * Solo se mantiene DIRECTORIO activo, los demás sheets causan lentitud innecesaria.
  */
 
 // ==================== CONFIGURACIÓN DEL MÓDULO ====================
 
 const CONFIG_SEGUIMIENTO = {
   SHEETS: {
-    DIRECTORIO: '1dwuqpyMXWHJvnJHwDHCqFMvgdYhypE2W1giH6bRZMKc',
-    REPORTE_CELULAS: '18wOkxTauLETdpkEy5qsd0shlZUf8FsfQg9oCN8-pCxI',
-    REGISTRO_INTERACCIONES: '1Rzx4k6ipkFvVpTYdisjAYSwGuIgyWiYFBsYu4RHFWPs',
-    VISITAS_BENDICION: '1md72JN8LOJCpBLrPIGP9HQG8GQ1RzFFE-hAOlawQ2eg'
+    DIRECTORIO: '1dwuqpyMXWHJvnJHwDHCqFMvgdYhypE2W1giH6bRZMKc'
+    // ✅ OPTIMIZADO: Solo DIRECTORIO activo para máximo rendimiento
+    // Los demás sheets no se usan en el dashboard principal
   },
   TABS: {
-    MAESTRO_ASISTENTES: 'Maestro_Asistentes',
-    REGISTRO_INTERACCIONES: 'Registro de Interacciones',
-    REGISTRO_VISITAS: 'Registro de Visitas'
+    // ✅ OPTIMIZADO: Solo tabs de DIRECTORIO se usan
   }
 };
 
 // ==================== FUNCIONES DE CARGA EXTERNA ====================
 
 /**
+ * ⚠️ DESACTIVADO: No se usa en el dashboard principal
  * Carga maestro de asistentes (progreso en células)
  * @returns {Array} Array de asistentes
  */
@@ -90,6 +89,8 @@ function cargarMaestroAsistentes() {
  * @returns {Array} Array de interacciones
  */
 function cargarInteracciones() {
+  // ⚠️ DESACTIVADO: No se usa en el dashboard principal
+  return { success: false, data: [], error: 'Función desactivada para optimizar rendimiento' };
   try {
     // Si no tienes esta hoja configurada, retornar array vacío
     if (!CONFIG_SEGUIMIENTO.SHEETS.REGISTRO_INTERACCIONES) {
@@ -143,6 +144,8 @@ function cargarInteracciones() {
  * @returns {Array} Array de visitas
  */
 function cargarVisitasBendicion() {
+  // ⚠️ DESACTIVADO: No se usa en el dashboard principal
+  return { success: false, data: [], error: 'Función desactivada para optimizar rendimiento' };
   try {
     const ss = SpreadsheetApp.openById(CONFIG_SEGUIMIENTO.SHEETS.VISITAS_BENDICION);
     const sheet = ss.getSheetByName(CONFIG_SEGUIMIENTO.TABS.REGISTRO_VISITAS) || ss.getSheets()[0];
@@ -191,6 +194,8 @@ function cargarVisitasBendicion() {
  * @returns {Object} Objeto con todos los datos externos
  */
 function cargarDatosExternos() {
+  // ⚠️ DESACTIVADO: No se usa en el dashboard principal
+  return { success: false, data: [], error: 'Función desactivada para optimizar rendimiento' };
   try {
     console.log('[ExternalDataModule] Cargando datos externos...');
     

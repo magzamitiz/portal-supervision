@@ -89,21 +89,18 @@ function verificarConfiguracion() {
       });
     }
     
-    // Verificar IDs de spreadsheets
+    // Verificar ID de spreadsheet principal (solo DIRECTORIO)
     try {
       const directorioId = CONFIG.SHEETS.DIRECTORIO;
-      const reporteId = CONFIG.SHEETS.REPORTE_CELULAS;
-      const visitasId = CONFIG.SHEETS.VISITAS_BENDICION;
-      const interaccionesId = CONFIG.SHEETS.REGISTRO_INTERACCIONES;
       
       verificaciones.push({
-        item: 'IDs de spreadsheets',
-        success: !!(directorioId && reporteId && visitasId && interaccionesId),
-        detalle: `Directorio: ${directorioId}, Reporte: ${reporteId}, Visitas: ${visitasId}, Interacciones: ${interaccionesId}`
+        item: 'ID de spreadsheet principal',
+        success: !!directorioId,
+        detalle: `Directorio: ${directorioId} (solo se usa este libro para máximo rendimiento)`
       });
     } catch (error) {
       verificaciones.push({
-        item: 'IDs de spreadsheets',
+        item: 'ID de spreadsheet principal',
         success: false,
         detalle: error.toString()
       });
@@ -220,23 +217,8 @@ function verificarConectividad() {
     }
     
     // Verificar acceso a otros spreadsheets
-    try {
-      const reporte = SpreadsheetApp.openById(CONFIG.SHEETS.REPORTE_CELULAS);
-      const visitas = SpreadsheetApp.openById(CONFIG.SHEETS.VISITAS_BENDICION);
-      const interacciones = SpreadsheetApp.openById(CONFIG.SHEETS.REGISTRO_INTERACCIONES);
-      
-      verificaciones.push({
-        item: 'Acceso a spreadsheets auxiliares',
-        success: !!(reporte && visitas && interacciones),
-        detalle: 'Todos los spreadsheets auxiliares accesibles'
-      });
-    } catch (error) {
-      verificaciones.push({
-        item: 'Acceso a spreadsheets auxiliares',
-        success: false,
-        detalle: `Error: ${error.toString()}`
-      });
-    }
+    // ✅ OPTIMIZADO: Solo verificamos el spreadsheet principal (DIRECTORIO)
+    // Los spreadsheets auxiliares no se usan en el dashboard principal
     
     const exitosos = verificaciones.filter(v => v.success).length;
     

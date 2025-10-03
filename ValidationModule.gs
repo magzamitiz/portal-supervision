@@ -17,8 +17,8 @@ const VALIDACION_CONFIG = {
     'IngresosModule',
     'SeguimientoModule',
     'MetricasModule',
-    'AlertasModule',
-    'AnalisisModule',
+    // 'AlertasModule', // ✅ ELIMINADO: Módulo innecesario removido
+    // 'AnalisisModule', // ✅ ELIMINADO: Módulo no existe
     'MainModule',
     'ActividadModule',
     'ExternalDataModule',

@@ -105,7 +105,7 @@ function inicializarAplicacion() {
     // Verificar módulos críticos
     const modulosCriticos = [
       'SpreadsheetManager',
-      'DataQueries',
+      'DataModule', // ✅ CORREGIDO: DataQueries → DataModule
       'LideresModule',
       'CelulasModule',
       'IngresosModule'
