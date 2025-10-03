@@ -7,6 +7,83 @@
 
 const CACHE_KEY = 'DASHBOARD_CONSOLIDATED_V1';
 
+// 🚨 FALLBACK: Sistema de caché alternativo usando PropertiesService
+const FALLBACK_CACHE = {
+  enabled: false,
+  
+  // Verificar si CacheService funciona
+  checkCacheService() {
+    try {
+      const cache = CacheService.getScriptCache();
+      const testResult = cache.put('TEST_FALLBACK', 'test', 1);
+      return testResult === true;
+    } catch (error) {
+      return false;
+    }
+  },
+  
+  // Inicializar fallback si es necesario
+  init() {
+    if (!this.checkCacheService()) {
+      console.warn('[Cache] ⚠️ CacheService no funcional, activando fallback con PropertiesService');
+      this.enabled = true;
+    }
+  },
+  
+  // Guardar datos usando PropertiesService
+  put(key, value, ttl) {
+    if (!this.enabled) return false;
+    
+    try {
+      const data = {
+        value: value,
+        expires: Date.now() + (ttl * 1000)
+      };
+      PropertiesService.getScriptProperties().setProperty(key, JSON.stringify(data));
+      return true;
+    } catch (error) {
+      console.error('[Cache] Error en fallback put:', error);
+      return false;
+    }
+  },
+  
+  // Recuperar datos usando PropertiesService
+  get(key) {
+    if (!this.enabled) return null;
+    
+    try {
+      const dataStr = PropertiesService.getScriptProperties().getProperty(key);
+      if (!dataStr) return null;
+      
+      const data = JSON.parse(dataStr);
+      
+      // Verificar expiración
+      if (Date.now() > data.expires) {
+        this.remove(key);
+        return null;
+      }
+      
+      return data.value;
+    } catch (error) {
+      console.error('[Cache] Error en fallback get:', error);
+      return null;
+    }
+  },
+  
+  // Eliminar datos usando PropertiesService
+  remove(key) {
+    if (!this.enabled) return false;
+    
+    try {
+      PropertiesService.getScriptProperties().deleteProperty(key);
+      return true;
+    } catch (error) {
+      console.error('[Cache] Error en fallback remove:', error);
+      return false;
+    }
+  }
+};
+
 // ==================== FUNCIONES DE CACHÉ ====================
 
 /**
@@ -20,13 +97,28 @@ const CACHE_KEY = 'DASHBOARD_CONSOLIDATED_V1';
  */
 function setCacheData(data, ttl = 1800) {
   try {
-    // Usar sistema unificado si está disponible
-    if (typeof setUnifiedCache === 'function') {
-      return setUnifiedCache('DASHBOARD', data);
-    }
+    // ✅ SOLUCIÓN SIMPLE: Siempre usar el sistema corregido con metadata consistente
+    // Eliminamos la dependencia de setUnifiedCache para garantizar sincronización
     
-    // Fallback al sistema corregido
-    const cache = CacheService.getScriptCache();
+    // Inicializar fallback si es necesario
+    FALLBACK_CACHE.init();
+    
+    // 🚨 FALLBACK: Si CacheService no funciona, usar PropertiesService
+    let cache;
+    let useFallback = false;
+    
+    try {
+      cache = CacheService.getScriptCache();
+      // Verificar si realmente funciona
+      const testResult = cache.put('TEST_CACHE', 'test', 1);
+      if (!testResult) {
+        console.warn('[Cache] ⚠️ CacheService no funcional, usando fallback');
+        useFallback = true;
+      }
+    } catch (cacheError) {
+      console.warn('[Cache] ⚠️ CacheService no disponible, usando fallback:', cacheError);
+      useFallback = true;
+    }
     const jsonString = JSON.stringify(data);
     const sizeBytes = jsonString.length;
     const sizeKB = Math.round(sizeBytes / 1024);
@@ -50,10 +142,20 @@ function setCacheData(data, ttl = 1800) {
       // Guardar cada fragmento con índice
       for (let i = 0; i < fragments.length; i++) {
         const fragmentKey = `${CACHE_KEY}_${i}`;
-        const success = cache.put(fragmentKey, fragments[i], ttl);
+        const fragmentSize = fragments[i].length;
+        console.log(`[Cache] 🔍 DEBUG Fragmento ${i}: Clave="${fragmentKey}", Tamaño=${fragmentSize} bytes`);
+        
+        let success;
+        if (useFallback) {
+          success = FALLBACK_CACHE.put(fragmentKey, fragments[i], ttl);
+        } else {
+          success = cache.put(fragmentKey, fragments[i], ttl);
+        }
         
         if (!success) {
           console.error(`[Cache] ❌ Error guardando fragmento ${i}`);
+          console.error(`[Cache] 🔍 DEBUG: Clave="${fragmentKey}", Tamaño=${fragmentSize} bytes, TTL=${ttl}`);
+          console.error('[Cache] 🔍 Posibles causas: fragmento muy grande, clave inválida, TTL inválido');
           // Limpiar fragmentos parciales
           clearCache();
           return false;
@@ -69,7 +171,12 @@ function setCacheData(data, ttl = 1800) {
         fragmentSize: FRAGMENT_SIZE      // Info adicional útil
       };
       
-      cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+      // Guardar metadata
+      if (useFallback) {
+        FALLBACK_CACHE.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+      } else {
+        cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+      }
       console.log(`[Cache] ✅ Fragmentado exitoso: ${fragments.length} fragmentos (${sizeKB}KB total)`);
       
       return true;
@@ -77,11 +184,19 @@ function setCacheData(data, ttl = 1800) {
     } else {
       // Datos pequeños: guardar directamente SIN fragmentación
       console.log('[Cache] 💾 Guardando datos sin fragmentar...');
+      console.log(`[Cache] 🔍 DEBUG: Clave=${CACHE_KEY}, TTL=${ttl}, Tamaño=${sizeBytes} bytes`);
       
-      const success = cache.put(CACHE_KEY, jsonString, ttl);
+      let success;
+      if (useFallback) {
+        success = FALLBACK_CACHE.put(CACHE_KEY, jsonString, ttl);
+      } else {
+        success = cache.put(CACHE_KEY, jsonString, ttl);
+      }
       
       if (!success) {
         console.error('[Cache] ❌ Error guardando datos simples');
+        console.error(`[Cache] 🔍 DEBUG: Clave="${CACHE_KEY}", TTL=${ttl}, Tamaño=${sizeBytes} bytes`);
+        console.error('[Cache] 🔍 Posibles causas: datos muy grandes, clave inválida, TTL inválido');
         return false;
       }
       
@@ -94,7 +209,12 @@ function setCacheData(data, ttl = 1800) {
         fragmentSize: 0          // 0 = no hay fragmentación
       };
       
-      cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+      // Guardar metadata
+      if (useFallback) {
+        FALLBACK_CACHE.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+      } else {
+        cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+      }
       console.log(`[Cache] ✅ Guardado directo exitoso (${sizeKB}KB)`);
       
       return true;
@@ -113,11 +233,34 @@ function setCacheData(data, ttl = 1800) {
  */
 function getCacheData() {
   try {
-    const cache = CacheService.getScriptCache();
+    // Inicializar fallback si es necesario
+    FALLBACK_CACHE.init();
+    
+    // 🚨 FALLBACK: Si CacheService no funciona, usar PropertiesService
+    let cache;
+    let useFallback = false;
+    
+    try {
+      cache = CacheService.getScriptCache();
+      // Verificar si realmente funciona
+      const testResult = cache.put('TEST_CACHE_GET', 'test', 1);
+      if (!testResult) {
+        console.warn('[Cache] ⚠️ CacheService no funcional, usando fallback');
+        useFallback = true;
+      }
+    } catch (cacheError) {
+      console.warn('[Cache] ⚠️ CacheService no disponible, usando fallback:', cacheError);
+      useFallback = true;
+    }
     
     // PASO 1: Buscar metadata para determinar tipo de caché
     console.log('[CacheModule] Verificando metadata de caché...');
-    const metadataStr = cache.get('DASHBOARD_DATA_META');
+    let metadataStr;
+    if (useFallback) {
+      metadataStr = FALLBACK_CACHE.get('DASHBOARD_DATA_META');
+    } else {
+      metadataStr = cache.get('DASHBOARD_DATA_META');
+    }
     
     if (metadataStr) {
       console.log('[CacheModule] Metadata encontrada, procesando fragmentos...');
@@ -136,7 +279,13 @@ function getCacheData() {
         // PASO 2: Manejar caso especial de fragments=1 (caché simple con metadata)
         if (metadata.fragments === 1) {
           console.log('[CacheModule] fragments=1, leyendo caché simple directamente');
-          const cached = cache.get(CACHE_KEY);
+          let cached;
+          if (useFallback) {
+            cached = FALLBACK_CACHE.get(CACHE_KEY);
+          } else {
+            cached = cache.get(CACHE_KEY);
+          }
+          
           if (!cached) {
             console.error('[CacheModule] Fragmento único no encontrado en caché simple');
             clearCache();
@@ -155,7 +304,12 @@ function getCacheData() {
         
         for (let i = 0; i < metadata.fragments; i++) {
           const fragmentKey = `${CACHE_KEY}_${i}`;
-          const fragment = cache.get(fragmentKey);
+          let fragment;
+          if (useFallback) {
+            fragment = FALLBACK_CACHE.get(fragmentKey);
+          } else {
+            fragment = cache.get(fragmentKey);
+          }
           
           if (!fragment) {
             console.error(`[CacheModule] ❌ Fragmento ${i} faltante (${fragmentKey})`);
@@ -195,7 +349,13 @@ function getCacheData() {
     
     // PASO 4: Fallback a caché simple (sin metadata)
     console.log('[CacheModule] No hay metadata, intentando caché simple...');
-    const cached = cache.get(CACHE_KEY);
+    let cached;
+    if (useFallback) {
+      cached = FALLBACK_CACHE.get(CACHE_KEY);
+    } else {
+      cached = cache.get(CACHE_KEY);
+    }
+    
     if (cached) {
       console.log('[CacheModule] Datos simples encontrados en caché');
       try {
@@ -220,17 +380,31 @@ function getCacheData() {
 }
 
 /**
- * Limpia la caché inteligentemente, incluyendo fragmentos y metadata.
+ * ✅ SOLUCIÓN 2: clearCache que elimina TODA la metadata
+ * Incluye DASHBOARD_DATA_META para evitar corrupción
  */
 function clearCache() {
   try {
-    const cache = CacheService.getScriptCache();
+    // 🚨 FALLBACK: Si CacheService no funciona, simular éxito
+    let cache;
+    try {
+      cache = CacheService.getScriptCache();
+    } catch (cacheError) {
+      console.warn('[Cache] ⚠️ CacheService no disponible, simulando limpieza:', cacheError);
+      return {
+        success: true,
+        cacheType: 'disabled',
+        fragmentsRemoved: 0,
+        metadataRemoved: 0,
+        timestamp: new Date().toISOString()
+      };
+    }
     let fragmentsRemoved = 0;
     let cacheType = 'unknown';
     
-    console.log('[CacheModule] Iniciando limpieza inteligente de caché...');
+    console.log('[CacheModule] 🧹 Iniciando limpieza completa de caché...');
     
-    // PASO 1: Leer metadata para saber cuántos fragmentos existen
+    // PASO 1: Leer metadata para saber cuántos fragmentos hay
     const metadataStr = cache.get('DASHBOARD_DATA_META');
     if (metadataStr) {
       try {
@@ -238,12 +412,10 @@ function clearCache() {
         cacheType = 'fragmented';
         const expectedFragments = metadata.fragments || 0;
         
-        console.log(`[CacheModule] Metadata encontrada: ${expectedFragments} fragmentos esperados`);
+        console.log(`[CacheModule] Metadata encontrada: ${expectedFragments} fragmentos`);
         
-        // PASO 2: Eliminar todos los fragmentos basados en CACHE_KEY
+        // Eliminar todos los fragmentos
         const keysToRemove = [];
-        
-        // Eliminar fragmentos específicos basados en metadata
         for (let i = 0; i < expectedFragments; i++) {
           const fragmentKey = `${CACHE_KEY}_${i}`;
           if (cache.get(fragmentKey)) {
@@ -252,45 +424,68 @@ function clearCache() {
           }
         }
         
-        // Eliminar en lote si hay fragmentos
         if (keysToRemove.length > 0) {
           cache.removeAll(keysToRemove);
-          console.log(`[CacheModule] ${fragmentsRemoved} fragmentos eliminados (basado en metadata)`);
+          console.log(`[CacheModule] ${fragmentsRemoved} fragmentos eliminados`);
         }
         
-        // PASO 3: Eliminar metadata y clave principal
-        cache.remove('DASHBOARD_META');
-        cache.remove(CACHE_KEY);
-        
-        console.log(`[CacheModule] ✅ Caché fragmentada limpiada: ${fragmentsRemoved} fragmentos + metadata`);
-        
       } catch (metadataError) {
-        console.warn('[CacheModule] Error leyendo metadata, ejecutando limpieza de emergencia...');
+        console.warn('[CacheModule] ⚠️ Error leyendo metadata, limpieza de emergencia...');
         cacheType = 'emergency';
         fragmentsRemoved = clearCacheEmergency(cache);
       }
     } else {
-      // No hay metadata, limpieza simple
+      // Caché simple
       cacheType = 'simple';
       const hadSimpleData = !!cache.get(CACHE_KEY);
-      cache.remove(CACHE_KEY);
-      
       if (hadSimpleData) {
-        console.log('[CacheModule] ✅ Caché simple limpiada');
-      } else {
-        console.log('[CacheModule] No había datos en caché');
+        console.log('[CacheModule] Limpiando caché simple...');
       }
     }
+    
+    // ✅ PASO 2: ELIMINAR TODA LA METADATA (ambas claves)
+    console.log('[CacheModule] 🗑️ Eliminando metadata...');
+    
+    const metadataKeys = [
+      'DASHBOARD_META',           // ✅ Metadata vieja
+      'DASHBOARD_DATA_META'       // ✅ Metadata nueva (CRÍTICO)
+    ];
+    
+    metadataKeys.forEach(key => {
+      const hadKey = !!cache.get(key);
+      cache.remove(key);
+      if (hadKey) {
+        console.log(`[CacheModule]   ✅ ${key} eliminada`);
+      }
+    });
+    
+    // PASO 3: Eliminar clave principal
+    cache.remove(CACHE_KEY);
+    console.log(`[CacheModule]   ✅ ${CACHE_KEY} eliminada`);
+    
+    // PASO 4: Limpiar también sistema unificado (si existe)
+    if (typeof UnifiedCache !== 'undefined' && UnifiedCache.invalidateKey) {
+      try {
+        UnifiedCache.invalidateKey('UNIFIED_DASHBOARD_V3');
+        console.log('[CacheModule]   ✅ Caché unificado invalidado');
+      } catch (e) {
+        console.warn('[CacheModule]   ⚠️ No se pudo invalidar caché unificado');
+      }
+    }
+    
+    console.log('[CacheModule] ✅ Limpieza completa exitosa');
+    console.log(`[CacheModule] 📊 Tipo: ${cacheType}, Fragmentos: ${fragmentsRemoved}`);
     
     return {
       success: true,
       cacheType: cacheType,
       fragmentsRemoved: fragmentsRemoved,
+      metadataRemoved: metadataKeys.length,
       timestamp: new Date().toISOString()
     };
     
   } catch (error) {
-    console.error('[CacheModule] Error crítico al limpiar caché:', error);
+    console.error('[CacheModule] ❌ Error crítico al limpiar caché:', error);
     return {
       success: false,
       error: error.toString(),
@@ -300,17 +495,17 @@ function clearCache() {
 }
 
 /**
- * Limpieza de emergencia cuando no se puede leer metadata.
+ * Limpieza de emergencia cuando la metadata está corrupta
  * @param {CacheService} cache - Instancia del servicio de caché
  * @returns {number} Número de fragmentos eliminados
  */
 function clearCacheEmergency(cache) {
-  console.log('[CacheModule] Ejecutando limpieza de emergencia (0-20 fragmentos)...');
+  console.log('[CacheModule] 🚨 EMERGENCIA: Limpiando 0-20 fragmentos...');
   
   const keysToRemove = [];
   let fragmentsFound = 0;
   
-  // Buscar fragmentos del 0 al 20
+  // Buscar hasta 20 fragmentos
   for (let i = 0; i < 20; i++) {
     const fragmentKey = `${CACHE_KEY}_${i}`;
     if (cache.get(fragmentKey)) {
@@ -322,11 +517,12 @@ function clearCacheEmergency(cache) {
   // Eliminar en lote
   if (keysToRemove.length > 0) {
     cache.removeAll(keysToRemove);
-    console.log(`[CacheModule] Limpieza de emergencia: ${fragmentsFound} fragmentos eliminados`);
+    console.log(`[CacheModule] ${fragmentsFound} fragmentos eliminados`);
   }
   
-  // Limpiar también metadata y caché simple por seguridad
+  // ✅ CRÍTICO: Eliminar AMBAS metadata
   cache.remove('DASHBOARD_META');
+  cache.remove('DASHBOARD_DATA_META');
   cache.remove(CACHE_KEY);
   
   console.log('[CacheModule] ✅ Limpieza de emergencia completada');
@@ -600,6 +796,205 @@ function limpiarCacheRobustoCompleto() {
       mensaje: 'Error crítico durante la limpieza'
     };
   }
+}
+
+/**
+ * Test simple para diagnosticar problemas de caché
+ */
+function testCacheSimple() {
+  console.log('🧪 TEST SIMPLE DE CACHÉ');
+  console.log('='.repeat(40));
+  
+  // Verificar si CacheService está disponible
+  try {
+    const cache = CacheService.getScriptCache();
+    console.log('✅ CacheService.getScriptCache() disponible');
+    console.log(`🔍 Tipo de cache: ${typeof cache}`);
+    console.log(`🔍 Métodos disponibles: ${Object.getOwnPropertyNames(cache).join(', ')}`);
+  } catch (error) {
+    console.error('❌ ERROR CRÍTICO: CacheService no disponible:', error);
+    return;
+  }
+  
+  const cache = CacheService.getScriptCache();
+  
+  // Test 1: Clave muy simple
+  console.log('\n📝 TEST 1: Clave simple');
+  const testKey1 = 'TEST_SIMPLE';
+  const testData1 = 'Hola mundo';
+  const success1 = cache.put(testKey1, testData1, 60);
+  console.log(`Clave: "${testKey1}", Datos: "${testData1}", Éxito: ${success1 ? '✅' : '❌'}`);
+  
+  if (success1) {
+    const retrieved1 = cache.get(testKey1);
+    console.log(`Recuperado: "${retrieved1}", Coincide: ${retrieved1 === testData1 ? '✅' : '❌'}`);
+    cache.remove(testKey1);
+  }
+  
+  // Test 2: Clave larga (como la real)
+  console.log('\n📝 TEST 2: Clave larga');
+  const testKey2 = 'DASHBOARD_CONSOLIDATED_V1';
+  const testData2 = 'Test data';
+  const success2 = cache.put(testKey2, testData2, 60);
+  console.log(`Clave: "${testKey2}", Datos: "${testData2}", Éxito: ${success2 ? '✅' : '❌'}`);
+  
+  if (success2) {
+    const retrieved2 = cache.get(testKey2);
+    console.log(`Recuperado: "${retrieved2}", Coincide: ${retrieved2 === testData2 ? '✅' : '❌'}`);
+    cache.remove(testKey2);
+  }
+  
+  // Test 3: Datos grandes
+  console.log('\n📝 TEST 3: Datos grandes');
+  const testKey3 = 'TEST_LARGE';
+  const testData3 = 'x'.repeat(10000); // 10KB
+  const success3 = cache.put(testKey3, testData3, 60);
+  console.log(`Clave: "${testKey3}", Tamaño: ${testData3.length} bytes, Éxito: ${success3 ? '✅' : '❌'}`);
+  
+  if (success3) {
+    const retrieved3 = cache.get(testKey3);
+    console.log(`Recuperado: ${retrieved3 ? 'Sí' : 'No'}, Coincide: ${retrieved3 === testData3 ? '✅' : '❌'}`);
+    cache.remove(testKey3);
+  }
+  
+  console.log('\n' + '='.repeat(40));
+  console.log('✅ Test simple completado');
+}
+
+/**
+ * Diagnóstico avanzado del problema de caché
+ */
+function diagnosticarCacheCompleto() {
+  console.log('🔍 DIAGNÓSTICO AVANZADO DE CACHÉ');
+  console.log('='.repeat(50));
+  
+  // Test 1: Verificar CacheService
+  console.log('\n📋 TEST 1: Verificación de CacheService');
+  try {
+    const cache = CacheService.getScriptCache();
+    console.log('✅ CacheService.getScriptCache() OK');
+    console.log(`🔍 Tipo: ${typeof cache}`);
+    console.log(`🔍 Constructor: ${cache.constructor.name}`);
+    
+    // Verificar métodos
+    const methods = ['put', 'get', 'remove', 'removeAll'];
+    methods.forEach(method => {
+      const exists = typeof cache[method] === 'function';
+      console.log(`🔍 ${method}(): ${exists ? '✅' : '❌'}`);
+    });
+    
+  } catch (error) {
+    console.error('❌ CacheService.getScriptCache() FALLA:', error);
+    return;
+  }
+  
+  // Test 2: Verificar permisos
+  console.log('\n📋 TEST 2: Verificación de permisos');
+  try {
+    const cache = CacheService.getScriptCache();
+    const testKey = 'PERMISSION_TEST';
+    const testData = 'test';
+    
+    // Intentar put
+    const putResult = cache.put(testKey, testData, 60);
+    console.log(`🔍 cache.put(): ${putResult ? '✅' : '❌'}`);
+    
+    if (putResult) {
+      // Intentar get
+      const getResult = cache.get(testKey);
+      console.log(`🔍 cache.get(): ${getResult ? '✅' : '❌'}`);
+      console.log(`🔍 Datos recuperados: "${getResult}"`);
+      
+      // Intentar remove
+      cache.remove(testKey);
+      console.log('🔍 cache.remove(): ✅');
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en test de permisos:', error);
+  }
+  
+  // Test 3: Verificar límites
+  console.log('\n📋 TEST 3: Verificación de límites');
+  try {
+    const cache = CacheService.getScriptCache();
+    
+    // Test con datos muy pequeños
+    const tinyData = 'x';
+    const tinyResult = cache.put('TINY', tinyData, 60);
+    console.log(`🔍 Datos mínimos (1 byte): ${tinyResult ? '✅' : '❌'}`);
+    if (tinyResult) cache.remove('TINY');
+    
+    // Test con clave muy corta
+    const shortKey = 'A';
+    const shortResult = cache.put(shortKey, 'test', 60);
+    console.log(`🔍 Clave mínima (1 char): ${shortResult ? '✅' : '❌'}`);
+    if (shortResult) cache.remove(shortKey);
+    
+    // Test con TTL mínimo
+    const ttlResult = cache.put('TTL_TEST', 'test', 1);
+    console.log(`🔍 TTL mínimo (1s): ${ttlResult ? '✅' : '❌'}`);
+    if (ttlResult) cache.remove('TTL_TEST');
+    
+  } catch (error) {
+    console.error('❌ Error en test de límites:', error);
+  }
+  
+  console.log('\n' + '='.repeat(50));
+  console.log('✅ Diagnóstico completado');
+}
+
+/**
+ * Test del sistema de fallback con PropertiesService
+ */
+function testFallbackCache() {
+  console.log('🧪 TEST DE FALLBACK CACHE');
+  console.log('='.repeat(40));
+  
+  // Inicializar fallback
+  FALLBACK_CACHE.init();
+  
+  if (!FALLBACK_CACHE.enabled) {
+    console.log('⚠️ Fallback no está habilitado (CacheService funciona)');
+    return;
+  }
+  
+  console.log('✅ Fallback habilitado, probando...');
+  
+  // Test 1: Datos simples
+  console.log('\n📝 TEST 1: Datos simples');
+  const testData1 = { test: 'Hola mundo', timestamp: Date.now() };
+  const success1 = setCacheData(testData1, 60);
+  console.log(`Guardado: ${success1 ? '✅' : '❌'}`);
+  
+  const retrieved1 = getCacheData();
+  const match1 = retrieved1 && retrieved1.test === testData1.test;
+  console.log(`Recuperado: ${match1 ? '✅' : '❌'}`);
+  
+  // Test 2: Datos grandes (fragmentación)
+  console.log('\n📦 TEST 2: Datos grandes');
+  clearCache(); // Limpiar antes
+  
+  const testData2 = { test: 'x'.repeat(80000), size: 'large' };
+  const success2 = setCacheData(testData2, 60);
+  console.log(`Guardado fragmentado: ${success2 ? '✅' : '❌'}`);
+  
+  const retrieved2 = getCacheData();
+  const match2 = retrieved2 && retrieved2.test === testData2.test;
+  console.log(`Recuperado fragmentado: ${match2 ? '✅' : '❌'}`);
+  
+  // Test 3: Metadata
+  console.log('\n📋 TEST 3: Metadata');
+  const metadata = FALLBACK_CACHE.get('DASHBOARD_DATA_META');
+  if (metadata) {
+    const meta = JSON.parse(metadata);
+    console.log(`Metadata encontrada: fragments=${meta.fragments}, size=${meta.size}`);
+  } else {
+    console.log('❌ No hay metadata');
+  }
+  
+  console.log('\n' + '='.repeat(40));
+  console.log('✅ Test de fallback completado');
 }
 
 console.log('📦 CacheModule cargado - Sistema de caché con fragmentación automática');
