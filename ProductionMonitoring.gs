@@ -459,7 +459,7 @@ function verificarErroresRecientes() {
 }
 
 /**
- * Obtiene métricas de producción
+ * Obtiene métricas de producción usando claves reales
  * @returns {Object} Métricas del sistema
  */
 function obtenerMetricasProduccion() {
@@ -467,9 +467,16 @@ function obtenerMetricasProduccion() {
     console.log('[ProductionMonitoring] Obteniendo métricas de producción...');
     
     const metrics = getMetricasRendimiento();
-    const cache = CacheService.getScriptCache();
     
-    // Métricas adicionales de producción
+    if (!metrics.success) {
+      console.error('[ProductionMonitoring] Error obteniendo métricas de rendimiento:', metrics.error);
+      return {
+        timestamp: new Date().toISOString(),
+        error: metrics.error
+      };
+    }
+    
+    // Usar métricas actualizadas de getMetricasRendimiento
     const productionMetrics = {
       timestamp: new Date().toISOString(),
       system: {
@@ -478,36 +485,35 @@ function obtenerMetricasProduccion() {
         cpu_usage: 'N/A' // No disponible en Apps Script
       },
       cache: {
-        dashboard_available: !!cache.get('DASHBOARD_DATA_V2'),
-        ld_cached_items: 0,
-        lcf_cached_items: 0,
-        total_cached_items: 0
+        dashboard_available: metrics.data.cache.dashboard,
+        stats_available: metrics.data.cache.stats,
+        ld_cached_items: metrics.data.cache.ld_cached,
+        lcf_cached_items: metrics.data.cache.lcf_cached,
+        total_cached_items: metrics.data.cache.total_cached,
+        hit_rate: metrics.data.cache.hit_rate,
+        total_keys_registered: metrics.data.cache.total_keys_registered,
+        cache_hits: metrics.data.cache.cache_hits,
+        cache_misses: metrics.data.cache.cache_misses
       },
       performance: {
         avg_dashboard_load: 'N/A',
         avg_ld_load: 'N/A',
-        avg_lcf_load: 'N/A'
+        avg_lcf_load: 'N/A',
+        cache_efficiency: metrics.data.performance.cache_efficiency
       },
       errors: {
         total_errors: 0,
         error_rate: '0%',
         last_error: null
+      },
+      keys: {
+        main_cache_keys: metrics.data.keys.main_cache_keys,
+        leader_cache_keys: metrics.data.keys.leader_cache_keys,
+        sample_keys: metrics.data.keys.sample_keys
       }
     };
     
-    // Contar elementos en caché
-    for (let i = 0; i < 100; i++) {
-      if (cache.get(`LD_OPT_FULL_${i}`) || cache.get(`LD_OPT_BASIC_${i}`)) {
-        productionMetrics.cache.ld_cached_items++;
-      }
-      if (cache.get(`LCF_OPT_${i}`)) {
-        productionMetrics.cache.lcf_cached_items++;
-      }
-    }
-    
-    productionMetrics.cache.total_cached_items = 
-      productionMetrics.cache.ld_cached_items + 
-      productionMetrics.cache.lcf_cached_items;
+    console.log(`[ProductionMonitoring] Métricas de producción: ${productionMetrics.cache.total_cached_items} elementos en caché (${productionMetrics.cache.hit_rate}% acierto)`);
     
     return productionMetrics;
     

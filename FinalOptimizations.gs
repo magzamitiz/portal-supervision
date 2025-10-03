@@ -380,34 +380,88 @@ function limpiarCacheInteligente() {
 }
 
 /**
- * Optimización final: Métricas de rendimiento del sistema
+ * Optimización final: Métricas de rendimiento del sistema usando claves reales
  * @returns {Object} Métricas del sistema
  */
 function getMetricasRendimiento() {
   try {
     const cache = CacheService.getScriptCache();
+    const properties = PropertiesService.getScriptProperties();
+    
+    // Obtener claves reales registradas
+    const cacheKeys = properties.getProperty('CACHE_KEYS');
+    const leaderKeys = properties.getProperty('LEADER_CACHE_KEYS');
+    
+    const realCacheKeys = cacheKeys ? JSON.parse(cacheKeys) : [];
+    const realLeaderKeys = leaderKeys ? JSON.parse(leaderKeys) : [];
+    
+    // Contar elementos en caché usando claves reales
+    let ldCached = 0;
+    let lcfCached = 0;
+    let totalCached = 0;
+    let cacheHits = 0;
+    let cacheMisses = 0;
+    
+    // Contar claves principales
+    realCacheKeys.forEach(key => {
+      if (cache.get(key)) {
+        cacheHits++;
+        totalCached++;
+      } else {
+        cacheMisses++;
+      }
+    });
+    
+    // Contar claves de líderes y clasificar por tipo
+    realLeaderKeys.forEach(key => {
+      if (cache.get(key)) {
+        cacheHits++;
+        totalCached++;
+        
+        // Clasificar por prefijo
+        if (key.startsWith('LD_OPT_FULL_') || key.startsWith('LD_OPT_BASIC_')) {
+          ldCached++;
+        } else if (key.startsWith('LCF_OPT_')) {
+          lcfCached++;
+        }
+      } else {
+        cacheMisses++;
+      }
+    });
+    
+    // Calcular tasa de acierto
+    const totalKeys = realCacheKeys.length + realLeaderKeys.length;
+    const hitRate = totalKeys > 0 ? Math.round((cacheHits / totalKeys) * 100) : 0;
+    
     const metrics = {
       timestamp: new Date().toISOString(),
       cache: {
         dashboard: !!cache.get('DASHBOARD_DATA_V2'),
-        ld_cached: 0,
-        lcf_cached: 0
+        stats: !!cache.get('STATS_RAPIDAS_V2'),
+        ld_cached: ldCached,
+        lcf_cached: lcfCached,
+        total_cached: totalCached,
+        hit_rate: hitRate,
+        total_keys_registered: totalKeys,
+        cache_hits: cacheHits,
+        cache_misses: cacheMisses
       },
       performance: {
         memory_usage: 'N/A', // No disponible en Apps Script
-        execution_time: 'N/A'
+        execution_time: 'N/A',
+        cache_efficiency: hitRate >= 70 ? 'Excelente' : hitRate >= 50 ? 'Buena' : 'Necesita Mejora'
+      },
+      keys: {
+        main_cache_keys: realCacheKeys.length,
+        leader_cache_keys: realLeaderKeys.length,
+        sample_keys: {
+          main: realCacheKeys.slice(0, 3),
+          leaders: realLeaderKeys.slice(0, 3)
+        }
       }
     };
     
-    // Contar elementos en caché (aproximado)
-    for (let i = 0; i < 100; i++) {
-      if (cache.get(`LD_OPT_FULL_${i}`) || cache.get(`LD_OPT_BASIC_${i}`)) {
-        metrics.cache.ld_cached++;
-      }
-      if (cache.get(`LCF_OPT_${i}`)) {
-        metrics.cache.lcf_cached++;
-      }
-    }
+    console.log(`[FinalOptimizations] Métricas calculadas: ${totalCached} elementos en caché (${hitRate}% acierto)`);
     
     return {
       success: true,
