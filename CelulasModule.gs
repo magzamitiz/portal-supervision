@@ -40,7 +40,7 @@ const CELULAS_CONFIG = {
  * @param {string} sheetName - Nombre de la hoja
  * @returns {Array} Array de células completas
  */
-function cargarCelulasCompletas(spreadsheet, sheetName) {
+function cargarCelulasModulo(spreadsheet, sheetName) {
   try {
     console.log('[CelulasModule] Cargando células completas...');
     
@@ -155,53 +155,9 @@ function cargarCelulasOptimizadas(spreadsheet, sheetName) {
   }
 }
 
-/**
- * Carga células por LCF responsable
- * @param {Object} spreadsheet - Objeto spreadsheet de Google Apps Script
- * @param {string} sheetName - Nombre de la hoja
- * @param {string} idLCF - ID del LCF responsable
- * @returns {Array} Array de células del LCF
- */
-function cargarCelulasPorLCF(spreadsheet, sheetName, idLCF) {
-  try {
-    console.log(`[CelulasModule] Cargando células para LCF: ${idLCF}`);
-    
-    const sheet = spreadsheet.getSheetByName(sheetName);
-    if (!sheet) return [];
-
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-
-    const headers = data[0].map(h => h.toString().trim());
-    const columnas = mapearColumnasCelulas(headers);
-    const lcfIndex = columnas.lcfResponsable;
-    
-    if (lcfIndex === -1) {
-      console.warn('[CelulasModule] Columna LCF responsable no encontrada');
-      return [];
-    }
-    
-    const celulas = [];
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const lcfFila = row[lcfIndex];
-      
-      if (lcfFila && lcfFila.toString().trim() === idLCF) {
-        const celula = procesarFilaCelula(row, columnas, headers);
-        if (celula && celula.ID_Celula) {
-          celulas.push(celula);
-        }
-      }
-    }
-    
-    console.log(`[CelulasModule] ${celulas.length} células cargadas para LCF ${idLCF}`);
-    return celulas;
-    
-  } catch (error) {
-    console.error(`[CelulasModule] Error cargando células por LCF ${idLCF}:`, error);
-    return [];
-  }
-}
+// ❌ ELIMINADA: cargarCelulasPorLCF - No se usa en ningún lugar
+// Esta función era un wrapper simple que solo filtraba datos ya cargados
+// y no aportaba valor al sistema. El filtrado se hace directamente donde se necesita.
 
 // ==================== FUNCIONES DE ANÁLISIS DE CÉLULAS ====================
 
@@ -426,38 +382,10 @@ function filtrarCelulasPorLCF(celulas, idLCF) {
   }
 }
 
-/**
- * Obtiene células que necesitan atención
- * @param {Array} celulas - Array de células
- * @returns {Array} Array de células que necesitan atención
- */
-function obtenerCelulasNecesitanAtencion(celulas) {
-  try {
-    return celulas.filter(celula => 
-      celula.Estado === CELULAS_CONFIG.ESTADOS.EN_RIESGO || 
-      celula.Estado === CELULAS_CONFIG.ESTADOS.VACIA
-    );
-  } catch (error) {
-    console.error('[CelulasModule] Error obteniendo células que necesitan atención:', error);
-    return [];
-  }
-}
-
-/**
- * Obtiene células listas para multiplicar
- * @param {Array} celulas - Array de células
- * @returns {Array} Array de células listas para multiplicar
- */
-function obtenerCelulasListasMultiplicar(celulas) {
-  try {
-    return celulas.filter(celula => 
-      celula.Estado === CELULAS_CONFIG.ESTADOS.LISTA_MULTIPLICAR
-    );
-  } catch (error) {
-    console.error('[CelulasModule] Error obteniendo células listas para multiplicar:', error);
-    return [];
-  }
-}
+// ❌ ELIMINADAS: Funciones de análisis no usadas
+// - obtenerCelulasNecesitanAtencion: No se usa en ningún lugar
+// - obtenerCelulasListasMultiplicar: No se usa en ningún lugar
+// Estas funciones eran filtros simples que no aportaban valor al sistema
 
 // ==================== FUNCIONES DE UTILIDAD ====================
 
@@ -519,15 +447,9 @@ function procesarFilaCelula(row, columnas, headers) {
 
 // ==================== FUNCIONES DE COMPATIBILIDAD ====================
 
-/**
- * Función de compatibilidad para cargar células (wrapper)
- * @param {Object} spreadsheet - Objeto spreadsheet de Google Apps Script
- * @param {string} sheetName - Nombre de la hoja
- * @returns {Array} Array de células
- */
-function cargarHojaCelulas(spreadsheet, sheetName) {
-  return cargarCelulasCompletas(spreadsheet, sheetName);
-}
+// ❌ ELIMINADA: cargarHojaCelulas - Wrapper redundante que causaba colisión de namespace
+// Esta función causaba conflicto con cargarHojaCelulas en DataModule.gs
+// La funcionalidad se mantiene en cargarCelulasModulo() (antes cargarCelulasCompletas)
 
 /**
  * Función de compatibilidad para análisis de células

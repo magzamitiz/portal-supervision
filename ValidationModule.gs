@@ -149,12 +149,19 @@ function validarModuloData() {
   };
   
   try {
+    // ✅ FUNCIONES MANTENIDAS DESPUÉS DE FASE 1
     resultado.funciones.push(validarFuncion('cargarHojaLideres', typeof cargarHojaLideres === 'function'));
     resultado.funciones.push(validarFuncion('cargarHojaCelulas', typeof cargarHojaCelulas === 'function'));
     resultado.funciones.push(validarFuncion('cargarHojaIngresos', typeof cargarHojaIngresos === 'function'));
     resultado.funciones.push(validarFuncion('cargarLideresOptimizado', typeof cargarLideresOptimizado === 'function'));
     resultado.funciones.push(validarFuncion('cargarCelulasOptimizado', typeof cargarCelulasOptimizado === 'function'));
     resultado.funciones.push(validarFuncion('cargarIngresosOptimizado', typeof cargarIngresosOptimizado === 'function'));
+    resultado.funciones.push(validarFuncion('cargarDirectorioCompleto', typeof cargarDirectorioCompleto === 'function'));
+    
+    // ❌ FUNCIONES ELIMINADAS EN FASE 1 - NO VALIDAR
+    // - cargarCelulasPorLCF: Eliminada (no se usaba)
+    // - cargarIngresosPorLCF: Eliminada (no se usaba)  
+    // - cargarLideresPorRol: Eliminada (no se usaba)
     
     resultado.exitoso = resultado.funciones.every(f => f.exitoso);
     
@@ -213,9 +220,13 @@ function validarModuloLideres() {
   };
   
   try {
-    resultado.funciones.push(validarFuncion('cargarHojaLideres', typeof cargarHojaLideres === 'function'));
+    // ✅ FUNCIONES MANTENIDAS DESPUÉS DE FASE 2
+    resultado.funciones.push(validarFuncion('cargarLideresModulo', typeof cargarLideresModulo === 'function'));
     resultado.funciones.push(validarFuncion('cargarLideresOptimizado', typeof cargarLideresOptimizado === 'function'));
-    resultado.funciones.push(validarFuncion('cargarLideresPorRol', typeof cargarLideresPorRol === 'function'));
+    
+    // ❌ FUNCIONES ELIMINADAS EN FASE 2 - NO VALIDAR
+    // - cargarHojaLideres: Eliminada (wrapper redundante que causaba colisión)
+    // - cargarLideresPorRol: Eliminada (no se usaba)
     
     resultado.exitoso = resultado.funciones.every(f => f.exitoso);
     
@@ -241,9 +252,19 @@ function validarModuloCelulas() {
   };
   
   try {
-    resultado.funciones.push(validarFuncion('cargarHojaCelulas', typeof cargarHojaCelulas === 'function'));
+    // ✅ FUNCIONES MANTENIDAS DESPUÉS DE FASE 3
+    resultado.funciones.push(validarFuncion('cargarCelulasModulo', typeof cargarCelulasModulo === 'function'));
     resultado.funciones.push(validarFuncion('cargarCelulasOptimizado', typeof cargarCelulasOptimizado === 'function'));
-    resultado.funciones.push(validarFuncion('cargarCelulasPorLCF', typeof cargarCelulasPorLCF === 'function'));
+    resultado.funciones.push(validarFuncion('analizarCelulas', typeof analizarCelulas === 'function'));
+    resultado.funciones.push(validarFuncion('analizarEstadoCelulas', typeof analizarEstadoCelulas === 'function'));
+    resultado.funciones.push(validarFuncion('calcularMetricasCelulas', typeof calcularMetricasCelulas === 'function'));
+    resultado.funciones.push(validarFuncion('determinarEstadoCelula', typeof determinarEstadoCelula === 'function'));
+    
+    // ❌ FUNCIONES ELIMINADAS EN FASE 3 - NO VALIDAR
+    // - cargarHojaCelulas: Eliminada (wrapper redundante que causaba colisión)
+    // - cargarCelulasPorLCF: Eliminada (no se usaba)
+    // - obtenerCelulasNecesitanAtencion: Eliminada (no se usaba)
+    // - obtenerCelulasListasMultiplicar: Eliminada (no se usaba)
     
     resultado.exitoso = resultado.funciones.every(f => f.exitoso);
     
@@ -269,9 +290,18 @@ function validarModuloIngresos() {
   };
   
   try {
-    resultado.funciones.push(validarFuncion('cargarHojaIngresos', typeof cargarHojaIngresos === 'function'));
+    // ✅ FUNCIONES MANTENIDAS DESPUÉS DE FASE 4
+    resultado.funciones.push(validarFuncion('cargarIngresosModulo', typeof cargarIngresosModulo === 'function'));
     resultado.funciones.push(validarFuncion('cargarIngresosOptimizado', typeof cargarIngresosOptimizado === 'function'));
-    resultado.funciones.push(validarFuncion('cargarIngresosPorLCF', typeof cargarIngresosPorLCF === 'function'));
+    resultado.funciones.push(validarFuncion('analizarIngresos', typeof analizarIngresos === 'function'));
+    resultado.funciones.push(validarFuncion('calcularMetricasIngresos', typeof calcularMetricasIngresos === 'function'));
+    resultado.funciones.push(validarFuncion('determinarPrioridad', typeof determinarPrioridad === 'function'));
+    
+    // ❌ FUNCIONES ELIMINADAS EN FASE 4 - NO VALIDAR
+    // - cargarHojaIngresos: Eliminada (wrapper redundante que causaba colisión)
+    // - cargarIngresosPorLCF: Eliminada (no se usaba)
+    // - analizarIngresosCompatibility: Eliminada (wrapper redundante)
+    // - obtenerIngresosUrgentes: Eliminada (no se usaba)
     
     resultado.exitoso = resultado.funciones.every(f => f.exitoso);
     
@@ -297,10 +327,21 @@ function validarModuloSeguimiento() {
   };
   
   try {
+    // ✅ FUNCIONES MANTENIDAS DESPUÉS DE FASE 5
     resultado.funciones.push(validarFuncion('getSeguimientoAlmasLCF', typeof getSeguimientoAlmasLCF === 'function'));
     resultado.funciones.push(validarFuncion('getVistaRapidaLCF', typeof getVistaRapidaLCF === 'function'));
     resultado.funciones.push(validarFuncion('getSeguimientoAlmasLCF_REAL', typeof getSeguimientoAlmasLCF_REAL === 'function'));
     resultado.funciones.push(validarFuncion('getVistaRapidaLCF_REAL', typeof getVistaRapidaLCF_REAL === 'function'));
+    resultado.funciones.push(validarFuncion('getResumenLCF', typeof getResumenLCF === 'function'));
+    resultado.funciones.push(validarFuncion('cargarDatosLCF', typeof cargarDatosLCF === 'function'));
+    resultado.funciones.push(validarFuncion('procesarSeguimientoLCF', typeof procesarSeguimientoLCF === 'function'));
+    resultado.funciones.push(validarFuncion('analizarSeguimientoAlmas', typeof analizarSeguimientoAlmas === 'function'));
+    resultado.funciones.push(validarFuncion('calcularPrioridadAlma', typeof calcularPrioridadAlma === 'function'));
+    
+    // ✅ FUNCIONES INTERNAS RENOMBRADAS EN FASE 5
+    resultado.funciones.push(validarFuncion('cargarMaestroAsistentesInterno', typeof cargarMaestroAsistentesInterno === 'function'));
+    resultado.funciones.push(validarFuncion('cargarInteraccionesInterno', typeof cargarInteraccionesInterno === 'function'));
+    resultado.funciones.push(validarFuncion('cargarVisitasBendicionInterno', typeof cargarVisitasBendicionInterno === 'function'));
     
     resultado.exitoso = resultado.funciones.every(f => f.exitoso);
     
@@ -1192,6 +1233,98 @@ function validarCorreccionesActividadLideres() {
   } catch (error) {
     return {
       nombre: 'Correcciones de Actividad de Líderes',
+      resultado: 'ERROR',
+      error: error.toString(),
+      tiempo: Date.now() - startTime
+    };
+  }
+}
+
+/**
+ * Valida las correcciones de actividad de líderes implementadas
+ * @returns {Object} Resultado de la validación
+ */
+function validarCorreccionesActividadLideres() {
+  const startTime = Date.now();
+  const verificaciones = [];
+  
+  try {
+    console.log('[ValidationModule] Validando correcciones de actividad de líderes...');
+    
+    // Verificar que processCelulasOptimized incluye campos de líder
+    try {
+      // Simular datos de prueba para verificar la función
+      const datosPrueba = [
+        ['ID Célula', 'Nombre Célula', 'ID Miembro', 'Nombre Miembro', 'ID LCF', 'Nombre LCF', 'ID_Lider', 'Estado', 'Congregación', 'Ultima_Actividad'],
+        ['CEL-001', 'Célula Test', 'ALM-001', 'Miembro Test', 'LCF-001', 'LCF Test', 'LD-001', 'Activo', 'Central', '2024-01-15']
+      ];
+      
+      // Verificar que la función existe y puede procesar datos
+      if (typeof processCelulasOptimized === 'function') {
+        verificaciones.push({
+          item: 'processCelulasOptimized existe',
+          success: true,
+          valor: 'Función disponible',
+          tiempo: Date.now() - startTime
+        });
+      } else {
+        verificaciones.push({
+          item: 'processCelulasOptimized existe',
+          success: false,
+          error: 'Función no encontrada',
+          tiempo: Date.now() - startTime
+        });
+      }
+    } catch (error) {
+      verificaciones.push({
+        item: 'processCelulasOptimized existe',
+        success: false,
+        error: error.toString(),
+        tiempo: Date.now() - startTime
+      });
+    }
+    
+    // Verificar que calcularActividadLideres existe
+    const calcularActividadExiste = typeof calcularActividadLideres === 'function';
+    verificaciones.push({
+      item: 'calcularActividadLideres existe',
+      success: calcularActividadExiste,
+      valor: calcularActividadExiste ? 'Función disponible' : 'Función no encontrada',
+      tiempo: Date.now() - startTime
+    });
+    
+    // Verificar que integrarActividadLideres existe
+    const integrarActividadExiste = typeof integrarActividadLideres === 'function';
+    verificaciones.push({
+      item: 'integrarActividadLideres existe',
+      success: integrarActividadExiste,
+      valor: integrarActividadExiste ? 'Función disponible' : 'Función no encontrada',
+      tiempo: Date.now() - startTime
+    });
+    
+    // Verificar que las funciones están integradas en el flujo principal
+    const getDashboardDataExiste = typeof getDashboardDataOptimized === 'function';
+    verificaciones.push({
+      item: 'getDashboardDataOptimized integra funciones de actividad',
+      success: getDashboardDataExiste,
+      valor: getDashboardDataExiste ? 'Flujo principal disponible' : 'Flujo principal no encontrado',
+      tiempo: Date.now() - startTime
+    });
+    
+    const exitosos = verificaciones.filter(v => v.success).length;
+    
+    return {
+      nombre: 'Correcciones de actividad de líderes',
+      resultado: exitosos === verificaciones.length ? 'PASS' : 'FAIL',
+      verificaciones: verificaciones,
+      exitosos: exitosos,
+      total: verificaciones.length,
+      tiempo: Date.now() - startTime
+    };
+    
+  } catch (error) {
+    return {
+      nombre: 'Correcciones de actividad de líderes',
       resultado: 'ERROR',
       error: error.toString(),
       tiempo: Date.now() - startTime

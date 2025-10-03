@@ -46,7 +46,7 @@ const INGRESOS_CONFIG = {
  * @param {string} sheetName - Nombre de la hoja
  * @returns {Array} Array de ingresos completos
  */
-function cargarIngresosCompletos(spreadsheet, sheetName) {
+function cargarIngresosModulo(spreadsheet, sheetName) {
   try {
     console.log('[IngresosModule] Cargando ingresos completos...');
     
@@ -227,46 +227,9 @@ function cargarIngresosOptimizados(spreadsheet, sheetName, lcfId = null) {
  * @param {string} idLCF - ID del LCF
  * @returns {Array} Array de ingresos del LCF
  */
-function cargarIngresosPorLCF(spreadsheet, sheetName, idLCF) {
-  try {
-    console.log(`[IngresosModule] Cargando ingresos para LCF: ${idLCF}`);
-    
-    const sheet = spreadsheet.getSheetByName(sheetName);
-    if (!sheet) return [];
-
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-
-    const headers = data[0].map(h => h.toString().trim());
-    const columnas = mapearColumnasIngresos(headers);
-    
-    if (columnas.idAlma === -1 || columnas.idLCF === -1) {
-      console.warn('[IngresosModule] Columnas requeridas no encontradas');
-      return [];
-    }
-    
-    const ingresos = [];
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const idAlma = row[columnas.idAlma];
-      const rowLCF = row[columnas.idLCF];
-      
-      if (idAlma && rowLCF && rowLCF.toString().trim() === idLCF) {
-        const ingreso = procesarFilaIngreso(row, columnas, headers);
-        if (ingreso) {
-          ingresos.push(ingreso);
-        }
-      }
-    }
-    
-    console.log(`[IngresosModule] ${ingresos.length} ingresos cargados para LCF ${idLCF}`);
-    return ingresos;
-    
-  } catch (error) {
-    console.error(`[IngresosModule] Error cargando ingresos por LCF ${idLCF}:`, error);
-    return [];
-  }
-}
+// ❌ ELIMINADA: cargarIngresosPorLCF - No se usa en ningún lugar
+// Esta función era un wrapper simple que solo filtraba datos ya cargados
+// y no aportaba valor al sistema. El filtrado se hace directamente donde se necesita.
 
 // ==================== FUNCIONES DE ANÁLISIS DE INGRESOS ====================
 
@@ -524,22 +487,8 @@ function filtrarIngresosPorIntegracion(ingresos, enCelula) {
   }
 }
 
-/**
- * Obtiene ingresos urgentes (sin asignar por más de 3 días)
- * @param {Array} ingresos - Array de ingresos
- * @returns {Array} Array de ingresos urgentes
- */
-function obtenerIngresosUrgentes(ingresos) {
-  try {
-    return ingresos.filter(ingreso => 
-      ingreso.Estado_Asignacion === INGRESOS_CONFIG.ESTADOS_ASIGNACION.PENDIENTE && 
-      ingreso.Dias_Desde_Ingreso > 3
-    );
-  } catch (error) {
-    console.error('[IngresosModule] Error obteniendo ingresos urgentes:', error);
-    return [];
-  }
-}
+// ❌ ELIMINADA: obtenerIngresosUrgentes - No se usa en ningún lugar
+// Esta función era un filtro simple que no aportaba valor al sistema
 
 // ==================== FUNCIONES DE UTILIDAD ====================
 
@@ -612,23 +561,12 @@ function procesarFilaIngreso(row, columnas, headers) {
 
 // ==================== FUNCIONES DE COMPATIBILIDAD ====================
 
-/**
- * Función de compatibilidad para cargar ingresos (wrapper)
- * @param {Object} spreadsheet - Objeto spreadsheet de Google Apps Script
- * @param {string} sheetName - Nombre de la hoja
- * @returns {Array} Array de ingresos
- */
-function cargarHojaIngresos(spreadsheet, sheetName) {
-  return cargarIngresosCompletos(spreadsheet, sheetName);
-}
+// ❌ ELIMINADA: cargarHojaIngresos - Wrapper redundante que causaba colisión de namespace
+// Esta función causaba conflicto con cargarHojaIngresos en DataModule.gs
+// La funcionalidad se mantiene en cargarIngresosModulo() (antes cargarIngresosCompletos)
 
-/**
- * Función de compatibilidad para análisis de ingresos
- * @param {Array} ingresos - Array de ingresos
- * @returns {Object} Análisis de ingresos
- */
-function analizarIngresosCompatibility(ingresos) {
-  return analizarIngresos(ingresos);
-}
+// ❌ ELIMINADA: analizarIngresosCompatibility - Wrapper redundante
+// Esta función era un wrapper simple que no aportaba valor al sistema
+// La funcionalidad se mantiene en analizarIngresos()
 
 console.log('👥 IngresosModule cargado - Gestión de ingresos modularizada');

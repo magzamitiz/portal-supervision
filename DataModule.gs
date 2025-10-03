@@ -549,38 +549,12 @@ function indexarIngresosPorLCF(ingresos) {
 }
 
 // ==================== FUNCIONES DE CARGA POR FILTROS ====================
-
-/**
- * Carga líderes por rol específico
- * @param {Object} spreadsheet - Objeto spreadsheet
- * @param {string} rol - Rol a filtrar ('LD', 'LCF', etc.)
- * @returns {Array} Array de líderes del rol especificado
- */
-function cargarLideresPorRol(spreadsheet, rol) {
-  const todosLosLideres = cargarHojaLideres(spreadsheet);
-  return todosLosLideres.filter(lider => lider.Rol === rol.toUpperCase());
-}
-
-/**
- * Carga células por LCF responsable
- * @param {Object} spreadsheet - Objeto spreadsheet
- * @param {string} idLCF - ID del LCF
- * @returns {Array} Array de células del LCF
- */
-function cargarCelulasPorLCF(spreadsheet, idLCF) {
-  const todasLasCelulas = cargarHojaCelulas(spreadsheet);
-  return todasLasCelulas.filter(celula => celula.ID_LCF_Responsable === idLCF);
-}
-
-/**
- * Carga ingresos por LCF
- * @param {Object} spreadsheet - Objeto spreadsheet
- * @param {string} idLCF - ID del LCF
- * @returns {Array} Array de ingresos del LCF
- */
-function cargarIngresosPorLCF(spreadsheet, idLCF) {
-  const todosLosIngresos = cargarHojaIngresos(spreadsheet);
-  return todosLosIngresos.filter(ingreso => ingreso.ID_LCF === idLCF);
-}
+// ❌ ELIMINADAS: Funciones no usadas en el sistema
+// - cargarLideresPorRol: No se usa en ningún lugar
+// - cargarCelulasPorLCF: No se usa en ningún lugar  
+// - cargarIngresosPorLCF: No se usa en ningún lugar
+// 
+// Estas funciones eran wrappers simples que solo filtraban datos ya cargados
+// y no aportaban valor al sistema. El filtrado se hace directamente donde se necesita.
 
 console.log('📊 DataModule cargado - Gestión de datos unificada');

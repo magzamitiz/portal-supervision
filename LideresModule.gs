@@ -40,7 +40,7 @@ const LIDERES_CONFIG = {
  * @param {Object} spreadsheet - Objeto spreadsheet de Google Apps Script
  * @returns {Array} Array de líderes completos
  */
-function cargarLideresCompletos(spreadsheet) {
+function cargarLideresModulo(spreadsheet) {
   try {
     console.log('[LideresModule] Cargando líderes completos...');
     
@@ -122,53 +122,9 @@ function cargarLideresLD(spreadsheet, sheetName) {
   }
 }
 
-/**
- * Carga líderes por rol específico
- * @param {Object} spreadsheet - Objeto spreadsheet de Google Apps Script
- * @param {string} sheetName - Nombre de la hoja
- * @param {string} rol - Rol a filtrar
- * @returns {Array} Array de líderes del rol especificado
- */
-function cargarLideresPorRol(spreadsheet, sheetName, rol) {
-  try {
-    console.log(`[LideresModule] Cargando líderes con rol: ${rol}`);
-    
-    const sheet = spreadsheet.getSheetByName(sheetName);
-    if (!sheet) return [];
-
-    const data = sheet.getDataRange().getValues();
-    if (data.length < 2) return [];
-
-    const headers = data[0].map(h => h.toString().trim());
-    const columnas = mapearColumnasLideres(headers);
-    const rolIndex = columnas.rol;
-    
-    if (rolIndex === -1) {
-      console.warn('[LideresModule] Columna de rol no encontrada');
-      return [];
-    }
-    
-    const lideres = [];
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const rolFila = row[rolIndex];
-      
-      if (rolFila && rolFila.toString().trim().toUpperCase() === rol.toUpperCase()) {
-        const lider = procesarFilaLider(row, columnas, headers);
-        if (lider && lider.ID_Lider) {
-          lideres.push(lider);
-        }
-      }
-    }
-    
-    console.log(`[LideresModule] ${lideres.length} líderes con rol ${rol} cargados`);
-    return lideres;
-    
-  } catch (error) {
-    console.error(`[LideresModule] Error cargando líderes por rol ${rol}:`, error);
-    return [];
-  }
-}
+// ❌ ELIMINADA: cargarLideresPorRol - No se usa en ningún lugar
+// Esta función era un wrapper simple que solo filtraba datos ya cargados
+// y no aportaba valor al sistema. El filtrado se hace directamente donde se necesita.
 
 // ==================== FUNCIONES DE ANÁLISIS DE LÍDERES ====================
 
@@ -441,14 +397,9 @@ function procesarFilaLider(row, columnas, headers) {
 
 // ==================== FUNCIONES DE COMPATIBILIDAD ====================
 
-/**
- * Función de compatibilidad para cargar líderes (wrapper)
- * @param {Object} spreadsheet - Objeto spreadsheet de Google Apps Script
- * @returns {Array} Array de líderes
- */
-function cargarHojaLideres(spreadsheet) {
-  return cargarLideresCompletos(spreadsheet);
-}
+// ❌ ELIMINADA: cargarHojaLideres - Wrapper redundante que causaba colisión de namespace
+// Esta función causaba conflicto con cargarHojaLideres en DataModule.gs
+// La funcionalidad se mantiene en cargarLideresModulo() (antes cargarLideresCompletos)
 
 // ============================================
 // NOTA: getListaDeLideres() eliminada

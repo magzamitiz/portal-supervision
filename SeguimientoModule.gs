@@ -93,13 +93,13 @@ function cargarSeguimientoConsolidado(spreadsheet, sheetName, lcfId) {
 }
 
 /**
- * Carga maestro de asistentes (progreso en células)
+ * Carga maestro de asistentes (progreso en células) - Función interna
  * @param {Object} spreadsheet - Objeto spreadsheet de Google Apps Script
  * @param {string} sheetName - Nombre de la hoja
  * @param {Set} idsAlmas - IDs de almas a cargar (opcional)
  * @returns {Array} Array de asistentes
  */
-function cargarMaestroAsistentes(spreadsheet, sheetName, idsAlmas = null) {
+function cargarMaestroAsistentesInterno(spreadsheet, sheetName, idsAlmas = null) {
   try {
     console.log('[SeguimientoModule] Cargando maestro de asistentes...');
     
@@ -145,13 +145,13 @@ function cargarMaestroAsistentes(spreadsheet, sheetName, idsAlmas = null) {
 }
 
 /**
- * Carga interacciones de seguimiento
+ * Carga interacciones de seguimiento - Función interna
  * @param {Object} spreadsheet - Objeto spreadsheet de Google Apps Script
  * @param {string} sheetName - Nombre de la hoja
  * @param {Set} idsAlmas - IDs de almas a cargar (opcional)
  * @returns {Array} Array de interacciones
  */
-function cargarInteracciones(spreadsheet, sheetName, idsAlmas = null) {
+function cargarInteraccionesInterno(spreadsheet, sheetName, idsAlmas = null) {
   try {
     console.log('[SeguimientoModule] Cargando interacciones...');
     
@@ -192,13 +192,13 @@ function cargarInteracciones(spreadsheet, sheetName, idsAlmas = null) {
 }
 
 /**
- * Carga visitas de bendición
+ * Carga visitas de bendición - Función interna
  * @param {Object} spreadsheet - Objeto spreadsheet de Google Apps Script
  * @param {string} sheetName - Nombre de la hoja
  * @param {Set} idsAlmas - IDs de almas a cargar (opcional)
  * @returns {Array} Array de visitas
  */
-function cargarVisitasBendicion(spreadsheet, sheetName, idsAlmas = null) {
+function cargarVisitasBendicionInterno(spreadsheet, sheetName, idsAlmas = null) {
   try {
     console.log('[SeguimientoModule] Cargando visitas de bendición...');
     
