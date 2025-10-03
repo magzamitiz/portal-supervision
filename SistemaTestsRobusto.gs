@@ -672,31 +672,44 @@ function verificarCacheComprimida() {
 /**
  * Verificar que los gráficos estén reactivados
  */
-function verificarGraficosReactivados() {
-  console.log('🔍 VERIFICANDO GRÁFICOS...');
+function verificarGraficosEliminados() {
+  console.log('🔍 VERIFICANDO ELIMINACIÓN DE GRÁFICOS...');
   
   try {
-    // Verificar que las funciones existan
-    const funciones = [
+    // Verificar que las funciones NO existan (deben estar eliminadas)
+    const funcionesEliminadas = [
       'actualizarGraficos',
       'actualizarChartEstados', 
-      'actualizarChartCelulas'
+      'actualizarChartCelulas',
+      'testGraficosCompletos'
     ];
     
-    let todasExisten = true;
-    funciones.forEach(funcion => {
+    let todasEliminadas = true;
+    funcionesEliminadas.forEach(funcion => {
       if (typeof eval(funcion) === 'function') {
-        console.log(`✅ ${funcion} disponible`);
+        console.log(`❌ ${funcion} aún existe (debería estar eliminada)`);
+        todasEliminadas = false;
       } else {
-        console.log(`❌ ${funcion} no disponible`);
-        todasExisten = false;
+        console.log(`✅ ${funcion} correctamente eliminada`);
       }
     });
     
-    return todasExisten;
+    // Verificar que Chart.js NO esté disponible
+    const chartDisponible = typeof Chart !== 'undefined';
+    console.log(`📊 Chart.js: ${chartDisponible ? '❌ Aún cargado' : '✅ Correctamente eliminado'}`);
+    
+    // Verificar que el panel de gráficos NO exista
+    const panel = document.getElementById('panelGraficos');
+    const panelExiste = !!panel;
+    console.log(`🎨 Panel gráficos: ${panelExiste ? '❌ Aún existe' : '✅ Correctamente eliminado'}`);
+    
+    const resultado = todasEliminadas && !chartDisponible && !panelExiste;
+    console.log(`🎯 Gráficos eliminados correctamente: ${resultado ? '✅ SÍ' : '❌ NO'}`);
+    
+    return resultado;
     
   } catch (error) {
-    console.error('❌ Error verificando gráficos:', error);
+    console.error('❌ Error verificando eliminación de gráficos:', error);
     return false;
   }
 }
@@ -711,7 +724,7 @@ function verificarCorreccionesCompletas() {
   const resultados = {
     timestamp: new Date().toISOString(),
     cache_comprimida: false,
-    graficos_reactivados: false,
+    graficos_eliminados: false,
     sistema_listo: false
   };
   
@@ -720,19 +733,19 @@ function verificarCorreccionesCompletas() {
   console.log('1️⃣ VERIFICANDO CACHÉ COMPRIMIDA...');
   resultados.cache_comprimida = verificarCacheComprimida();
   
-  // Test 2: Gráficos reactivados
+  // Test 2: Gráficos eliminados
   console.log('');
-  console.log('2️⃣ VERIFICANDO GRÁFICOS...');
-  resultados.graficos_reactivados = verificarGraficosReactivados();
+  console.log('2️⃣ VERIFICANDO ELIMINACIÓN DE GRÁFICOS...');
+  resultados.graficos_eliminados = verificarGraficosEliminados();
   
   // Resultado final
-  resultados.sistema_listo = resultados.cache_comprimida && resultados.graficos_reactivados;
+  resultados.sistema_listo = resultados.cache_comprimida && resultados.graficos_eliminados;
   
   console.log('');
   console.log('📊 RESUMEN DE VERIFICACIÓN');
   console.log('='.repeat(40));
   console.log(`✅ Caché comprimida: ${resultados.cache_comprimida ? 'FUNCIONANDO' : 'ROTA'}`);
-  console.log(`✅ Gráficos reactivados: ${resultados.graficos_reactivados ? 'SÍ' : 'NO'}`);
+  console.log(`✅ Gráficos eliminados: ${resultados.graficos_eliminados ? 'SÍ' : 'NO'}`);
   console.log(`🎯 Sistema listo para producción: ${resultados.sistema_listo ? 'SÍ' : 'NO'}`);
   
   if (resultados.sistema_listo) {
@@ -745,8 +758,8 @@ function verificarCorreccionesCompletas() {
     if (!resultados.cache_comprimida) {
       console.log('   - Caché comprimida sigue rota');
     }
-    if (!resultados.graficos_reactivados) {
-      console.log('   - Gráficos no están reactivados');
+    if (!resultados.graficos_eliminados) {
+      console.log('   - Gráficos no están completamente eliminados');
     }
   }
   
