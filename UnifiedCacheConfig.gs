@@ -214,26 +214,39 @@ class UnifiedCache {
   static get(key) {
     try {
       const cache = CacheService.getScriptCache();
-      const data = cache.get(key);
       
+      // Verificar si es un dato fragmentado
+      const metadata = cache.get(`${key}_META`);
+      if (metadata) {
+        const meta = JSON.parse(metadata);
+        if (meta.fragmented) {
+          console.log(`[UnifiedCache] 🔄 Reconstruyendo datos fragmentados: ${key} (${meta.chunks} fragmentos)`);
+          
+          let reconstructedData = '';
+          for (let i = 0; i < meta.chunks; i++) {
+            const chunkKey = `${key}_CHUNK_${i}`;
+            const chunk = cache.get(chunkKey);
+            if (!chunk) {
+              console.error(`[UnifiedCache] ❌ Fragmento ${i} no encontrado`);
+              return null;
+            }
+            reconstructedData += chunk;
+          }
+          
+          console.log(`[UnifiedCache] ✅ Reconstruido: ${key} (${Math.round(reconstructedData.length/1024)}KB)`);
+          return JSON.parse(reconstructedData);
+        }
+      }
+      
+      // Datos normales (no fragmentados)
+      const data = cache.get(key);
       if (!data) {
         console.log(`[UnifiedCache] ❌ No encontrado: ${key}`);
         return null;
       }
       
-      // Verificar si está comprimido
-      if (data.startsWith('COMPRESSED:')) {
-        console.log(`[UnifiedCache] 🔄 Descomprimiendo: ${key}`);
-        const compressedData = data.substring(11); // Remover prefijo 'COMPRESSED:'
-        const blob = Utilities.newBlob(Utilities.base64Decode(compressedData), 'application/x-gzip');
-        const decompressed = blob.unzip();
-        const result = JSON.parse(decompressed.getDataAsString());
-        console.log(`[UnifiedCache] ✅ Descomprimido: ${key}`);
-        return result;
-      } else {
-        console.log(`[UnifiedCache] ✅ Recuperado: ${key}`);
-        return JSON.parse(data);
-      }
+      console.log(`[UnifiedCache] ✅ Recuperado: ${key}`);
+      return JSON.parse(data);
       
     } catch (error) {
       console.error(`[UnifiedCache] ❌ Error recuperando ${key}:`, error);
@@ -256,22 +269,38 @@ class UnifiedCache {
       
       console.log(`[UnifiedCache] 💾 Guardando: ${key} (${Math.round(sizeBytes/1024)}KB)`);
       
-      // Determinar si comprimir basado en tamaño
-      const config = this.getConfigForKey(key);
-      const shouldCompress = sizeBytes > (config?.COMPRESS_THRESHOLD || 100000);
-      
-      if (shouldCompress) {
-        console.log(`[UnifiedCache] 🗜️ Comprimiendo: ${key} (${sizeBytes} bytes > ${config?.COMPRESS_THRESHOLD || 100000})`);
-        const compressed = Utilities.gzip(Utilities.newBlob(jsonString));
-        const compressedData = 'COMPRESSED:' + Utilities.base64Encode(compressed.getBytes());
-        cache.put(key, compressedData, ttl);
-        console.log(`[UnifiedCache] ✅ Guardado comprimido: ${key}`);
+      // Verificar límite de Google Apps Script (100KB por clave)
+      if (sizeBytes > 100000) {
+        console.log(`[UnifiedCache] ⚠️ Datos muy grandes (${sizeBytes} bytes), dividiendo...`);
+        
+        // Dividir datos grandes en fragmentos
+        const chunks = this._splitData(jsonString, 90000); // 90KB por fragmento
+        let success = true;
+        
+        for (let i = 0; i < chunks.length; i++) {
+          const chunkKey = `${key}_CHUNK_${i}`;
+          const chunkSuccess = cache.put(chunkKey, chunks[i], ttl);
+          if (!chunkSuccess) {
+            console.error(`[UnifiedCache] ❌ Error guardando fragmento ${i}`);
+            success = false;
+          }
+        }
+        
+        // Guardar metadatos del fragmentado
+        const metadata = {
+          fragmented: true,
+          chunks: chunks.length,
+          originalSize: sizeBytes
+        };
+        cache.put(`${key}_META`, JSON.stringify(metadata), ttl);
+        
+        console.log(`[UnifiedCache] ✅ Guardado fragmentado: ${key} (${chunks.length} fragmentos)`);
+        return success;
       } else {
-        console.log(`[UnifiedCache] ✅ Guardado sin compresión: ${key}`);
-        cache.put(key, jsonString, ttl);
+        console.log(`[UnifiedCache] ✅ Guardado directo: ${key}`);
+        return cache.put(key, jsonString, ttl);
       }
       
-      return true;
     } catch (error) {
       console.error(`[UnifiedCache] ❌ Error guardando ${key}:`, error);
       return false;
@@ -335,6 +364,20 @@ class UnifiedCache {
    */
   static getStats() {
     return UNIFIED_CACHE.getCacheStats();
+  }
+  
+  /**
+   * Divide datos grandes en fragmentos más pequeños
+   * @param {string} data - Datos a dividir
+   * @param {number} maxChunkSize - Tamaño máximo por fragmento
+   * @returns {Array} Array de fragmentos
+   */
+  static _splitData(data, maxChunkSize) {
+    const chunks = [];
+    for (let i = 0; i < data.length; i += maxChunkSize) {
+      chunks.push(data.slice(i, i + maxChunkSize));
+    }
+    return chunks;
   }
 }
 

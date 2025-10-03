@@ -622,11 +622,11 @@ function probarCompresionInteligente() {
   try {
     // Datos pequeños (no deberían comprimirse)
     const smallData = { test: 'small', items: Array.from({ length: 10 }, (_, i) => i) };
-    const smallKey = 'TEST_SMALL';
+    const smallKey = 'TEST_SMALL_FIXED';
     
     // Datos grandes (deberían comprimirse)
     const largeData = { test: 'large', items: Array.from({ length: 1000 }, (_, i) => ({ id: i, data: 'x'.repeat(100) })) };
-    const largeKey = 'TEST_LARGE';
+    const largeKey = 'TEST_LARGE_FIXED';
     
     // Guardar datos pequeños
     const smallSave = UnifiedCache.set(smallKey, smallData, 60);
@@ -638,17 +638,23 @@ function probarCompresionInteligente() {
     const smallRetrieved = UnifiedCache.get(smallKey);
     const largeRetrieved = UnifiedCache.get(largeKey);
     
+    // Verificar integridad de datos
+    const smallIntegrity = smallRetrieved && JSON.stringify(smallRetrieved) === JSON.stringify(smallData);
+    const largeIntegrity = largeRetrieved && JSON.stringify(largeRetrieved) === JSON.stringify(largeData);
+    
     // Limpiar
-    UnifiedCache.clearUnifiedCache('TEST_SMALL');
-    UnifiedCache.clearUnifiedCache('TEST_LARGE');
+    UnifiedCache.clearUnifiedCache(smallKey);
+    UnifiedCache.clearUnifiedCache(largeKey);
     
     return {
-      success: smallSave && largeSave && smallRetrieved && largeRetrieved,
+      success: smallSave && largeSave && smallIntegrity && largeIntegrity,
       details: {
         smallDataSaved: smallSave,
         largeDataSaved: largeSave,
         smallDataRetrieved: !!smallRetrieved,
         largeDataRetrieved: !!largeRetrieved,
+        smallDataIntegrity: smallIntegrity,
+        largeDataIntegrity: largeIntegrity,
         compressionWorking: true
       }
     };
@@ -1380,6 +1386,14 @@ function ejecutarPruebasCorrecciones() {
       details: test3.details
     });
     
+    // Test 4: Verificar corrección de fragmentación
+    const test4 = probarCorreccionFragmentacion();
+    results.tests.push({
+      name: 'Corrección Fragmentación',
+      success: test4.success,
+      details: test4.details
+    });
+    
     // Calcular resumen
     const successfulTests = results.tests.filter(t => t.success).length;
     results.summary = {
@@ -1909,4 +1923,75 @@ function probarCorrecciones() {
  */
 function probarLimpieza() {
   return ejecutarPruebasLimpieza();
+}
+
+/**
+ * Prueba específica para verificar la corrección del error de descompresión
+ * @returns {Object} Resultado de la prueba
+ */
+function probarCorreccionFragmentacion() {
+  console.log('\n' + '='.repeat(60));
+  console.log('🔧 PRUEBA: Corrección del Error de Fragmentación');
+  console.log('='.repeat(60) + '\n');
+  
+  try {
+    // Crear datos grandes que requieran fragmentación
+    const testData = {
+      test: 'fragmentation_fix',
+      timestamp: new Date().toISOString(),
+      largeArray: Array.from({ length: 2000 }, (_, i) => ({
+        id: i,
+        data: 'x'.repeat(50),
+        metadata: { created: Date.now(), type: 'test' }
+      }))
+    };
+    
+    const testKey = 'TEST_FRAGMENTATION_FIX';
+    
+    console.log('1️⃣ Guardando datos grandes (requieren fragmentación)...');
+    const saveResult = UnifiedCache.set(testKey, testData, 60);
+    
+    if (!saveResult) {
+      throw new Error('Error guardando datos en caché');
+    }
+    
+    console.log('2️⃣ Recuperando datos fragmentados...');
+    const retrievedData = UnifiedCache.get(testKey);
+    
+    if (!retrievedData) {
+      throw new Error('Error recuperando datos del caché');
+    }
+    
+    console.log('3️⃣ Verificando integridad de datos...');
+    const dataIntegrity = JSON.stringify(testData) === JSON.stringify(retrievedData);
+    
+    if (!dataIntegrity) {
+      throw new Error('Los datos recuperados no coinciden con los originales');
+    }
+    
+    console.log('4️⃣ Limpiando datos de prueba...');
+    const cache = CacheService.getScriptCache();
+    cache.remove(testKey);
+    cache.remove(`${testKey}_META`);
+    
+    console.log('✅ CORRECCIÓN EXITOSA - El error de fragmentación ha sido solucionado');
+    
+    return {
+      success: true,
+      details: {
+        saveResult: saveResult,
+        dataRetrieved: !!retrievedData,
+        dataIntegrity: dataIntegrity,
+        fragmentationWorking: true,
+        reconstructionFixed: true
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en prueba de corrección:', error);
+    return {
+      success: false,
+      details: { error: error.toString() }
+    };
+  }
 }
