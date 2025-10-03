@@ -636,4 +636,38 @@ function limpiarCodigoDuplicado() {
   }
 }
 
+/**
+ * ✅ NUEVA FUNCIÓN: Limpieza específica de caché de gráficos eliminados
+ */
+function limpiarCacheGraficosEliminados() {
+  console.log('🗑️ LIMPIANDO CACHÉ DE GRÁFICOS ELIMINADOS');
+  
+  const cache = CacheService.getScriptCache();
+  const keysGraficos = [
+    'datos_graficos_dashboard',
+    'metricas_historicas',
+    'GRAFICOS_DATA',
+    'HISTORICO_DATA',
+    'chart_data_estados',
+    'chart_data_celulas',
+    'graficos_cache_v1',
+    'graficos_cache_v2'
+  ];
+  
+  let eliminadas = 0;
+  keysGraficos.forEach(key => {
+    cache.remove(key);
+    eliminadas++;
+    
+    // Eliminar fragmentos
+    for (let i = 0; i < 10; i++) {
+      cache.remove(`${key}_${i}`);
+      cache.remove(`${key}_CHUNK_${i}`);
+    }
+  });
+  
+  console.log(`✅ ${eliminadas} claves de gráficos eliminadas del caché`);
+  return { eliminadas, timestamp: new Date().toISOString() };
+}
+
 console.log('🧹 LimpiadorCacheRobusto cargado - Sistema robusto de limpieza de caché disponible');

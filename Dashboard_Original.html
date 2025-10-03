@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <!--
     PORTAL DE SUPERVISIÓN V2.0
+    Sistema optimizado sin gráficos para máximo rendimiento
     
-    NOTA IMPORTANTE: Los gráficos están temporalmente desactivados para el desarrollo de la etapa final.
-    - Panel de gráficos oculto con display: none !important
-    - Función actualizarGraficos() desactivada
-    - Llamadas a gráficos comentadas en mostrarDatosLD()
+    Características implementadas:
+    - Sistema de caché optimizado con compresión
+    - Estadísticas rápidas desde _ResumenDashboard
+    - Mapeo automático de almas con diagnóstico
+    - Fragmentación de caché estable (50KB fragmentos)
+    - Interfaz limpia y rápida sin dependencias de gráficos
     
-    Para reactivar los gráficos:
-    1. Remover "style='display: none !important;'" del panelGraficos
-    2. Restaurar función actualizarGraficos() original
-    3. Descomentar llamada actualizarGraficos() en mostrarDatosLD()
+    Última actualización: Diciembre 2024
 -->
 <html lang="es">
 <head>
@@ -20,7 +20,6 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
@@ -96,34 +95,6 @@
             max-height: 320px !important;
         }
         
-        /* Contenedores de gráficos con control de overflow */
-        .chart-container {
-            position: relative;
-            width: 100%;
-            height: 320px;
-            overflow: hidden;
-        }
-        
-        /* Responsive breakpoints para gráficos */
-        @media (max-width: 768px) {
-            canvas#chartEstados, canvas#chartCelulas {
-                height: 280px !important;
-                max-height: 280px !important;
-            }
-            .chart-container {
-                height: 280px;
-            }
-        }
-        
-        @media (max-width: 640px) {
-            canvas#chartEstados, canvas#chartCelulas {
-                height: 240px !important;
-                max-height: 240px !important;
-            }
-            .chart-container {
-                height: 240px;
-            }
-        }
         
         /* Asegurar que los contenedores no se desborden */
         .bg-white.rounded-lg.shadow-md {
@@ -207,23 +178,6 @@
         <div id="resumenLD" class="hidden bg-white rounded-lg shadow-md p-6 mb-6">
             </div>
         
-        <!-- GRÁFICOS TEMPORALMENTE DESACTIVADOS PARA DESARROLLO DE ETAPA FINAL -->
-        <div id="panelGraficos" class="mt-8">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white rounded-lg shadow-md p-6 min-w-0 relative">
-                    <h3 class="text-lg font-semibold mb-4">Matriz de Efectividad del Liderazgo</h3>
-                    <div class="chart-container">
-                        <canvas id="chartEstados"></canvas>
-                    </div>
-                </div>
-                <div class="bg-white rounded-lg shadow-md p-6 min-w-0 relative">
-                    <h3 class="text-lg font-semibold mb-4">Flujo de Transición de Estados de Células</h3>
-                    <div class="chart-container">
-                        <canvas id="chartCelulas"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
         
         <!-- ✅ ALERTAS ELIMINADAS: Sistema de alertas innecesario removido para mejorar rendimiento -->
         
@@ -1005,7 +959,6 @@ function llenarSelectorLD(listaLDs) {
                 document.getElementById('resumenLD').classList.add('hidden');
                 // ✅ ALERTAS ELIMINADAS: Sistema de alertas innecesario removido
                 document.getElementById('panelLCFs').classList.add('hidden');
-                document.getElementById('panelGraficos').classList.add('hidden');
                 document.getElementById('accionesLD').classList.add('hidden');
                 return;
             }
@@ -1059,7 +1012,6 @@ function llenarSelectorLD(listaLDs) {
             mostrarResumenLD();
             // ✅ ALERTAS ELIMINADAS: Sistema de alertas innecesario removido
             mostrarEquipoLD();
-            actualizarGraficos(datosLD); // ✅ REACTIVADO - Gráficos funcionando
         }
         
         // Actualizar la función mostrarResumenLD para incluir la estructura
@@ -2172,162 +2124,7 @@ function rehidratarConfigChart(config) {
 
 // ==================== FUNCIONES DE TESTING ====================
 
-/**
- * Función de testing para verificar tooltips y layout
- */
-function testGraficosCompletos() {
-    console.log('🧪 INICIANDO TESTING COMPLETO DE GRÁFICOS');
-    console.log('==========================================');
-    
-    // Test 1: Verificar contenedores
-    const panelGraficos = document.getElementById('panelGraficos');
-    const chartEstados = document.getElementById('chartEstados');
-    const chartCelulas = document.getElementById('chartCelulas');
-    
-    console.log('📊 Test 1 - Contenedores:');
-    console.log('  - panelGraficos:', panelGraficos ? '✅ Existe' : '❌ No existe');
-    console.log('  - chartEstados:', chartEstados ? '✅ Existe' : '❌ No existe');
-    console.log('  - chartCelulas:', chartCelulas ? '✅ Existe' : '❌ No existe');
-    
-    // Test 2: Verificar clases CSS
-    if (chartEstados && chartCelulas) {
-        console.log('🎨 Test 2 - Clases CSS:');
-        console.log('  - chartEstados classes:', chartEstados.className);
-        console.log('  - chartCelulas classes:', chartCelulas.className);
-        
-        // Verificar contenedores padre
-        const containerEstados = chartEstados.parentElement;
-        const containerCelulas = chartCelulas.parentElement;
-        console.log('  - Container Estados classes:', containerEstados?.className);
-        console.log('  - Container Celulas classes:', containerCelulas?.className);
-    }
-    
-    // Test 3: Verificar Chart.js
-    console.log('📈 Test 3 - Chart.js:');
-    console.log('  - Chart global:', typeof Chart !== 'undefined' ? '✅ Disponible' : '❌ No disponible');
-    console.log('  - chartEstados instance:', window.chartEstados instanceof Chart ? '✅ Activo' : '❌ No activo');
-    console.log('  - chartCelulas instance:', window.chartCelulas instanceof Chart ? '✅ Activo' : '❌ No activo');
-    
-    // Test 4: Verificar configuración de tooltips
-    if (window.chartEstados && window.chartEstados.options.plugins.tooltip) {
-        console.log('🔍 Test 4 - Tooltips:');
-        console.log('  - chartEstados tooltip callbacks:', Object.keys(window.chartEstados.options.plugins.tooltip.callbacks || {}));
-        console.log('  - chartEstados tooltip enabled:', window.chartEstados.options.plugins.tooltip.enabled);
-    }
-    
-    if (window.chartCelulas && window.chartCelulas.options.plugins.tooltip) {
-        console.log('  - chartCelulas tooltip callbacks:', Object.keys(window.chartCelulas.options.plugins.tooltip.callbacks || {}));
-        console.log('  - chartCelulas tooltip enabled:', window.chartCelulas.options.plugins.tooltip.enabled);
-    }
-    
-    // Test 5: Verificar responsive
-    console.log('📱 Test 5 - Responsive:');
-    console.log('  - Window width:', window.innerWidth);
-    console.log('  - Window height:', window.innerHeight);
-    console.log('  - Chart containers visible:', panelGraficos?.classList.contains('hidden') ? '❌ Oculto' : '✅ Visible');
-    
-    console.log('==========================================');
-    console.log('✅ TESTING COMPLETO FINALIZADO');
-    console.log('==========================================');
-    
-    return {
-        contenedores: {
-            panelGraficos: !!panelGraficos,
-            chartEstados: !!chartEstados,
-            chartCelulas: !!chartCelulas
-        },
-        chartjs: {
-            disponible: typeof Chart !== 'undefined',
-            chartEstados: window.chartEstados instanceof Chart,
-            chartCelulas: window.chartCelulas instanceof Chart
-        },
-        responsive: {
-            width: window.innerWidth,
-            height: window.innerHeight,
-            visible: !panelGraficos?.classList.contains('hidden')
-        }
-    };
-}
 
-        // Actualizar gráficos (VERSIÓN OPTIMIZADA CON DATOS PRE-CALCULADOS)
-function actualizarGraficos(datosLD) {
-    console.log('📊 Actualizando gráficos...');
-    
-    if (!datosLD || !datosLD.equipo) {
-        console.log('Sin datos para gráficos');
-        return;
-    }
-
-    // Mostrar panel de gráficos
-    const panel = document.getElementById('panelGraficos');
-    if (panel) {
-        panel.classList.remove('hidden');
-        panel.style.display = 'block';
-    }
-    
-    // Actualizar gráficos con los datos
-    actualizarChartEstados(datosLD.equipo);
-    actualizarChartCelulas(datosLD.celulas);
-}
-
-// Función de respaldo en caso de error con el sistema optimizado
-function actualizarGraficosFallback() {
-    console.log('🔄 Usando método de respaldo para gráficos...');
-    
-    // Preparar datos directamente del equipo del líder (datosLD)
-    let activos = 0, alerta = 0, inactivos = 0, sinDatos = 0;
-    let celulasVacias = 0, celulasRiesgo = 0, celulasSaludables = 0, celulasMultiplicar = 0, celulasCrecimiento = 0;
-    
-    // 1. Contar estados de actividad del equipo
-    datosLD.equipo.forEach(lcf => {
-        switch (lcf.Estado_Actividad) {
-            case 'Activo': activos++; break;
-            case 'Alerta': alerta++; break;
-            case 'Inactivo': inactivos++; break;
-            default: sinDatos++; break;
-        }
-    });
-    
-    // Gráfico de estados de LCF (Doughnut)
-    const ctxEstados = document.getElementById('chartEstados').getContext('2d');
-    if (window.chartEstados instanceof Chart) {
-        window.chartEstados.destroy();
-    }
-    window.chartEstados = new Chart(ctxEstados, {
-        type: 'doughnut',
-        data: {
-            labels: ['Activos', 'En Alerta', 'Inactivos', 'Sin Datos'],
-            datasets: [{
-                data: [activos, alerta, inactivos, sinDatos],
-                backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#9ca3af']
-            }]
-        },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-    });
-    
-    // Gráfico de salud de células (Bar) - Datos básicos
-    const ctxCelulas = document.getElementById('chartCelulas').getContext('2d');
-    if (window.chartCelulas instanceof Chart) {
-        window.chartCelulas.destroy();
-    }
-    window.chartCelulas = new Chart(ctxCelulas, {
-        type: 'bar',
-        data: {
-            labels: ['Saludables', 'Crecimiento', 'Multiplicar', 'Riesgo', 'Vacías'],
-            datasets: [{
-                label: 'Células del Equipo',
-                data: [celulasSaludables, celulasCrecimiento, celulasMultiplicar, celulasRiesgo, celulasVacias],
-                backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444']
-            }]
-        },
-        options: {
-            responsive: true,
-            indexAxis: 'y',
-            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
-            plugins: { legend: { display: false } }
-        }
-    });
-}
 
         // Generar reporte PDF (Manejo Robusto V2.0)
         function generarReporteLD() {
