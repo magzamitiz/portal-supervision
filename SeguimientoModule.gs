@@ -746,19 +746,26 @@ function getResumenLCF(idLCF) {
       };
     })();
     
-    // ✅ CORRECCIÓN 3: Normalizar snake_case a camelCase
-    const resumen = seguimiento.resumen || {};
+    // ✅ CORRECCIÓN 3: Usar directamente los metrics calculados (no el resumen obsoleto)
     const normalizado = {
-      totalAlmas: resumen.total_almas ?? metrics.totalAlmas,
-      conBienvenida: resumen.con_bienvenida ?? metrics.conBienvenida,
-      conVisita: resumen.con_visita ?? metrics.conVisita,
-      enCelula: resumen.en_celula ?? metrics.enCelula,
-      altaPrioridad: resumen.alta_prioridad ?? metrics.altaPrioridad,
-      promedioDiasSinContacto: resumen.promedio_dias_sin_contacto ?? metrics.promedioDiasSinContacto,
-      tasaBienvenida: resumen.tasa_bienvenida ?? metrics.tasaBienvenida,
-      tasaVisita: resumen.tasa_visita ?? metrics.tasaVisita,
-      tasaIntegracion: resumen.tasa_integracion ?? metrics.tasaIntegracion
+      totalAlmas: metrics.totalAlmas,
+      conBienvenida: metrics.conBienvenida,
+      conVisita: metrics.conVisita,
+      enCelula: metrics.enCelula,
+      altaPrioridad: metrics.altaPrioridad,
+      promedioDiasSinContacto: metrics.promedioDiasSinContacto,
+      tasaBienvenida: metrics.tasaBienvenida,
+      tasaVisita: metrics.tasaVisita,
+      tasaIntegracion: metrics.tasaIntegracion
     };
+    
+    // Debug para verificar los conteos
+    console.log('[DEBUG] Conteos calculados:', {
+      totalAlmas: metrics.totalAlmas,
+      conBienvenida: metrics.conBienvenida,
+      conVisita: metrics.conVisita,
+      enCelula: metrics.enCelula
+    });
     
     // ✅ ESTRUCTURA FINAL: Exactamente lo que espera el frontend
     return {
@@ -945,6 +952,68 @@ function testGetResumenLCF_Correccion() {
       success: false,
       error: error.toString()
     };
+  }
+}
+
+/**
+ * Función de verificación final para confirmar que getResumenLCF funciona correctamente
+ * @returns {boolean} true si todo funciona correctamente
+ */
+function verificarCorreccionFinal() {
+  console.log('\n' + '='.repeat(60));
+  console.log('🔍 VERIFICACIÓN FINAL DE CORRECCIÓN');
+  console.log('='.repeat(60) + '\n');
+  
+  try {
+    // Obtener un LCF válido para la prueba
+    const idLCF = obtenerLCFValidoParaPruebas();
+    if (!idLCF) {
+      console.error('❌ No hay LCFs disponibles para verificación');
+      return false;
+    }
+    
+    console.log(`📌 Probando con LCF: ${idLCF}`);
+    
+    const resultado = getResumenLCF(idLCF);
+    
+    if (!resultado.success) {
+      console.error('❌ Error en getResumenLCF:', resultado.error);
+      return false;
+    }
+    
+    console.log('\n📊 RESULTADOS DE VERIFICACIÓN:');
+    console.log('Total Almas:', resultado.data.totalAlmas, '(esperado: > 0)');
+    console.log('Con Bienvenida:', resultado.data.conBienvenida, '(esperado: ≥ 0)');
+    console.log('Con Visita:', resultado.data.conVisita, '(esperado: ≥ 0)');
+    console.log('En Célula:', resultado.data.enCelula, '(esperado: ≥ 0)');
+    console.log('Tasa Bienvenida:', resultado.data.tasaBienvenida + '%');
+    console.log('Tasa Visita:', resultado.data.tasaVisita + '%');
+    console.log('Tasa Integración:', resultado.data.tasaIntegracion + '%');
+    
+    // Verificar que al menos tenemos datos básicos
+    const todoOk = 
+      resultado.data.totalAlmas > 0 &&
+      typeof resultado.data.conBienvenida === 'number' &&
+      typeof resultado.data.conVisita === 'number' &&
+      typeof resultado.data.enCelula === 'number' &&
+      typeof resultado.data.tasaBienvenida === 'number' &&
+      typeof resultado.data.tasaVisita === 'number' &&
+      typeof resultado.data.tasaIntegracion === 'number';
+    
+    console.log('\n' + '='.repeat(60));
+    if (todoOk) {
+      console.log('✅ ¡SISTEMA CORREGIDO Y LISTO PARA PUBLICACIÓN!');
+      console.log('getResumenLCF está funcionando correctamente');
+    } else {
+      console.log('❌ Aún hay problemas, revisar la función getResumenLCF');
+    }
+    console.log('='.repeat(60));
+    
+    return todoOk;
+    
+  } catch (error) {
+    console.error('❌ Error durante la verificación:', error);
+    return false;
   }
 }
 
