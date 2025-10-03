@@ -10,8 +10,10 @@ const CACHE_KEY = 'DASHBOARD_CONSOLIDATED_V1';
 // ==================== FUNCIONES DE CACHÉ ====================
 
 /**
- * Versión optimizada usando sistema unificado de caché
- * Elimina compresión innecesaria y simplifica el manejo
+ * ✅ CORRECCIÓN CRÍTICA: setCacheData con metadata consistente
+ * PROBLEMA ORIGINAL: Metadata no incluía 'fragments' para datos fragmentados
+ * SOLUCIÓN: Metadata siempre incluye 'fragments' en todos los casos
+ * 
  * @param {Object} data - Datos a guardar en caché
  * @param {number} ttl - Tiempo de vida en segundos (default: 1800)
  * @returns {boolean} True si se guardó exitosamente
@@ -23,30 +25,84 @@ function setCacheData(data, ttl = 1800) {
       return setUnifiedCache('DASHBOARD', data);
     }
     
-    // Fallback al sistema anterior
+    // Fallback al sistema corregido
     const cache = CacheService.getScriptCache();
     const jsonString = JSON.stringify(data);
-    const sizeKB = Math.round(jsonString.length / 1024);
+    const sizeBytes = jsonString.length;
+    const sizeKB = Math.round(sizeBytes / 1024);
     
-    console.log(`[Cache] Tamaño de datos: ${sizeKB}KB`);
+    console.log(`[Cache] 💾 Guardando datos: ${sizeKB}KB`);
     
-    // Solo comprimir si excede 95KB (límite real es 100KB)
-    if (sizeKB > 95) {
-      console.log('[Cache] Aplicando compresión por tamaño...');
-      const compressed = Utilities.base64Encode(Utilities.gzip(Utilities.newBlob(jsonString).getBytes()));
-      cache.put('DASHBOARD_DATA_COMPRESSED', compressed, ttl);
-      cache.put('DASHBOARD_DATA_META', JSON.stringify({compressed: true, size: sizeKB}), ttl);
-      console.log(`[Cache] ✅ Datos comprimidos guardados (${sizeKB}KB → ${Math.round(compressed.length/1024)}KB)`);
+    // Decisión: Fragmentar si supera 50KB (más conservador que 95KB)
+    const FRAGMENT_THRESHOLD = 50000; // 50KB en bytes
+    
+    if (sizeBytes > FRAGMENT_THRESHOLD) {
+      console.log('[Cache] 📦 Fragmentando datos grandes...');
+      
+      const FRAGMENT_SIZE = 50000; // 50KB por fragmento
+      const fragments = [];
+      
+      // Dividir en fragmentos de 50KB
+      for (let i = 0; i < jsonString.length; i += FRAGMENT_SIZE) {
+        fragments.push(jsonString.slice(i, i + FRAGMENT_SIZE));
+      }
+      
+      // Guardar cada fragmento con índice
+      for (let i = 0; i < fragments.length; i++) {
+        const fragmentKey = `${CACHE_KEY}_${i}`;
+        const success = cache.put(fragmentKey, fragments[i], ttl);
+        
+        if (!success) {
+          console.error(`[Cache] ❌ Error guardando fragmento ${i}`);
+          // Limpiar fragmentos parciales
+          clearCache();
+          return false;
+        }
+      }
+      
+      // ✅ CORRECCIÓN: Guardar metadata con estructura correcta
+      const metadata = {
+        fragments: fragments.length,    // ✅ CAMPO REQUERIDO
+        size: sizeBytes,                 // En bytes (no KB)
+        timestamp: Date.now(),           // Timestamp para tracking
+        originalKey: CACHE_KEY,          // Referencia
+        fragmentSize: FRAGMENT_SIZE      // Info adicional útil
+      };
+      
+      cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+      console.log(`[Cache] ✅ Fragmentado exitoso: ${fragments.length} fragmentos (${sizeKB}KB total)`);
+      
+      return true;
+      
     } else {
-      // Sin compresión para datos < 95KB (caso más común)
-      cache.put(CACHE_KEY, jsonString, ttl);
-      cache.put('DASHBOARD_DATA_META', JSON.stringify({compressed: false, size: sizeKB}), ttl);
-      console.log(`[Cache] ✅ Datos guardados sin compresión (${sizeKB}KB)`);
+      // Datos pequeños: guardar directamente SIN fragmentación
+      console.log('[Cache] 💾 Guardando datos sin fragmentar...');
+      
+      const success = cache.put(CACHE_KEY, jsonString, ttl);
+      
+      if (!success) {
+        console.error('[Cache] ❌ Error guardando datos simples');
+        return false;
+      }
+      
+      // ✅ CORRECCIÓN: Metadata consistente incluso para datos simples
+      const metadata = {
+        fragments: 1,            // ✅ 1 = datos simples (no fragmentados)
+        size: sizeBytes,
+        timestamp: Date.now(),
+        originalKey: CACHE_KEY,
+        fragmentSize: 0          // 0 = no hay fragmentación
+      };
+      
+      cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+      console.log(`[Cache] ✅ Guardado directo exitoso (${sizeKB}KB)`);
+      
+      return true;
     }
     
-    return true;
   } catch (error) {
-    console.error('[Cache] Error guardando:', error);
+    console.error('[Cache] ❌ Error crítico guardando:', error);
+    clearCache(); // Limpiar cualquier dato parcial
     return false;
   }
 }
@@ -79,10 +135,10 @@ function getCacheData() {
         
         // PASO 2: Manejar caso especial de fragments=1 (caché simple con metadata)
         if (metadata.fragments === 1) {
-          console.log('[CacheModule] fragments=1, leyendo DASHBOARD_DATA_V2 directamente');
+          console.log('[CacheModule] fragments=1, leyendo caché simple directamente');
           const cached = cache.get(CACHE_KEY);
           if (!cached) {
-            console.error('[CacheModule] Fragmento único no encontrado en DASHBOARD_DATA_V2');
+            console.error('[CacheModule] Fragmento único no encontrado en caché simple');
             clearCache();
             return null;
           }
@@ -184,7 +240,7 @@ function clearCache() {
         
         console.log(`[CacheModule] Metadata encontrada: ${expectedFragments} fragmentos esperados`);
         
-        // PASO 2: Eliminar todos los fragmentos DASHBOARD_DATA_V2_N
+        // PASO 2: Eliminar todos los fragmentos basados en CACHE_KEY
         const keysToRemove = [];
         
         // Eliminar fragmentos específicos basados en metadata
@@ -202,7 +258,7 @@ function clearCache() {
           console.log(`[CacheModule] ${fragmentsRemoved} fragmentos eliminados (basado en metadata)`);
         }
         
-        // PASO 3: Eliminar DASHBOARD_META y DASHBOARD_DATA_V2
+        // PASO 3: Eliminar metadata y clave principal
         cache.remove('DASHBOARD_META');
         cache.remove(CACHE_KEY);
         

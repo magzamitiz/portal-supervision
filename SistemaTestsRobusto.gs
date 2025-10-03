@@ -771,4 +771,116 @@ function verificarCorreccionesCompletas() {
   return resultados;
 }
 
+/**
+ * ✅ NUEVO: Test completo del sistema de caché corregido
+ */
+function testCacheCorregido() {
+  console.log('🧪 INICIANDO TESTS DE CACHÉ CORREGIDO');
+  console.log('='.repeat(60));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: {},
+    exito: true
+  };
+  
+  // Test 1: Datos pequeños (< 50KB)
+  console.log('\n📝 TEST 1: Datos pequeños (< 50KB)');
+  try {
+    const datosSmall = { test: 'x'.repeat(10000), size: 'small' };
+    
+    const guardado = setCacheData(datosSmall);
+    console.log(`Guardado: ${guardado ? '✅' : '❌'}`);
+    
+    const recuperado = getCacheData();
+    const coincide = recuperado && recuperado.test === datosSmall.test;
+    console.log(`Recuperado: ${coincide ? '✅' : '❌'}`);
+    
+    resultados.tests.datos_pequenos = guardado && coincide;
+  } catch (error) {
+    console.error('❌ Error:', error);
+    resultados.tests.datos_pequenos = false;
+    resultados.exito = false;
+  }
+  
+  // Test 2: Datos grandes (> 50KB) - Fragmentación
+  console.log('\n📦 TEST 2: Datos grandes (> 50KB) - Fragmentación');
+  try {
+    clearCache(); // Limpiar antes
+    
+    const datosLarge = { test: 'y'.repeat(80000), size: 'large' };
+    
+    const guardado = setCacheData(datosLarge);
+    console.log(`Guardado fragmentado: ${guardado ? '✅' : '❌'}`);
+    
+    const recuperado = getCacheData();
+    const coincide = recuperado && recuperado.test === datosLarge.test;
+    console.log(`Recuperado fragmentado: ${coincide ? '✅' : '❌'}`);
+    
+    resultados.tests.datos_grandes = guardado && coincide;
+  } catch (error) {
+    console.error('❌ Error:', error);
+    resultados.tests.datos_grandes = false;
+    resultados.exito = false;
+  }
+  
+  // Test 3: Metadata consistente
+  console.log('\n📋 TEST 3: Metadata consistente');
+  try {
+    const cache = CacheService.getScriptCache();
+    const metadataStr = cache.get('DASHBOARD_DATA_META');
+    
+    if (metadataStr) {
+      const metadata = JSON.parse(metadataStr);
+      const tieneFragments = metadata.hasOwnProperty('fragments');
+      const tieneSize = metadata.hasOwnProperty('size');
+      const tieneTimestamp = metadata.hasOwnProperty('timestamp');
+      
+      console.log(`fragments: ${tieneFragments ? '✅' : '❌'}`);
+      console.log(`size: ${tieneSize ? '✅' : '❌'}`);
+      console.log(`timestamp: ${tieneTimestamp ? '✅' : '❌'}`);
+      
+      resultados.tests.metadata_consistente = tieneFragments && tieneSize && tieneTimestamp;
+    } else {
+      console.log('⚠️ No hay metadata');
+      resultados.tests.metadata_consistente = false;
+    }
+  } catch (error) {
+    console.error('❌ Error:', error);
+    resultados.tests.metadata_consistente = false;
+    resultados.exito = false;
+  }
+  
+  // Test 4: Invalidación de clave específica
+  console.log('\n🗑️ TEST 4: Invalidación de clave específica');
+  try {
+    const result = UnifiedCache.invalidateKey('DASHBOARD_DATA_V2');
+    console.log(`Invalidación exitosa: ${result.success ? '✅' : '❌'}`);
+    
+    const recuperadoDespues = getCacheData();
+    const fueEliminado = !recuperadoDespues;
+    console.log(`Caché eliminado correctamente: ${fueEliminado ? '✅' : '❌'}`);
+    
+    resultados.tests.invalidacion = result.success && fueEliminado;
+  } catch (error) {
+    console.error('❌ Error:', error);
+    resultados.tests.invalidacion = false;
+    resultados.exito = false;
+  }
+  
+  // Resumen final
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 RESUMEN DE TESTS');
+  console.log('='.repeat(60));
+  
+  Object.keys(resultados.tests).forEach(test => {
+    const resultado = resultados.tests[test];
+    console.log(`${test}: ${resultado ? '✅ PASS' : '❌ FAIL'}`);
+  });
+  
+  console.log('\n' + (resultados.exito ? '✅ TODOS LOS TESTS PASARON' : '❌ ALGUNOS TESTS FALLARON'));
+  
+  return resultados;
+}
+
 console.log('🧪 SistemaTestsRobusto cargado - Sistema consolidado de pruebas disponible');

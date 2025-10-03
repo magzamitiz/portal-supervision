@@ -308,32 +308,178 @@ class UnifiedCache {
   }
   
   /**
-   * Invalida caché por patrón
-   * @param {string} pattern - Patrón de claves a invalidar
-   * @returns {number} Número de claves invalidadas
+   * ❌ DEPRECADO: Función original rota
+   * ✅ REEMPLAZADA: Por invalidateKey() e invalidatePattern()
+   * 
+   * PROBLEMA: cache.getKeys() no existe en CacheService
+   * SOLUCIÓN: Usar lista predefinida de claves conocidas
    */
-  static invalidate(pattern) {
+  static invalidate_OLD_BROKEN(pattern) {
+    // ❌ ESTA FUNCIÓN ESTÁ ROTA - NO USAR
+    throw new Error('invalidate() está deprecada. Usar invalidateKey() o invalidatePattern()');
+  }
+  
+  /**
+   * ✅ NUEVO: Invalida una clave específica y sus fragmentos
+   * Esto SÍ funciona porque no requiere getKeys()
+   * 
+   * @param {string} baseKey - Clave base a invalidar
+   * @returns {Object} Resultado de la operación
+   */
+  static invalidateKey(baseKey) {
     try {
       const cache = CacheService.getScriptCache();
-      let invalidatedCount = 0;
+      let removedCount = 0;
       
-      // Obtener todas las claves del caché
-      const allKeys = cache.getKeys();
+      console.log(`[UnifiedCache] 🗑️ Invalidando clave: ${baseKey}`);
       
-      allKeys.forEach(key => {
+      // 1. Remover clave principal
+      cache.remove(baseKey);
+      removedCount++;
+      
+      // 2. Remover metadata
+      cache.remove(`${baseKey}_META`);
+      removedCount++;
+      
+      // 3. Remover fragmentos posibles (hasta 20 fragmentos)
+      for (let i = 0; i < 20; i++) {
+        cache.remove(`${baseKey}_${i}`);
+        cache.remove(`${baseKey}_CHUNK_${i}`);
+        removedCount += 2;
+      }
+      
+      console.log(`[UnifiedCache] ✅ Invalidado: ${baseKey} (${removedCount} intentos de remoción)`);
+      
+      return {
+        success: true,
+        baseKey: baseKey,
+        removedCount: removedCount
+      };
+      
+    } catch (error) {
+      console.error(`[UnifiedCache] ❌ Error invalidando ${baseKey}:`, error);
+      return {
+        success: false,
+        baseKey: baseKey,
+        error: error.toString()
+      };
+    }
+  }
+  
+  /**
+   * ✅ NUEVO: Invalida claves por patrón usando lista predefinida
+   * No usa cache.getKeys() - usa lista conocida
+   * 
+   * @param {string} pattern - Patrón a buscar en claves conocidas
+   * @returns {Object} Resultado de la operación
+   */
+  static invalidatePattern(pattern) {
+    try {
+      console.log(`[UnifiedCache] 🔍 Buscando claves que coincidan con: "${pattern}"`);
+      
+      // Lista de claves conocidas del sistema
+      const knownKeys = this._getKnownCacheKeys();
+      
+      let matchedKeys = [];
+      let removedCount = 0;
+      
+      // Buscar claves que coincidan con el patrón
+      knownKeys.forEach(key => {
         if (key.includes(pattern)) {
-          cache.remove(key);
-          invalidatedCount++;
-          console.log(`[UnifiedCache] 🗑️ Invalidado: ${key}`);
+          matchedKeys.push(key);
+          const result = this.invalidateKey(key);
+          if (result.success) {
+            removedCount++;
+          }
         }
       });
       
-      console.log(`[UnifiedCache] ✅ Invalidación completada: ${invalidatedCount} claves`);
-      return invalidatedCount;
+      console.log(`[UnifiedCache] ✅ Patrón "${pattern}": ${matchedKeys.length} claves encontradas, ${removedCount} invalidadas`);
+      
+      return {
+        success: true,
+        pattern: pattern,
+        matchedKeys: matchedKeys,
+        removedCount: removedCount
+      };
+      
     } catch (error) {
-      console.error(`[UnifiedCache] ❌ Error invalidando ${pattern}:`, error);
-      return 0;
+      console.error(`[UnifiedCache] ❌ Error con patrón ${pattern}:`, error);
+      return {
+        success: false,
+        pattern: pattern,
+        error: error.toString()
+      };
     }
+  }
+  
+  /**
+   * ✅ NUEVO: Obtiene lista de claves conocidas del sistema
+   * Esta lista debe mantenerse actualizada con las claves reales usadas
+   * 
+   * @returns {Array<string>} Array de claves conocidas
+   */
+  static _getKnownCacheKeys() {
+    const keys = [
+      // Claves principales
+      'UNIFIED_DASHBOARD_V3',
+      'UNIFIED_STATS_V3',
+      'UNIFIED_LEADERS_V3',
+      'DASHBOARD_CONSOLIDATED_V1',
+      'DASHBOARD_DATA_V2',
+      'STATS_RAPIDAS_V2',
+      
+      // Claves legacy
+      'DIRECTORIO_COMPLETO',
+      'ESTADO_LIDERES_CACHE',
+      'datos_graficos_dashboard',
+      'metricas_historicas'
+    ];
+    
+    // Agregar claves dinámicas comunes (LDs)
+    for (let i = 0; i < 100; i++) {
+      const ldId = `LD-${String(i).padStart(3, '0')}`;
+      keys.push(`LD_DETAIL_${ldId}`);
+      keys.push(`LD_FULL_${ldId}`);
+      keys.push(`LD_QUICK_${ldId}`);
+    }
+    
+    // Agregar claves dinámicas comunes (LCFs)
+    for (let i = 0; i < 200; i++) {
+      const lcfId = `LCF-${String(i).padStart(3, '0')}`;
+      keys.push(`LCF_DETAIL_${lcfId}`);
+      keys.push(`INGRESOS_LCF_${lcfId}`);
+    }
+    
+    return keys;
+  }
+  
+  /**
+   * ✅ NUEVO: Limpia TODO el caché del sistema
+   * Útil para depuración o reset completo
+   * 
+   * @returns {Object} Resultado de la operación
+   */
+  static clearAll() {
+    console.log('[UnifiedCache] 🧹 LIMPIEZA COMPLETA DE TODO EL CACHÉ');
+    
+    const allKeys = this._getKnownCacheKeys();
+    let removedCount = 0;
+    
+    allKeys.forEach(key => {
+      const result = this.invalidateKey(key);
+      if (result.success) {
+        removedCount++;
+      }
+    });
+    
+    console.log(`[UnifiedCache] ✅ Limpieza completa: ${removedCount} claves procesadas`);
+    
+    return {
+      success: true,
+      totalKeys: allKeys.length,
+      removedCount: removedCount
+    };
   }
   
   /**
