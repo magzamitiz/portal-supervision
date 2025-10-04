@@ -209,21 +209,37 @@ function getDashboardData(forceReload = false) {
     
     // 2. Abrir spreadsheet
     const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
-    const lideresSheet = ss.getSheetByName(CONFIG.TABS.LIDERES);
     
+    // 3. ✅ CARGAR MÉTRICAS: Leer _ResumenDashboard para métricas
+    const resumenSheet = ss.getSheetByName('_ResumenDashboard');
+    if (!resumenSheet) {
+      throw new Error('Hoja _ResumenDashboard no encontrada');
+    }
+    
+    const metricasValues = resumenSheet.getRange('B1:B10').getValues();
+    const metricas = {
+      totalRecibiendoCelulas: metricasValues[0][0] || 0,
+      activosRecibiendoCelula: metricasValues[1][0] || 0,
+      alerta2_3Semanas: metricasValues[2][0] || 0,
+      criticoMas1Mes: metricasValues[3][0] || 0,
+      lideresInactivos: metricasValues[4][0] || 0,
+      totalLideres: metricasValues[5][0] || 0,
+      totalCelulas: metricasValues[6][0] || 0,
+      totalIngresos: metricasValues[7][0] || 0
+    };
+    
+    // 4. ✅ CARGAR LÍDERES: Solo LDs (optimizado)
+    const lideresSheet = ss.getSheetByName(CONFIG.TABS.LIDERES);
     if (!lideresSheet) {
       throw new Error('Hoja de líderes no encontrada');
     }
     
     const ultimaFila = lideresSheet.getLastRow();
-    
-    // 3. ✅ OPTIMIZACIÓN ULTRA: Solo leer columnas A (ID), B (Nombre), C (Rol)
     console.log(`[MainModule] Leyendo solo 3 columnas de ${ultimaFila - 1} filas...`);
     const lideresData = lideresSheet.getRange(2, 1, ultimaFila - 1, 3).getValues();
     
-    // 4. ✅ OPTIMIZACIÓN ULTRA: Filtrar solo LDs con validación
     const lideresLD = lideresData
-      .filter(row => row[0] && row[1] && row[2] === 'LD') // Validar datos no vacíos y solo LDs
+      .filter(row => row[0] && row[1] && row[2] === 'LD')
       .map(row => ({
         ID_Lider: String(row[0]).trim(),
         Nombre_Lider: String(row[1]).trim()
@@ -232,20 +248,32 @@ function getDashboardData(forceReload = false) {
     const result = {
       success: true,
       data: {
+        // ✅ MÉTRICAS RESTAURADAS: Datos que el frontend necesita
+        metricas: {
+          activosRecibiendoCelula: metricas.activosRecibiendoCelula,
+          alerta2_3Semanas: metricas.alerta2_3Semanas,
+          criticoMas1Mes: metricas.criticoMas1Mes,
+          lideresInactivos: metricas.lideresInactivos
+        },
+        actividad: {
+          totalLideres: metricas.totalLideres,
+          totalCelulas: metricas.totalCelulas,
+          totalIngresos: metricas.totalIngresos,
+          totalAsistenciaCelulas: metricas.totalRecibiendoCelulas
+        },
         lideres: { 
           lista: lideresLD,
           total: lideresLD.length,
-          activos: lideresLD.length // Todos los LDs se consideran activos por defecto
+          activos: lideresLD.length
         },
         timestamp: new Date().toISOString(),
-        modo_carga: 'ULTRA_OPTIMIZADO (solo LDs, 3 columnas)',
+        modo_carga: 'OPTIMIZADO (métricas + LDs)',
         tiempo_carga: Date.now() - startTime,
         performance: {
           loadTime: Date.now() - startTime,
           cacheHit: false,
           optimizado: true,
-          columnas_leidas: 3,
-          filas_procesadas: lideresData.length,
+          metricas_cargadas: Object.keys(metricas).length,
           lds_encontrados: lideresLD.length
         }
       }
@@ -280,7 +308,7 @@ function getDashboardData(forceReload = false) {
 // ❌ ELIMINADO: procesarIngresosDirectos() - Ya no se usa  
 // ❌ ELIMINADO: findColumnIndexSimple() - Ya no se usa
 
-// ❌ ELIMINADO: createEmptyAnalysis() - Función no utilizada (28 líneas)
+// ✅ ELIMINADO: createEmptyAnalysis() - Función no utilizada (eliminada definitivamente)
 
 /**
  * Función consolidada que reemplaza 3 llamadas RPC con 1 sola
@@ -609,7 +637,12 @@ function processDashboardFromBatch(batchData) {
     };
   } catch (error) {
     console.error('[CONSOLIDATED] Error procesando dashboard:', error);
-    return createEmptyAnalysis();
+    return {
+      success: false,
+      error: 'Error procesando dashboard consolidado',
+      data: null,
+      timestamp: new Date().toISOString()
+    };
   }
 }
 

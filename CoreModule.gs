@@ -556,45 +556,8 @@ function getDatosLD(idLD, modoCompleto = true) {
   }
 }
 
-/**
- * Obtiene los datos básicos de un LD.
- * @param {string} idLD - ID del LD
- * @returns {Object} Objeto con los datos básicos del LD
- */
-function getDatosLDBasico(idLD) {
-  checkTimeout();
-  console.log('[CoreModule] Cargando modo básico para LD:', idLD);
-  
-  const spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
-  const sheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
-    const data = getOptimizedRange(sheet, 5000, 2, 1, 5);
-  
-  const ldRow = data.find(row => String(row[0]).trim() === idLD && String(row[2]).trim() === 'LD');
-  if (!ldRow) {
-    return { success: false, error: 'LD no encontrado' };
-  }
-  
-  const ldInfo = {
-    ID: String(ldRow[0]).trim(),
-    Nombre: String(ldRow[1]).trim(),
-    Estado: String(ldRow[4] || 'Activo').trim()
-  };
-  
-  const estructura = construirEstructuraLD(idLD, data);
-  
-  return {
-    success: true,
-    resumen: {
-      ld: ldInfo,
-      estructura: {
-        total_lm: estructura.lm.length,
-        total_small_groups: estructura.smallGroups.length,
-        total_lcf: estructura.lcfDirectos.length
-      }
-    },
-    timestamp: new Date().toISOString()
-  };
-}
+// ✅ ELIMINADO: getDatosLDBasico() - Función no utilizada (eliminada definitivamente)
+// Razón: Rama modoCompleto=false nunca se ejecuta (siempre se pasa true)
 
 /**
  * Obtiene los datos completos de un LD, incluyendo LCFs, células e ingresos.
@@ -1024,128 +987,8 @@ function darDeBajaAlmasEnLote(idAlmasArray) {
   }
 }
 
-/**
- * Búsqueda directa y rápida de un LD específico
- * Función de optimización para evitar cargar todo el directorio
- * @param {string} idLD - ID del LD a buscar (ej: 'LD-4003')
- * @returns {Object} Objeto con la estructura de respuesta
- */
-function buscarLDRapido(idLD) {
-  // 1. Medir tiempo desde el inicio
-  const startTime = Date.now();
-  
-  try {
-    // 2. Verificar caché específico primero
-    const cache = CacheService.getScriptCache();
-    const cacheKey = `LD_QUICK_${idLD}`;
-    const cached = cache.get(cacheKey);
-    
-    if (cached) {
-      console.log(`[CoreModule] LD ${idLD} encontrado en caché rápida`);
-      const cachedData = JSON.parse(cached);
-      cachedData.tiempo = Date.now() - startTime;
-      return cachedData;
-    }
-    
-    // 3. Si no está en caché, buscar en la hoja
-    console.log(`[CoreModule] Buscando LD ${idLD} directamente en hoja...`);
-
-    // Usar SpreadsheetManager si está disponible
-    let spreadsheet;
-    try {
-      // Intentar usar SpreadsheetManager CON EL ID CORRECTO
-      if (typeof SpreadsheetManager !== 'undefined' && SpreadsheetManager.getInstance) {
-        // Pasar el ID del spreadsheet al SpreadsheetManager
-        const sm = SpreadsheetManager.getInstance();
-        spreadsheet = sm.getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
-        console.log('[CoreModule] Usando SpreadsheetManager');
-      }
-    } catch (smError) {
-      // Si falla, usar fallback
-      console.log('[CoreModule] SpreadsheetManager falló, usando fallback');
-    }
-
-    // Si no se obtuvo por SpreadsheetManager, abrir directamente
-    if (!spreadsheet) {
-      spreadsheet = getSpreadsheetManager().getSpreadsheet(CONFIG.SHEETS.DIRECTORIO);
-      console.log('[CoreModule] Abriendo spreadsheet directamente');
-    }
-
-    const sheet = spreadsheet.getSheetByName(CONFIG.TABS.LIDERES);
-    if (!sheet) {
-      return {
-        success: false,
-        error: `Hoja '${CONFIG.TABS.LIDERES}' no encontrada`,
-        tiempo: Date.now() - startTime
-      };
-    }
-
-    // Optimización: limitar búsqueda a las primeras 200 filas
-    const data = getOptimizedRange(sheet, 200, 2, 1, 5);
-    
-    // 4. Buscar fila donde:
-    // - Columna A (índice 0) = idLD
-    // - Columna C (índice 2) = 'LD'
-    let ldRow = null;
-    let rowNumber = 0;
-    
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      if (String(row[0]).trim() === idLD && String(row[2]).trim() === 'LD') {
-        ldRow = row;
-        rowNumber = i + 2; // +2 porque empezamos desde fila 2
-        break;
-      }
-    }
-    
-    // 5. Si encuentra, crear objeto respuesta
-    if (ldRow) {
-      const resultado = {
-        success: true,
-        ld: {
-          ID: String(ldRow[0]).trim(),
-          Nombre: String(ldRow[1]).trim(),
-          Rol: String(ldRow[2]).trim(),
-          Superior: String(ldRow[3] || '').trim(),
-          Estado: String(ldRow[4] || 'Activo').trim(),
-          Fila: rowNumber
-        },
-        tiempo: Date.now() - startTime
-      };
-      
-      // 6. Cachear si success=true (300 segundos = 5 minutos)
-      try {
-        cache.put(cacheKey, JSON.stringify(resultado), 300);
-        console.log(`[CoreModule] LD ${idLD} cacheado por 5 minutos`);
-      } catch (cacheError) {
-        console.warn(`[CoreModule] No se pudo cachear LD ${idLD}:`, cacheError);
-      }
-      
-      console.log(`[CoreModule] ✅ LD ${idLD} encontrado en ${resultado.tiempo}ms`);
-      return resultado;
-    }
-    
-    // 7. Si no encuentra, retornar error
-    const tiempo = Date.now() - startTime;
-    console.log(`[CoreModule] ❌ LD ${idLD} no encontrado en ${tiempo}ms`);
-    
-    return {
-      success: false,
-      error: `LD ${idLD} no encontrado`,
-      tiempo: tiempo
-    };
-    
-  } catch (error) {
-    const tiempo = Date.now() - startTime;
-    console.error(`[CoreModule] Error en buscarLDRapido para ${idLD}:`, error);
-    
-    return {
-      success: false,
-      error: `Error interno: ${error.toString()}`,
-      tiempo: tiempo
-    };
-  }
-}
+// ✅ ELIMINADO: buscarLDRapido() - Función no utilizada (eliminada definitivamente)
+// Razón: Rama modoCompleto=false nunca se ejecuta (siempre se pasa true)
 
 /**
  * Test para verificar la corrección de getListaDeLideres con caché
