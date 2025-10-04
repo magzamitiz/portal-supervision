@@ -526,10 +526,11 @@ function handleRecargaCompleta(response) {
         // ✅ CORRECCIÓN: Actualizar métricas y timestamp después de recarga
         console.log('🔄 Actualizando métricas después de recarga...');
         
-        // Verificar que los campos necesarios existen
+        // ✅ CORRECCIÓN: Usar estructura alineada {fila1, fila2, calculadas}
         const datosSeguros = {
-            actividad: response.data.actividad || {},
-            metricas: response.data.metricas || {},
+            fila1: response.data.fila1 || {},
+            fila2: response.data.fila2 || {},
+            calculadas: response.data.calculadas || {},
             timestamp: response.data.timestamp || new Date().toISOString()
         };
         
@@ -736,7 +737,8 @@ function handleLideresResponse(response) {
             // ✅ CORRECCIÓN: Usar estadísticas guardadas o datos actuales
             if (ultimasEstadisticas) {
                 actualizarEstadisticas(ultimasEstadisticas);
-            } else if (datosActuales.actividad && datosActuales.metricas) {
+            } else if (datosActuales.fila1 && datosActuales.fila2) {
+                // ✅ CORRECCIÓN: Usar estructura alineada {fila1, fila2, calculadas}
                 actualizarEstadisticas(datosActuales);
             } else {
                 console.warn('⚠️ No hay estadísticas disponibles para mostrar');

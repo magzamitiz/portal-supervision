@@ -245,10 +245,18 @@ function getDashboardData(forceReload = false) {
         Nombre_Lider: String(row[1]).trim()
       }));
     
+    // ✅ TRANSFORMAR A ESTRUCTURA QUE ESPERA EL FRONTEND
+    const { fila1, fila2, calculadas } = transformarMetricasParaFrontend(metricas);
+
     const result = {
       success: true,
       data: {
-        // ✅ MÉTRICAS RESTAURADAS: Datos que el frontend necesita
+        // ✅ ESTRUCTURA QUE ESPERA EL FRONTEND
+        fila1: fila1,
+        fila2: fila2,
+        calculadas: calculadas,
+        
+        // ✅ MANTENER COMPATIBILIDAD CON CÓDIGO EXISTENTE
         metricas: {
           activosRecibiendoCelula: metricas.activosRecibiendoCelula,
           alerta2_3Semanas: metricas.alerta2_3Semanas,
@@ -267,7 +275,7 @@ function getDashboardData(forceReload = false) {
           activos: lideresLD.length
         },
         timestamp: new Date().toISOString(),
-        modo_carga: 'OPTIMIZADO (métricas + LDs)',
+        modo_carga: 'OPTIMIZADO (estructura alineada)',
         tiempo_carga: Date.now() - startTime,
         performance: {
           loadTime: Date.now() - startTime,
@@ -309,6 +317,38 @@ function getDashboardData(forceReload = false) {
 // ❌ ELIMINADO: findColumnIndexSimple() - Ya no se usa
 
 // ✅ ELIMINADO: createEmptyAnalysis() - Función no utilizada (eliminada definitivamente)
+
+/**
+ * ✅ FUNCIÓN REUTILIZABLE: Transforma métricas planas a estructura del frontend
+ * @param {Object} metricas - Métricas en formato plano
+ * @returns {Object} Estructura {fila1, fila2, calculadas} que espera el frontend
+ */
+function transformarMetricasParaFrontend(metricas) {
+  const fila1 = {
+    activos_recibiendo_celula: metricas.activosRecibiendoCelula || 0,
+    lideres_hibernando: metricas.lideresInactivos || 0,
+    total_lideres: metricas.totalLideres || 0,
+    total_asistencia_celulas: metricas.totalRecibiendoCelulas || 0
+  };
+  
+  const fila2 = {
+    alerta_2_3_semanas: metricas.alerta2_3Semanas || 0,
+    critico_mas_1_mes: metricas.criticoMas1Mes || 0,
+    total_celulas: metricas.totalCelulas || 0,
+    total_ingresos: metricas.totalIngresos || 0
+  };
+  
+  const calculadas = {
+    porcentaje_activos: (metricas.totalLideres || 0) > 0 ? 
+      Math.round(((metricas.activosRecibiendoCelula || 0) / (metricas.totalLideres || 1)) * 100) : 0,
+    porcentaje_alerta: (metricas.totalLideres || 0) > 0 ? 
+      Math.round(((metricas.alerta2_3Semanas || 0) / (metricas.totalLideres || 1)) * 100) : 0,
+    porcentaje_critico: (metricas.totalLideres || 0) > 0 ? 
+      Math.round(((metricas.criticoMas1Mes || 0) / (metricas.totalLideres || 1)) * 100) : 0
+  };
+  
+  return { fila1, fila2, calculadas };
+}
 
 /**
  * Función consolidada que reemplaza 3 llamadas RPC con 1 sola
@@ -1023,9 +1063,16 @@ function forceReloadDashboardData() {
       throw new Error('Error obteniendo estadísticas: ' + stats.error);
     }
     
-    // 3. ✅ CORRECCIÓN: Crear análisis con estructura correcta
+    // 3. ✅ CORRECCIÓN: Crear análisis con estructura alineada con frontend
+    const { fila1, fila2, calculadas } = transformarMetricasParaFrontend(stats.data);
+
     const analisis = {
-      // ✅ CORRECCIÓN: Mapear campos que SÍ existen en getEstadisticasRapidas()
+      // ✅ ESTRUCTURA QUE ESPERA EL FRONTEND
+      fila1: fila1,
+      fila2: fila2,
+      calculadas: calculadas,
+      
+      // ✅ MANTENER COMPATIBILIDAD
       metricas: {
         activosRecibiendoCelula: stats.data.activosRecibiendoCelula || 0,
         alerta2_3Semanas: stats.data.alerta2_3Semanas || 0,
@@ -1045,7 +1092,7 @@ function forceReloadDashboardData() {
       alertas: [],
       timestamp: stats.data.timestamp,
       modo_optimizado: true,
-      modo_carga: 'RECARGA FORZADA (datos frescos desde Google Sheets)'
+      modo_carga: 'RECARGA FORZADA (estructura alineada)'
     };
 
     const timeElapsed = Date.now() - startTime;
