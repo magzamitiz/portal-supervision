@@ -45,7 +45,7 @@ function verificarNombresReales() {
       'Líderes hibernando',
       'Total Líderes',
       'Total Células',
-      'Total Ingresos'
+      'Total Ingresos',
     ];
     
     nombresCodigo.forEach(nombre => {
@@ -143,6 +143,105 @@ function probarEstadisticasActuales() {
     
   } catch (error) {
     console.error('❌ Error crítico en prueba:', error);
+    return null;
+  }
+}
+
+/**
+ * FUNCIÓN DE VERIFICACIÓN ESPECÍFICA PARA LCF Y TASA
+ * Verifica si existen las métricas faltantes en la hoja
+ */
+function verificarLCFyTasa() {
+  console.log('🔍 VERIFICACIÓN ESPECÍFICA: LCF y Tasa de Integración');
+  console.log('='.repeat(60));
+  
+  try {
+    // Leer la hoja _ResumenDashboard
+    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const resumenSheet = ss.getSheetByName('_ResumenDashboard');
+    
+    if (!resumenSheet) {
+      console.error('❌ Hoja _ResumenDashboard no encontrada');
+      return;
+    }
+    
+    // Leer un rango amplio para capturar todas las métricas
+    const valores = resumenSheet.getRange('A1:B30').getValues();
+    
+    console.log('📊 BÚSQUEDA DE MÉTRICAS FALTANTES:');
+    console.log('='.repeat(50));
+    
+    const metricas = {};
+    valores.forEach((row, index) => {
+      if (row[0] && row[0].toString().trim()) {
+        const nombre = row[0].toString().trim();
+        const valor = row[1] || 0;
+        metricas[nombre] = valor;
+      }
+    });
+    
+    // Buscar variaciones de LCF
+    const variacionesLCF = [
+      'Total LCF',
+      'Total LCFs', 
+      'LCF Total',
+      'Total Líderes Célula',
+      'Líderes Célula',
+      'LCF'
+    ];
+    
+    console.log('🔍 BÚSQUEDA DE LCF:');
+    let lcfEncontrado = null;
+    variacionesLCF.forEach(variacion => {
+      if (metricas.hasOwnProperty(variacion)) {
+        console.log(`✅ "${variacion}": ${metricas[variacion]}`);
+        lcfEncontrado = { nombre: variacion, valor: metricas[variacion] };
+      }
+    });
+    
+    if (!lcfEncontrado) {
+      console.log('❌ No se encontró ninguna variación de LCF');
+      console.log('💡 Sugerencia: Agregar "Total LCF" a la hoja _ResumenDashboard');
+    }
+    
+    // Buscar variaciones de Tasa de Integración
+    const variacionesTasa = [
+      'Tasa Integración',
+      'Tasa de Integración',
+      'Tasa Integracion',
+      'Integración',
+      'Tasa'
+    ];
+    
+    console.log('\n🔍 BÚSQUEDA DE TASA DE INTEGRACIÓN:');
+    let tasaEncontrada = null;
+    variacionesTasa.forEach(variacion => {
+      if (metricas.hasOwnProperty(variacion)) {
+        console.log(`✅ "${variacion}": ${metricas[variacion]}`);
+        tasaEncontrada = { nombre: variacion, valor: metricas[variacion] };
+      }
+    });
+    
+    if (!tasaEncontrada) {
+      console.log('❌ No se encontró ninguna variación de Tasa de Integración');
+      console.log('💡 Sugerencia: Agregar "Tasa Integración" a la hoja _ResumenDashboard');
+    }
+    
+    // Mostrar todas las métricas para referencia
+    console.log('\n📋 TODAS LAS MÉTRICAS DISPONIBLES:');
+    console.log('='.repeat(50));
+    Object.keys(metricas).forEach((nombre, index) => {
+      console.log(`${String(index + 1).padStart(2, '0')}. "${nombre}": ${metricas[nombre]}`);
+    });
+    
+    return {
+      lcf: lcfEncontrado,
+      tasa: tasaEncontrada,
+      todasLasMetricas: metricas
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en verificación LCF y Tasa:', error);
     return null;
   }
 }
