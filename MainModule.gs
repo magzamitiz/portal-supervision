@@ -407,18 +407,18 @@ function getDashboardDataConsolidated() {
       }
     });
     
-    // Mapear datos desde _ResumenDashboard
+    // ✅ CORRECCIÓN: Mapear datos usando nombres EXACTOS de la hoja
     batchData.resumen = {
-      total_recibiendo_celulas: metricas['Total Recibiendo Células'] || 0,
-      activos_recibiendo_celula: metricas['Activos Recibiendo Célula'] || 0,
-      alerta_2_3_semanas: metricas['Alerta 2-3 Semanas'] || 0,
-      critico_mas_1_mes: metricas['Crítico Más 1 Mes'] || 0,
-      lideres_inactivos: metricas['Líderes Inactivos'] || 0,
-      total_lideres: metricas['Total Líderes (LD)'] || 0,
-      total_lcf: metricas['Total LCF'] || 0,
+      total_recibiendo_celulas: metricas['Total Asistencia Células'] || 0,
+      activos_recibiendo_celula: metricas['Activos recibiendo célula'] || 0,
+      alerta_2_3_semanas: metricas['2 a 3 semanas sin recibir celula'] || 0,
+      critico_mas_1_mes: metricas['Más de 1 mes sin recibir celula'] || 0,
+      lideres_inactivos: metricas['Líderes hibernando'] || 0,
+      total_lideres: metricas['Total Líderes'] || 0,
+      total_lcf: metricas['Total Líderes'] || 0, // Usar Total Líderes como LCF temporalmente
       total_celulas: metricas['Total Células'] || 0,
       total_ingresos: metricas['Total Ingresos'] || 0,
-      tasa_integracion: metricas['Tasa Integración'] || 0
+      tasa_integracion: "0.0" // Calcular dinámicamente si es necesario
     };
     
     const sheetsLoadTime = Date.now() - startTime;
@@ -514,7 +514,7 @@ function getDashboardDataConsolidated() {
  */
 function processEstadisticasFromBatch(batchData) {
   try {
-    if (!batchData.resumen || batchData.resumen.length < 7) {
+    if (!batchData.resumen || typeof batchData.resumen !== 'object') {
       return {
         lideres: { total_LD: 0, total_LCF: 0 },
         celulas: { total_celulas: 0 },
@@ -524,24 +524,25 @@ function processEstadisticasFromBatch(batchData) {
       };
     }
     
-    const metricasValues = batchData.resumen;
+    // ✅ CORRECCIÓN: Usar claves del objeto en lugar de índices de array
+    const resumen = batchData.resumen;
     
     return {
       lideres: { 
-        total_LD: metricasValues[0][0] || 0, 
-        total_LCF: metricasValues[1][0] || 0 
+        total_LD: resumen.total_lideres || 0, 
+        total_LCF: resumen.total_lcf || 0 
       },
       celulas: { 
-        total_celulas: metricasValues[2][0] || 0 
+        total_celulas: resumen.total_celulas || 0 
       },
       ingresos: {
-        total_historico: metricasValues[3][0] || 0,
-        ingresos_mes: metricasValues[4][0] || 0,
-        tasa_integracion_celula: ((metricasValues[6][0] || 0) * 100).toFixed(1)
+        total_historico: resumen.total_ingresos || 0,
+        ingresos_mes: resumen.total_ingresos || 0, // Usar total_ingresos como ingresos_mes
+        tasa_integracion_celula: resumen.tasa_integracion || "0.0"
       },
       metricas: { 
-        promedio_lcf_por_ld: metricasValues[0][0] > 0 ? 
-          ((metricasValues[1][0] || 0) / metricasValues[0][0]).toFixed(1) : "0.0"
+        promedio_lcf_por_ld: (resumen.total_lideres > 0 && resumen.total_lcf > 0) ? 
+          (resumen.total_lcf / resumen.total_lideres).toFixed(1) : "0.0"
       },
       timestamp: new Date().toISOString()
     };
