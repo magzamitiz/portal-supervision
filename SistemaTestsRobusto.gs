@@ -3270,7 +3270,7 @@ function testGetDashboardDataCompleto() {
       const actividadExiste = data.actividad && 
         typeof data.actividad.totalLideres === 'number' &&
         typeof data.actividad.totalCelulas === 'number' &&
-        typeof data.actividad.totalIngresos === 'number';
+        typeof data.actividad.totalAlmas === 'number';
       
       console.log(`\n✅ Test 4 - Métricas de actividad: ${actividadExiste ? 'PASS' : 'FAIL'}`);
       resultados.tests.actividad_metricas = actividadExiste;
@@ -3278,7 +3278,7 @@ function testGetDashboardDataCompleto() {
       if (actividadExiste) {
         console.log(`  Total Líderes: ${data.actividad.totalLideres}`);
         console.log(`  Total Células: ${data.actividad.totalCelulas}`);
-        console.log(`  Total Ingresos: ${data.actividad.totalIngresos}`);
+        console.log(`  Total Almas: ${data.actividad.totalAlmas}`);
       }
       
       // Test 5: Verificar tiempo de carga

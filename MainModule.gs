@@ -210,7 +210,6 @@ function getDashboardData(forceReload = false) {
     }
     
     const metricasValues = resumenSheet.getRange('B1:B10').getValues();
-    const totalRecibiendoCelulas = metricasValues[0][0] || 0;
     const activosRecibiendoCelula = metricasValues[1][0] || 0;
     const alerta2_3Semanas = metricasValues[2][0] || 0;
     const criticoMas1Mes = metricasValues[3][0] || 0;
@@ -254,7 +253,6 @@ function getDashboardData(forceReload = false) {
           nuevasEsteMes: 0
         },
         metricas: {
-          totalRecibiendoCelulas: totalRecibiendoCelulas,
           activosRecibiendoCelula: activosRecibiendoCelula,
           alerta2_3Semanas: alerta2_3Semanas,
           criticoMas1Mes: criticoMas1Mes,
