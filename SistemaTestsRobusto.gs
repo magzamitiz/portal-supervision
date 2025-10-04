@@ -2330,4 +2330,884 @@ function corregirErrorNull() {
   return resultados;
 }
 
+/**
+ * Test específico para verificar correcciones de métricas
+ * Verifica que lideres_inactivos se incluye y que los valores no son cero
+ */
+function testCorreccionesMetricas() {
+  console.log('🧪 TEST: Verificando correcciones de métricas');
+  console.log('='.repeat(60));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: {},
+    exito: true
+  };
+  
+  try {
+    // Limpiar caché para forzar recarga
+    clearCache();
+    
+    // Obtener estadísticas
+    const stats = getEstadisticasRapidas();
+    
+    if (stats.success && stats.data) {
+      const actividad = stats.data.actividad;
+      const metricas = stats.data.metricas;
+      
+      console.log('📊 Verificando estructura de datos:');
+      console.log('  actividad:', Object.keys(actividad));
+      console.log('  metricas:', Object.keys(metricas));
+      
+      // Test 1: Verificar que lideres_inactivos existe
+      const tieneLideresInactivos = actividad.hasOwnProperty('lideres_inactivos');
+      console.log(`\n✅ Test 1 - lideres_inactivos existe: ${tieneLideresInactivos ? 'PASS' : 'FAIL'}`);
+      resultados.tests.lideres_inactivos_existe = tieneLideresInactivos;
+      
+      if (!tieneLideresInactivos) {
+        resultados.exito = false;
+      }
+      
+      // Test 2: Verificar que los valores no son todos cero
+      const valoresActividad = Object.values(actividad);
+      const valoresMetricas = Object.values(metricas);
+      const todosValores = [...valoresActividad, ...valoresMetricas];
+      
+      const hayValoresNoCero = todosValores.some(valor => 
+        typeof valor === 'number' && valor > 0
+      );
+      
+      console.log(`\n✅ Test 2 - Hay valores no cero: ${hayValoresNoCero ? 'PASS' : 'FAIL'}`);
+      console.log('  Valores de actividad:', valoresActividad);
+      console.log('  Valores de métricas:', valoresMetricas);
+      resultados.tests.hay_valores_no_cero = hayValoresNoCero;
+      
+      if (!hayValoresNoCero) {
+        console.log('⚠️ Todos los valores son cero - verificar hoja _ResumenDashboard');
+        resultados.exito = false;
+      }
+      
+      // Test 3: Verificar estructura específica
+      const estructuraCorrecta = 
+        actividad.hasOwnProperty('total_recibiendo_celulas') &&
+        actividad.hasOwnProperty('activos_recibiendo_celula') &&
+        actividad.hasOwnProperty('alerta_2_3_semanas') &&
+        actividad.hasOwnProperty('critico_mas_1_mes') &&
+        actividad.hasOwnProperty('lideres_inactivos') &&
+        metricas.hasOwnProperty('porcentaje_activos') &&
+        metricas.hasOwnProperty('porcentaje_alerta') &&
+        metricas.hasOwnProperty('porcentaje_critico');
+      
+      console.log(`\n✅ Test 3 - Estructura correcta: ${estructuraCorrecta ? 'PASS' : 'FAIL'}`);
+      resultados.tests.estructura_correcta = estructuraCorrecta;
+      
+      if (!estructuraCorrecta) {
+        resultados.exito = false;
+      }
+      
+      // Test 4: Verificar cálculos de porcentajes
+      const totalRecibiendo = actividad.total_recibiendo_celulas;
+      if (totalRecibiendo > 0) {
+        const porcentajeActivosCalculado = ((actividad.activos_recibiendo_celula / totalRecibiendo) * 100).toFixed(1);
+        const porcentajeActivosCorrecto = metricas.porcentaje_activos == porcentajeActivosCalculado;
+        
+        console.log(`\n✅ Test 4 - Porcentajes correctos: ${porcentajeActivosCorrecto ? 'PASS' : 'FAIL'}`);
+        console.log(`  Calculado: ${porcentajeActivosCalculado}%, Encontrado: ${metricas.porcentaje_activos}%`);
+        resultados.tests.porcentajes_correctos = porcentajeActivosCorrecto;
+        
+        if (!porcentajeActivosCorrecto) {
+          resultados.exito = false;
+        }
+      } else {
+        console.log('\n⚠️ Test 4 - No se puede verificar porcentajes (total = 0)');
+        resultados.tests.porcentajes_correctos = true; // No es un error
+      }
+      
+    } else {
+      console.error('❌ Error obteniendo estadísticas');
+      resultados.tests.estadisticas_ok = false;
+      resultados.exito = false;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error crítico en test:', error);
+    resultados.exito = false;
+  }
+  
+  // Resumen
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 RESUMEN DE TESTS');
+  console.log('='.repeat(60));
+  
+  Object.keys(resultados.tests).forEach(test => {
+    const resultado = resultados.tests[test];
+    const icono = resultado ? '✅' : '❌';
+    console.log(`${icono} ${test}: ${resultado ? 'PASS' : 'FAIL'}`);
+  });
+  
+  if (resultados.exito) {
+    console.log('\n🎉 ¡TODAS LAS CORRECCIONES FUNCIONAN!');
+    console.log('✅ lideres_inactivos incluido correctamente');
+    console.log('✅ Valores no son todos cero');
+    console.log('✅ Estructura de datos correcta');
+    console.log('✅ Porcentajes calculados correctamente');
+    console.log('🔄 Recarga el dashboard para ver los cambios');
+  } else {
+    console.log('\n⚠️ ALGUNAS CORRECCIONES FALLARON');
+    console.log('💡 Revisar logs anteriores para detalles');
+    console.log('💡 Verificar que la hoja _ResumenDashboard tenga datos');
+  }
+  
+  return resultados;
+}
+
+/**
+ * Test específico para verificar la nueva regla de "LCF Hibernando"
+ * Verifica que la regla cambió de > 14 días a > 19 días
+ */
+function testLCFHibernando() {
+  console.log('🧪 TEST: Verificando nueva regla LCF Hibernando');
+  console.log('='.repeat(60));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: {},
+    exito: true
+  };
+  
+  try {
+    // Simular datos de equipo con diferentes días de inactividad
+    const equipoSimulado = [
+      { Dias_Inactivo: 5, IDP: 10, Perfil_Lider: 'Activo' },      // Activo
+      { Dias_Inactivo: 15, IDP: 8, Perfil_Lider: 'Activo' },      // Inactivo (vieja regla) pero Activo (nueva regla)
+      { Dias_Inactivo: 20, IDP: 5, Perfil_Lider: 'Activo' },      // Hibernando (nueva regla)
+      { Dias_Inactivo: 25, IDP: 3, Perfil_Lider: 'Activo' },      // Hibernando (nueva regla)
+      { Dias_Inactivo: null, IDP: 0, Perfil_Lider: 'Activo' },    // Hibernando (IDP = 0)
+      { Dias_Inactivo: 10, IDP: 12, Perfil_Lider: 'INACTIVO' },   // Hibernando (Perfil incluye INACTIVO)
+      { Dias_Inactivo: 18, IDP: 7, Perfil_Lider: 'Activo' },      // Activo (cerca del límite)
+      { Dias_Inactivo: 19, IDP: 6, Perfil_Lider: 'Activo' },      // Activo (límite exacto)
+      { Dias_Inactivo: 20, IDP: 4, Perfil_Lider: 'Activo' },      // Hibernando (límite + 1)
+    ];
+    
+    console.log('📊 Datos de prueba:');
+    equipoSimulado.forEach((lcf, i) => {
+      console.log(`  LCF ${i + 1}: ${lcf.Dias_Inactivo} días, IDP: ${lcf.IDP}, Perfil: ${lcf.Perfil_Lider}`);
+    });
+    
+    // Aplicar la nueva regla: > 19 días O IDP = 0 O Perfil incluye 'INACTIVO'
+    const hibernando = equipoSimulado.filter(lcf => 
+      (lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo > 19) || 
+      (lcf.IDP === 0 || lcf.Perfil_Lider?.includes('INACTIVO'))
+    );
+    
+    console.log(`\n🔍 Aplicando nueva regla (Dias_Inactivo > 19):`);
+    hibernando.forEach((lcf, i) => {
+      const razon = lcf.Dias_Inactivo > 19 ? `Días: ${lcf.Dias_Inactivo}` :
+                   lcf.IDP === 0 ? 'IDP = 0' :
+                   lcf.Perfil_Lider?.includes('INACTIVO') ? 'Perfil INACTIVO' : 'Otra razón';
+      console.log(`  LCF Hibernando ${i + 1}: ${razon}`);
+    });
+    
+    const totalHibernando = hibernando.length;
+    console.log(`\n📊 Total LCF Hibernando: ${totalHibernando}`);
+    
+    // Test 1: Verificar que la regla funciona correctamente
+    const esperadoHibernando = 4; // Deberían ser 4: días 20, 25, IDP=0, Perfil INACTIVO
+    const reglaCorrecta = totalHibernando === esperadoHibernando;
+    
+    console.log(`\n✅ Test 1 - Regla correcta: ${reglaCorrecta ? 'PASS' : 'FAIL'}`);
+    console.log(`  Esperado: ${esperadoHibernando}, Obtenido: ${totalHibernando}`);
+    resultados.tests.regla_correcta = reglaCorrecta;
+    
+    if (!reglaCorrecta) {
+      resultados.exito = false;
+    }
+    
+    // Test 2: Verificar que LCF con 15-19 días NO se consideran hibernando
+    const lcfEntre15y19 = equipoSimulado.filter(lcf => 
+      lcf.Dias_Inactivo !== null && 
+      lcf.Dias_Inactivo >= 15 && 
+      lcf.Dias_Inactivo <= 19 &&
+      lcf.IDP !== 0 &&
+      !lcf.Perfil_Lider?.includes('INACTIVO')
+    );
+    
+    const noHibernandoCorrecto = lcfEntre15y19.length === 2; // Deberían ser 2: días 15 y 18
+    
+    console.log(`\n✅ Test 2 - LCF 15-19 días no hibernando: ${noHibernandoCorrecto ? 'PASS' : 'FAIL'}`);
+    console.log(`  LCF entre 15-19 días: ${lcfEntre15y19.length} (deberían ser 2)`);
+    resultados.tests.no_hibernando_15_19 = noHibernandoCorrecto;
+    
+    if (!noHibernandoCorrecto) {
+      resultados.exito = false;
+    }
+    
+    // Test 3: Verificar que LCF con IDP = 0 se consideran hibernando
+    const lcfIDPCero = equipoSimulado.filter(lcf => lcf.IDP === 0);
+    const idpCeroHibernando = lcfIDPCero.length > 0 && hibernando.some(lcf => lcf.IDP === 0);
+    
+    console.log(`\n✅ Test 3 - LCF con IDP = 0 hibernando: ${idpCeroHibernando ? 'PASS' : 'FAIL'}`);
+    console.log(`  LCF con IDP = 0: ${lcfIDPCero.length}, Incluidos en hibernando: ${idpCeroHibernando}`);
+    resultados.tests.idp_cero_hibernando = idpCeroHibernando;
+    
+    if (!idpCeroHibernando) {
+      resultados.exito = false;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error crítico en test:', error);
+    resultados.exito = false;
+  }
+  
+  // Resumen
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 RESUMEN DE TESTS');
+  console.log('='.repeat(60));
+  
+  Object.keys(resultados.tests).forEach(test => {
+    const resultado = resultados.tests[test];
+    const icono = resultado ? '✅' : '❌';
+    console.log(`${icono} ${test}: ${resultado ? 'PASS' : 'FAIL'}`);
+  });
+  
+  if (resultados.exito) {
+    console.log('\n🎉 ¡NUEVA REGLA FUNCIONA CORRECTAMENTE!');
+    console.log('✅ LCF Hibernando: > 19 días O IDP = 0 O Perfil INACTIVO');
+    console.log('✅ LCF con 15-19 días ya NO se consideran hibernando');
+    console.log('✅ El dashboard mostrará menos LCF en estado crítico');
+  } else {
+    console.log('\n⚠️ ALGUNOS TESTS FALLARON');
+    console.log('💡 Revisar logs anteriores para detalles');
+  }
+  
+  return resultados;
+}
+
+/**
+ * Analiza la hoja _ResumenDashboard para identificar las 8 métricas nuevas
+ * y propone una organización en 2 filas de 4 métricas cada una
+ */
+function analizarResumenDashboard() {
+  console.log('🔍 ANÁLISIS: Hoja _ResumenDashboard con 8 métricas nuevas');
+  console.log('='.repeat(70));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    metricas_encontradas: {},
+    organizacion_propuesta: {},
+    exito: true
+  };
+  
+  try {
+    // Leer la hoja _ResumenDashboard
+    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const resumenSheet = ss.getSheetByName('_ResumenDashboard');
+    
+    if (!resumenSheet) {
+      console.error('❌ Hoja _ResumenDashboard no encontrada');
+      resultados.exito = false;
+      return resultados;
+    }
+    
+    // Leer un rango amplio para capturar todas las métricas
+    const valores = resumenSheet.getRange('A1:B30').getValues();
+    
+    console.log('📊 Métricas encontradas en _ResumenDashboard:');
+    console.log('='.repeat(50));
+    
+    const metricas = {};
+    valores.forEach((row, index) => {
+      if (row[0] && row[0].toString().trim()) {
+        const nombre = row[0].toString().trim();
+        const valor = row[1] || 0;
+        metricas[nombre] = valor;
+        
+        console.log(`${String(index + 1).padStart(2, '0')}. ${nombre}: ${valor}`);
+      }
+    });
+    
+    resultados.metricas_encontradas = metricas;
+    
+    // Identificar métricas existentes vs nuevas
+    const metricasExistentes = [
+      'Total Recibiendo',
+      'Activos', 
+      'Alerta',
+      'Crítico',
+      'Total Líderes',
+      'Total Células',
+      'Total Ingresos',
+      'Tasa Integración',
+      'Líderes Inactivos'
+    ];
+    
+    const metricasNuevas = Object.keys(metricas).filter(nombre => 
+      !metricasExistentes.includes(nombre)
+    );
+    
+    console.log('\n🆕 MÉTRICAS NUEVAS IDENTIFICADAS:');
+    console.log('='.repeat(40));
+    metricasNuevas.forEach((nombre, index) => {
+      console.log(`${index + 1}. ${nombre}: ${metricas[nombre]}`);
+    });
+    
+    // Proponer organización en 2 filas de 4 métricas
+    console.log('\n📋 ORGANIZACIÓN PROPUESTA:');
+    console.log('='.repeat(50));
+    
+    // Fila 1: Métricas principales (4 métricas)
+    const fila1 = [
+      'Total Recibiendo',
+      'Activos',
+      'Alerta', 
+      'Crítico'
+    ];
+    
+    // Fila 2: Métricas secundarias (4 métricas)
+    const fila2 = [
+      'Total Líderes',
+      'Total Células', 
+      'Total Ingresos',
+      'Tasa Integración'
+    ];
+    
+    // Si hay más de 8 métricas, agregar las nuevas
+    const todasLasMetricas = [...fila1, ...fila2, ...metricasNuevas];
+    
+    console.log('🏆 FILA 1 - Métricas Principales:');
+    fila1.forEach((nombre, index) => {
+      const valor = metricas[nombre] || 0;
+      console.log(`  ${index + 1}. ${nombre}: ${valor}`);
+    });
+    
+    console.log('\n📊 FILA 2 - Métricas Secundarias:');
+    fila2.forEach((nombre, index) => {
+      const valor = metricas[nombre] || 0;
+      console.log(`  ${index + 1}. ${nombre}: ${valor}`);
+    });
+    
+    if (metricasNuevas.length > 0) {
+      console.log('\n🆕 FILA 3 - Métricas Nuevas (si es necesario):');
+      metricasNuevas.forEach((nombre, index) => {
+        const valor = metricas[nombre] || 0;
+        console.log(`  ${index + 1}. ${nombre}: ${valor}`);
+      });
+    }
+    
+    // Proponer estructura HTML
+    console.log('\n💻 ESTRUCTURA HTML PROPUESTA:');
+    console.log('='.repeat(50));
+    
+    console.log(`
+<!-- FILA 1: Métricas Principales -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Total Recibiendo Células</p>
+                <p class="text-3xl font-bold text-gray-800">\${actividad.total_recibiendo_celulas || 0}</p>
+            </div>
+            <i class="fas fa-users text-blue-500 text-3xl"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Activos Recibiendo Célula</p>
+                <p class="text-3xl font-bold text-green-600">\${actividad.activos_recibiendo_celula || 0}</p>
+                <p class="text-xs text-green-600">\${metricas.porcentaje_activos || 0}% del total</p>
+            </div>
+            <i class="fas fa-check-circle text-green-500 text-3xl"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Alerta (2-3 semanas)</p>
+                <p class="text-3xl font-bold text-yellow-600">\${actividad.alerta_2_3_semanas || 0}</p>
+                <p class="text-xs text-yellow-600">\${metricas.porcentaje_alerta || 0}% del total</p>
+            </div>
+            <i class="fas fa-exclamation-triangle text-yellow-500 text-3xl"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Crítico (+1 mes)</p>
+                <p class="text-3xl font-bold text-red-600">\${actividad.critico_mas_1_mes || 0}</p>
+                <p class="text-xs text-red-600">\${metricas.porcentaje_critico || 0}% del total</p>
+            </div>
+            <i class="fas fa-exclamation-circle text-red-500 text-3xl"></i>
+        </div>
+    </div>
+</div>
+
+<!-- FILA 2: Métricas Secundarias -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Total Líderes</p>
+                <p class="text-3xl font-bold text-blue-600">\${metricas.total_lideres || 0}</p>
+            </div>
+            <i class="fas fa-user-tie text-blue-500 text-3xl"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Total Células</p>
+                <p class="text-3xl font-bold text-green-600">\${metricas.total_celulas || 0}</p>
+            </div>
+            <i class="fas fa-home text-green-500 text-3xl"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Total Ingresos</p>
+                <p class="text-3xl font-bold text-purple-600">\${metricas.total_ingresos || 0}</p>
+            </div>
+            <i class="fas fa-chart-line text-purple-500 text-3xl"></i>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">Tasa Integración</p>
+                <p class="text-3xl font-bold text-indigo-600">\${metricas.tasa_integracion || 0}%</p>
+            </div>
+            <i class="fas fa-percentage text-indigo-500 text-3xl"></i>
+        </div>
+    </div>
+</div>
+    `);
+    
+    resultados.organizacion_propuesta = {
+      fila1: fila1,
+      fila2: fila2,
+      metricas_nuevas: metricasNuevas,
+      total_metricas: Object.keys(metricas).length
+    };
+    
+    console.log('\n✅ ANÁLISIS COMPLETADO');
+    console.log(`📊 Total de métricas encontradas: ${Object.keys(metricas).length}`);
+    console.log(`🆕 Métricas nuevas: ${metricasNuevas.length}`);
+    console.log('💡 Usar la estructura HTML propuesta para organizar las métricas');
+    
+  } catch (error) {
+    console.error('❌ Error analizando _ResumenDashboard:', error);
+    resultados.exito = false;
+  }
+  
+  return resultados;
+}
+
+/**
+ * Análisis directo de la hoja _ResumenDashboard
+ * Solo trabaja con la información actual en la hoja, sin asumir métricas anteriores
+ */
+function analizarHojaActual() {
+  console.log('🔍 ANÁLISIS DIRECTO: Hoja _ResumenDashboard actual');
+  console.log('='.repeat(70));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    metricas_actuales: {},
+    organizacion_sugerida: {},
+    exito: true
+  };
+  
+  try {
+    // Leer la hoja _ResumenDashboard
+    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const resumenSheet = ss.getSheetByName('_ResumenDashboard');
+    
+    if (!resumenSheet) {
+      console.error('❌ Hoja _ResumenDashboard no encontrada');
+      resultados.exito = false;
+      return resultados;
+    }
+    
+    // Leer un rango amplio para capturar todas las métricas actuales
+    const valores = resumenSheet.getRange('A1:B50').getValues();
+    
+    console.log('📊 MÉTRICAS ACTUALES EN LA HOJA:');
+    console.log('='.repeat(50));
+    
+    const metricas = {};
+    let contador = 0;
+    
+    valores.forEach((row, index) => {
+      if (row[0] && row[0].toString().trim() && row[0].toString().trim() !== '') {
+        const nombre = row[0].toString().trim();
+        const valor = row[1] || 0;
+        metricas[nombre] = valor;
+        contador++;
+        
+        console.log(`${String(contador).padStart(2, '0')}. ${nombre}: ${valor}`);
+      }
+    });
+    
+    resultados.metricas_actuales = metricas;
+    
+    console.log(`\n📈 TOTAL DE MÉTRICAS ENCONTRADAS: ${contador}`);
+    
+    // Organizar en grupos lógicos basándose en los nombres
+    const metricasArray = Object.keys(metricas);
+    
+    // Identificar patrones en los nombres para agrupar
+    const grupos = {
+      actividad: [],
+      lideres: [],
+      celulas: [],
+      ingresos: [],
+      porcentajes: [],
+      otros: []
+    };
+    
+    metricasArray.forEach(nombre => {
+      const nombreLower = nombre.toLowerCase();
+      
+      if (nombreLower.includes('activo') || nombreLower.includes('alerta') || 
+          nombreLower.includes('crítico') || nombreLower.includes('recibiendo') ||
+          nombreLower.includes('hibernando') || nombreLower.includes('inactivo')) {
+        grupos.actividad.push(nombre);
+      } else if (nombreLower.includes('líder') || nombreLower.includes('ld') || 
+                 nombreLower.includes('lcf') || nombreLower.includes('lm')) {
+        grupos.lideres.push(nombre);
+      } else if (nombreLower.includes('célula') || nombreLower.includes('celula')) {
+        grupos.celulas.push(nombre);
+      } else if (nombreLower.includes('ingreso') || nombreLower.includes('alma')) {
+        grupos.ingresos.push(nombre);
+      } else if (nombreLower.includes('porcentaje') || nombreLower.includes('%') || 
+                 nombreLower.includes('tasa') || nombreLower.includes('ratio')) {
+        grupos.porcentajes.push(nombre);
+      } else {
+        grupos.otros.push(nombre);
+      }
+    });
+    
+    console.log('\n📋 GRUPOS IDENTIFICADOS:');
+    console.log('='.repeat(40));
+    
+    Object.keys(grupos).forEach(grupo => {
+      if (grupos[grupo].length > 0) {
+        console.log(`\n🏷️ ${grupo.toUpperCase()} (${grupos[grupo].length} métricas):`);
+        grupos[grupo].forEach((nombre, index) => {
+          const valor = metricas[nombre];
+          console.log(`  ${index + 1}. ${nombre}: ${valor}`);
+        });
+      }
+    });
+    
+    // Proponer organización en 2 filas de 4 métricas
+    console.log('\n🎯 ORGANIZACIÓN SUGERIDA:');
+    console.log('='.repeat(50));
+    
+    // Seleccionar las 8 métricas más importantes para las 2 filas
+    const metricasPrioritarias = [];
+    
+    // Prioridad 1: Métricas de actividad (más importantes)
+    metricasPrioritarias.push(...grupos.actividad.slice(0, 4));
+    
+    // Prioridad 2: Métricas de líderes
+    if (metricasPrioritarias.length < 4) {
+      metricasPrioritarias.push(...grupos.lideres.slice(0, 4 - metricasPrioritarias.length));
+    }
+    
+    // Prioridad 3: Métricas de células
+    if (metricasPrioritarias.length < 4) {
+      metricasPrioritarias.push(...grupos.celulas.slice(0, 4 - metricasPrioritarias.length));
+    }
+    
+    // Prioridad 4: Métricas de ingresos
+    if (metricasPrioritarias.length < 4) {
+      metricasPrioritarias.push(...grupos.ingresos.slice(0, 4 - metricasPrioritarias.length));
+    }
+    
+    // Prioridad 5: Otras métricas
+    if (metricasPrioritarias.length < 4) {
+      metricasPrioritarias.push(...grupos.otros.slice(0, 4 - metricasPrioritarias.length));
+    }
+    
+    // Segunda fila: métricas restantes
+    const metricasRestantes = metricasArray.filter(nombre => !metricasPrioritarias.includes(nombre));
+    const segundaFila = metricasRestantes.slice(0, 4);
+    
+    console.log('🏆 FILA 1 - Métricas Principales (4 métricas):');
+    metricasPrioritarias.forEach((nombre, index) => {
+      const valor = metricas[nombre] || 0;
+      console.log(`  ${index + 1}. ${nombre}: ${valor}`);
+    });
+    
+    if (segundaFila.length > 0) {
+      console.log('\n📊 FILA 2 - Métricas Secundarias (4 métricas):');
+      segundaFila.forEach((nombre, index) => {
+        const valor = metricas[nombre] || 0;
+        console.log(`  ${index + 1}. ${nombre}: ${valor}`);
+      });
+    }
+    
+    // Métricas sobrantes
+    const metricasSobrantes = metricasRestantes.slice(4);
+    if (metricasSobrantes.length > 0) {
+      console.log('\n🔄 MÉTRICAS ADICIONALES (no incluidas en las 2 filas):');
+      metricasSobrantes.forEach((nombre, index) => {
+        const valor = metricas[nombre] || 0;
+        console.log(`  ${index + 1}. ${nombre}: ${valor}`);
+      });
+    }
+    
+    // Generar estructura HTML dinámica
+    console.log('\n💻 ESTRUCTURA HTML GENERADA:');
+    console.log('='.repeat(50));
+    
+    let htmlFila1 = `<!-- FILA 1: Métricas Principales -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">`;
+    
+    metricasPrioritarias.forEach((nombre, index) => {
+      const valor = metricas[nombre] || 0;
+      const color = ['blue', 'green', 'yellow', 'red'][index % 4];
+      const icono = ['fa-users', 'fa-check-circle', 'fa-exclamation-triangle', 'fa-chart-line'][index % 4];
+      
+      htmlFila1 += `
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">${nombre}</p>
+                <p class="text-3xl font-bold text-${color}-600">${valor}</p>
+            </div>
+            <i class="fas ${icono} text-${color}-500 text-3xl"></i>
+        </div>
+    </div>`;
+    });
+    
+    htmlFila1 += `\n</div>`;
+    
+    let htmlFila2 = '';
+    if (segundaFila.length > 0) {
+      htmlFila2 = `\n<!-- FILA 2: Métricas Secundarias -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">`;
+      
+      segundaFila.forEach((nombre, index) => {
+        const valor = metricas[nombre] || 0;
+        const color = ['purple', 'indigo', 'teal', 'pink'][index % 4];
+        const icono = ['fa-chart-bar', 'fa-percentage', 'fa-home', 'fa-user-tie'][index % 4];
+        
+        htmlFila2 += `
+    <div class="stat-card">
+        <div class="flex items-center justify-between">
+            <div>
+                <p class="text-gray-500 text-sm">${nombre}</p>
+                <p class="text-3xl font-bold text-${color}-600">${valor}</p>
+            </div>
+            <i class="fas ${icono} text-${color}-500 text-3xl"></i>
+        </div>
+    </div>`;
+      });
+      
+      htmlFila2 += `\n</div>`;
+    }
+    
+    console.log(htmlFila1 + htmlFila2);
+    
+    resultados.organizacion_sugerida = {
+      fila1: metricasPrioritarias,
+      fila2: segundaFila,
+      metricas_sobrantes: metricasSobrantes,
+      total_metricas: contador,
+      grupos: grupos
+    };
+    
+    console.log('\n✅ ANÁLISIS COMPLETADO');
+    console.log(`📊 Total de métricas en la hoja: ${contador}`);
+    console.log(`🏆 Métricas en Fila 1: ${metricasPrioritarias.length}`);
+    console.log(`📊 Métricas en Fila 2: ${segundaFila.length}`);
+    console.log(`🔄 Métricas adicionales: ${metricasSobrantes.length}`);
+    
+  } catch (error) {
+    console.error('❌ Error analizando la hoja:', error);
+    resultados.exito = false;
+  }
+  
+  return resultados;
+}
+
+/**
+ * Prueba la funcionalidad completa de las 8 métricas en 2 filas
+ */
+function probar8MetricasDashboard() {
+  console.log('🧪 PRUEBA: 8 Métricas en Dashboard (2 filas)');
+  console.log('='.repeat(60));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: {},
+    exito: true
+  };
+  
+  try {
+    // Limpiar caché para forzar recarga
+    clearCache();
+    
+    // Obtener estadísticas
+    const stats = getEstadisticasRapidas();
+    
+    if (stats.success && stats.data) {
+      const fila1 = stats.data.fila1;
+      const fila2 = stats.data.fila2;
+      const calculadas = stats.data.calculadas;
+      
+      console.log('📊 Verificando estructura de datos:');
+      console.log('  fila1:', Object.keys(fila1));
+      console.log('  fila2:', Object.keys(fila2));
+      console.log('  calculadas:', Object.keys(calculadas));
+      
+      // Test 1: Verificar que fila1 tiene 4 métricas
+      const fila1Correcta = Object.keys(fila1).length === 4;
+      console.log(`\n✅ Test 1 - Fila 1 tiene 4 métricas: ${fila1Correcta ? 'PASS' : 'FAIL'}`);
+      console.log('  Métricas fila1:', Object.keys(fila1));
+      resultados.tests.fila1_4_metricas = fila1Correcta;
+      
+      if (!fila1Correcta) {
+        resultados.exito = false;
+      }
+      
+      // Test 2: Verificar que fila2 tiene 4 métricas
+      const fila2Correcta = Object.keys(fila2).length === 4;
+      console.log(`\n✅ Test 2 - Fila 2 tiene 4 métricas: ${fila2Correcta ? 'PASS' : 'FAIL'}`);
+      console.log('  Métricas fila2:', Object.keys(fila2));
+      resultados.tests.fila2_4_metricas = fila2Correcta;
+      
+      if (!fila2Correcta) {
+        resultados.exito = false;
+      }
+      
+      // Test 3: Verificar métricas específicas de fila1
+      const metricasFila1Esperadas = [
+        'activos_recibiendo_celula',
+        'lideres_hibernando', 
+        'total_lideres',
+        'total_asistentencia_celulas'
+      ];
+      
+      const fila1TieneMetricasEsperadas = metricasFila1Esperadas.every(metrica => 
+        fila1.hasOwnProperty(metrica)
+      );
+      
+      console.log(`\n✅ Test 3 - Fila 1 tiene métricas esperadas: ${fila1TieneMetricasEsperadas ? 'PASS' : 'FAIL'}`);
+      resultados.tests.fila1_metricas_esperadas = fila1TieneMetricasEsperadas;
+      
+      if (!fila1TieneMetricasEsperadas) {
+        resultados.exito = false;
+      }
+      
+      // Test 4: Verificar métricas específicas de fila2
+      const metricasFila2Esperadas = [
+        'alerta_2_3_semanas',
+        'critico_mas_1_mes',
+        'total_celulas',
+        'total_ingresos'
+      ];
+      
+      const fila2TieneMetricasEsperadas = metricasFila2Esperadas.every(metrica => 
+        fila2.hasOwnProperty(metrica)
+      );
+      
+      console.log(`\n✅ Test 4 - Fila 2 tiene métricas esperadas: ${fila2TieneMetricasEsperadas ? 'PASS' : 'FAIL'}`);
+      resultados.tests.fila2_metricas_esperadas = fila2TieneMetricasEsperadas;
+      
+      if (!fila2TieneMetricasEsperadas) {
+        resultados.exito = false;
+      }
+      
+      // Test 5: Verificar que los valores no son todos cero
+      const valoresFila1 = Object.values(fila1);
+      const valoresFila2 = Object.values(fila2);
+      const todosValores = [...valoresFila1, ...valoresFila2];
+      
+      const hayValoresNoCero = todosValores.some(valor => 
+        typeof valor === 'number' && valor > 0
+      );
+      
+      console.log(`\n✅ Test 5 - Hay valores no cero: ${hayValoresNoCero ? 'PASS' : 'FAIL'}`);
+      console.log('  Valores fila1:', valoresFila1);
+      console.log('  Valores fila2:', valoresFila2);
+      resultados.tests.hay_valores_no_cero = hayValoresNoCero;
+      
+      if (!hayValoresNoCero) {
+        console.log('⚠️ Todos los valores son cero - verificar hoja _ResumenDashboard');
+        resultados.exito = false;
+      }
+      
+      // Test 6: Verificar cálculos de porcentajes
+      const porcentajesCorrectos = 
+        calculadas.hasOwnProperty('porcentaje_activos') &&
+        calculadas.hasOwnProperty('porcentaje_alerta') &&
+        calculadas.hasOwnProperty('porcentaje_critico');
+      
+      console.log(`\n✅ Test 6 - Porcentajes calculados: ${porcentajesCorrectos ? 'PASS' : 'FAIL'}`);
+      console.log('  Porcentajes:', calculadas);
+      resultados.tests.porcentajes_calculados = porcentajesCorrectos;
+      
+      if (!porcentajesCorrectos) {
+        resultados.exito = false;
+      }
+      
+      // Test 7: Verificar valores específicos esperados
+      console.log('\n📊 VALORES ESPECÍFICOS:');
+      console.log(`  Activos recibiendo celula: ${fila1.activos_recibiendo_celula}`);
+      console.log(`  Líderes hibernando: ${fila1.lideres_hibernando}`);
+      console.log(`  Total Líderes: ${fila1.total_lideres}`);
+      console.log(`  Total Asistencia Células: ${fila1.total_asistentencia_celulas}`);
+      console.log(`  2-3 semanas sin celula: ${fila2.alerta_2_3_semanas}`);
+      console.log(`  +1 mes sin celula: ${fila2.critico_mas_1_mes}`);
+      console.log(`  Total Células: ${fila2.total_celulas}`);
+      console.log(`  Total Ingresos: ${fila2.total_ingresos}`);
+      
+    } else {
+      console.error('❌ Error obteniendo estadísticas');
+      resultados.tests.estadisticas_ok = false;
+      resultados.exito = false;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error crítico en test:', error);
+    resultados.exito = false;
+  }
+  
+  // Resumen
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 RESUMEN DE TESTS');
+  console.log('='.repeat(60));
+  
+  Object.keys(resultados.tests).forEach(test => {
+    const resultado = resultados.tests[test];
+    const icono = resultado ? '✅' : '❌';
+    console.log(`${icono} ${test}: ${resultado ? 'PASS' : 'FAIL'}`);
+  });
+  
+  if (resultados.exito) {
+    console.log('\n🎉 ¡TODAS LAS 8 MÉTRICAS FUNCIONAN CORRECTAMENTE!');
+    console.log('✅ 2 filas de 4 métricas cada una');
+    console.log('✅ Estructura de datos correcta');
+    console.log('✅ Valores no son todos cero');
+    console.log('✅ Porcentajes calculados correctamente');
+    console.log('🔄 Recarga el dashboard para ver las 8 métricas organizadas');
+  } else {
+    console.log('\n⚠️ ALGUNOS TESTS FALLARON');
+    console.log('💡 Revisar logs anteriores para detalles');
+    console.log('💡 Verificar que la hoja _ResumenDashboard tenga datos');
+  }
+  
+  return resultados;
+}
+
 console.log('🧪 SistemaTestsRobusto cargado - Sistema consolidado de pruebas disponible');

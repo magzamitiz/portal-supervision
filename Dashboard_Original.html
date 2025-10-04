@@ -148,7 +148,7 @@
     
     <main class="container mx-auto px-4 py-8">
         
-        <div id="estadisticasGenerales" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div id="estadisticasGenerales" class="mb-8">
             </div>
         
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -385,25 +385,28 @@ function cargarDatosIniciales() {
         // Procesar resultados
         const [statsResult, lideresResult, dashboardResult] = results;
         
-        // Procesar estadísticas
-        if (statsResult.status === 'fulfilled' && statsResult.value.success) {
+        // Procesar estadísticas - ✅ VALIDACIÓN ROBUSTA
+        if (statsResult.status === 'fulfilled' && statsResult.value?.success) {
             handleEstadisticasResponse(statsResult.value);
         } else {
-            console.error('❌ Error en estadísticas:', statsResult.reason);
+            const errorMsg = statsResult.value?.error || statsResult.reason || 'Respuesta nula del servidor';
+            console.error('❌ Error en estadísticas:', errorMsg);
         }
         
-        // Procesar líderes
-        if (lideresResult.status === 'fulfilled' && lideresResult.value.success) {
+        // Procesar líderes - ✅ VALIDACIÓN ROBUSTA
+        if (lideresResult.status === 'fulfilled' && lideresResult.value?.success) {
             handleLideresResponse(lideresResult.value);
         } else {
-            console.error('❌ Error en líderes:', lideresResult.reason);
+            const errorMsg = lideresResult.value?.error || lideresResult.reason || 'Respuesta nula del servidor';
+            console.error('❌ Error en líderes:', errorMsg);
         }
         
-        // Procesar dashboard
-        if (dashboardResult.status === 'fulfilled' && dashboardResult.value.success) {
+        // Procesar dashboard - ✅ VALIDACIÓN ROBUSTA
+        if (dashboardResult.status === 'fulfilled' && dashboardResult.value?.success) {
             handleDatosCompletosResponse(dashboardResult.value);
         } else {
-            console.error('❌ Error en dashboard:', dashboardResult.reason);
+            const errorMsg = dashboardResult.value?.error || dashboardResult.reason || 'Respuesta nula del servidor';
+            console.error('❌ Error en dashboard:', errorMsg);
         }
         
         // Actualizar timestamp
@@ -764,7 +767,7 @@ function handleLideresResponse(response) {
 
         
         
-        // Actualizar estadísticas generales (ACTUALIZADA PARA NUEVAS MÉTRICAS DE ACTIVIDAD)
+        // Actualizar estadísticas generales (ACTUALIZADA PARA 8 MÉTRICAS EN 2 FILAS)
 function actualizarEstadisticas(stats) {
     const container = document.getElementById('estadisticasGenerales');
     if (!stats) {
@@ -773,61 +776,98 @@ function actualizarEstadisticas(stats) {
         return;
     }
 
-    // Acceso a las nuevas métricas de actividad
-    const actividad = stats.actividad || {};
-    const metricas = stats.metricas || {};
+    // Acceso a las nuevas métricas organizadas en filas
+    const fila1 = stats.fila1 || {};
+    const fila2 = stats.fila2 || {};
+    const calculadas = stats.calculadas || {};
     
     container.innerHTML = `
-        <div class="stat-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Total Recibiendo Células</p>
-                    <p class="text-3xl font-bold text-gray-800">${actividad.total_recibiendo_celulas || 0}</p>
+        <!-- FILA 1: Métricas Principales -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Activos Recibiendo Célula</p>
+                        <p class="text-3xl font-bold text-blue-600">${fila1.activos_recibiendo_celula || 0}</p>
+                        <p class="text-xs text-blue-600">${calculadas.porcentaje_activos || 0}% del total</p>
+                    </div>
+                    <i class="fas fa-users text-blue-500 text-3xl"></i>
                 </div>
-                <i class="fas fa-users text-blue-500 text-3xl"></i>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Líderes Hibernando</p>
+                        <p class="text-3xl font-bold text-green-600">${fila1.lideres_hibernando || 0}</p>
+                    </div>
+                    <i class="fas fa-user-slash text-green-500 text-3xl"></i>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Líderes</p>
+                        <p class="text-3xl font-bold text-yellow-600">${fila1.total_lideres || 0}</p>
+                    </div>
+                    <i class="fas fa-user-tie text-yellow-500 text-3xl"></i>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Asistencia Células</p>
+                        <p class="text-3xl font-bold text-red-600">${fila1.total_asistentencia_celulas || 0}</p>
+                    </div>
+                    <i class="fas fa-chart-line text-red-500 text-3xl"></i>
+                </div>
             </div>
         </div>
-        
-        <div class="stat-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Activos Recibiendo Célula</p>
-                    <p class="text-3xl font-bold text-green-600">${actividad.activos_recibiendo_celula || 0}</p>
-                    <p class="text-xs text-green-600">${metricas.porcentaje_activos || 0}% del total</p>
+
+        <!-- FILA 2: Métricas Secundarias -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">2-3 Semanas Sin Célula</p>
+                        <p class="text-3xl font-bold text-purple-600">${fila2.alerta_2_3_semanas || 0}</p>
+                        <p class="text-xs text-purple-600">${calculadas.porcentaje_alerta || 0}% del total</p>
+                    </div>
+                    <i class="fas fa-exclamation-triangle text-purple-500 text-3xl"></i>
                 </div>
-                <i class="fas fa-check-circle text-green-500 text-3xl"></i>
             </div>
-        </div>
-        
-        <div class="stat-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Alerta (2-3 semanas)</p>
-                    <p class="text-3xl font-bold text-yellow-600">${actividad.alerta_2_3_semanas || 0}</p>
-                    <p class="text-xs text-yellow-600">${metricas.porcentaje_alerta || 0}% del total</p>
+            
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">+1 Mes Sin Célula</p>
+                        <p class="text-3xl font-bold text-indigo-600">${fila2.critico_mas_1_mes || 0}</p>
+                        <p class="text-xs text-indigo-600">${calculadas.porcentaje_critico || 0}% del total</p>
+                    </div>
+                    <i class="fas fa-exclamation-circle text-indigo-500 text-3xl"></i>
                 </div>
-                <i class="fas fa-exclamation-triangle text-yellow-500 text-3xl"></i>
             </div>
-        </div>
-        
-        <div class="stat-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Crítico (+1 mes)</p>
-                    <p class="text-3xl font-bold text-red-600">${actividad.critico_mas_1_mes || 0}</p>
-                    <p class="text-xs text-red-600">${metricas.porcentaje_critico || 0}% del total</p>
+            
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Células</p>
+                        <p class="text-3xl font-bold text-teal-600">${fila2.total_celulas || 0}</p>
+                    </div>
+                    <i class="fas fa-home text-teal-500 text-3xl"></i>
                 </div>
-                <i class="fas fa-exclamation-circle text-red-500 text-3xl"></i>
             </div>
-        </div>
-        
-        <div class="stat-card">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-gray-500 text-sm">Líderes Inactivos</p>
-                    <p class="text-3xl font-bold text-gray-600">${actividad.lideres_inactivos || 0}</p>
+            
+            <div class="stat-card">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm">Total Ingresos</p>
+                        <p class="text-3xl font-bold text-pink-600">${fila2.total_ingresos || 0}</p>
+                    </div>
+                    <i class="fas fa-user-plus text-pink-500 text-3xl"></i>
                 </div>
-                <i class="fas fa-user-slash text-gray-500 text-3xl"></i>
             </div>
         </div>
     `;
@@ -1055,16 +1095,16 @@ function mostrarResumenLD() {
                 <p class="text-sm text-gray-600">LCF Productivos</p>
             </div>
             
-            <!-- 5. LCF Inactivos (Dias_Inactivo > 14 o IDP = 0) -->
+            <!-- 5. LCF Hibernando (Dias_Inactivo > 19 o IDP = 0) -->
             <div class="text-center p-3 bg-red-50 rounded">
                 <p class="text-3xl font-bold text-red-600">${(() => {
-                    const inactivos = datosLD.equipo?.filter(lcf => 
-                        (lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo > 14) || 
+                    const hibernando = datosLD.equipo?.filter(lcf => 
+                        (lcf.Dias_Inactivo !== null && lcf.Dias_Inactivo > 19) || 
                         (lcf.IDP === 0 || lcf.Perfil_Lider?.includes('INACTIVO'))
                     ).length || 0;
-                    return inactivos;
+                    return hibernando;
                 })()}</p>
-                <p class="text-sm text-gray-600">LCF Inactivos</p>
+                <p class="text-sm text-gray-600">LCF Hibernando</p>
             </div>
             
             <!-- 6. Total LCF -->

@@ -482,27 +482,37 @@ function getEstadisticasRapidas() {
       if (row[0]) metricas[row[0]] = row[1];
     });
     
+    // ✅ DEBUG: Logs para verificar mapeo de datos
+    console.log('[DEBUG] Valores leídos de _ResumenDashboard:', metricas);
+    console.log('[DEBUG] Total Asistentencia Células:', metricas['Total Asistentencia Células']);
+    console.log('[DEBUG] Activos recibiendo celula:', metricas['Activos recibiendo celula']);
+    console.log('[DEBUG] Líderes hibernando:', metricas['Líderes hibernando']);
+    
     const stats = {
       success: true,
       data: {
-        actividad: {
-          total_recibiendo_celulas: metricas['Total Recibiendo'] || 0,
-          activos_recibiendo_celula: metricas['Activos'] || 0,
-          alerta_2_3_semanas: metricas['Alerta'] || 0,
-          critico_mas_1_mes: metricas['Crítico'] || 0
-        },
-        metricas: {
+        // ✅ FILA 1: Métricas Principales
+        fila1: {
+          activos_recibiendo_celula: metricas['Activos recibiendo celula'] || 0,
+          lideres_hibernando: metricas['Líderes hibernando'] || 0,
           total_lideres: metricas['Total Líderes'] || 0,
+          total_asistentencia_celulas: metricas['Total Asistentencia Células'] || 0
+        },
+        // ✅ FILA 2: Métricas Secundarias
+        fila2: {
+          alerta_2_3_semanas: metricas['2 a 3 semanas sin recibir celula'] || 0,
+          critico_mas_1_mes: metricas['mas de 1 mes sin recibir celula'] || 0,
           total_celulas: metricas['Total Células'] || 0,
-          total_ingresos: metricas['Total Ingresos'] || 0,
-          tasa_integracion: metricas['Tasa Integración'] || 0,
-          // ✅ CORRECCIÓN: Calcular porcentajes dinámicamente
-          porcentaje_activos: metricas['Total Recibiendo'] > 0 ? 
-            ((metricas['Activos'] / metricas['Total Recibiendo']) * 100).toFixed(1) : 0,
-          porcentaje_alerta: metricas['Total Recibiendo'] > 0 ? 
-            ((metricas['Alerta'] / metricas['Total Recibiendo']) * 100).toFixed(1) : 0,
-          porcentaje_critico: metricas['Total Recibiendo'] > 0 ? 
-            ((metricas['Crítico'] / metricas['Total Recibiendo']) * 100).toFixed(1) : 0
+          total_ingresos: metricas['Total Ingresos'] || 0
+        },
+        // ✅ MÉTRICAS CALCULADAS
+        calculadas: {
+          porcentaje_activos: metricas['Total Asistentencia Células'] > 0 ? 
+            ((metricas['Activos recibiendo celula'] / metricas['Total Asistentencia Células']) * 100).toFixed(1) : 0,
+          porcentaje_alerta: metricas['Total Asistentencia Células'] > 0 ? 
+            ((metricas['2 a 3 semanas sin recibir celula'] / metricas['Total Asistentencia Células']) * 100).toFixed(1) : 0,
+          porcentaje_critico: metricas['Total Asistentencia Células'] > 0 ? 
+            ((metricas['mas de 1 mes sin recibir celula'] / metricas['Total Asistentencia Células']) * 100).toFixed(1) : 0
         },
         timestamp: new Date().toISOString()
       }
