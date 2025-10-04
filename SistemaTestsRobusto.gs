@@ -3092,7 +3092,7 @@ function probar8MetricasDashboard() {
         'activos_recibiendo_celula',
         'lideres_hibernando', 
         'total_lideres',
-        'total_asistentencia_celulas'
+        'total_asistencia_celulas'
       ];
       
       const fila1TieneMetricasEsperadas = metricasFila1Esperadas.every(metrica => 
@@ -3163,7 +3163,7 @@ function probar8MetricasDashboard() {
       console.log(`  Activos recibiendo celula: ${fila1.activos_recibiendo_celula}`);
       console.log(`  Líderes hibernando: ${fila1.lideres_hibernando}`);
       console.log(`  Total Líderes: ${fila1.total_lideres}`);
-      console.log(`  Total Asistencia Células: ${fila1.total_asistentencia_celulas}`);
+      console.log(`  Total Asistencia Células: ${fila1.total_asistencia_celulas}`);
       console.log(`  2-3 semanas sin celula: ${fila2.alerta_2_3_semanas}`);
       console.log(`  +1 mes sin celula: ${fila2.critico_mas_1_mes}`);
       console.log(`  Total Células: ${fila2.total_celulas}`);
