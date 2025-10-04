@@ -249,13 +249,8 @@ function getDatosLDOptimized(idLD, modoCompleto = false) {
       return JSON.parse(cached);
     }
     
-    // Cargar datos de forma optimizada
-    let result;
-    if (modoCompleto) {
-      result = getDatosLDCompleto(idLD);
-    } else {
-      result = getDatosLDBasico(idLD);
-    }
+    // ✅ CORRECCIÓN: Solo modo completo (getDatosLDBasico fue eliminado)
+    const result = getDatosLDCompleto(idLD);
     
     if (result.success) {
       // Agregar métricas de rendimiento
