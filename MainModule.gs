@@ -1057,14 +1057,30 @@ function forceReloadDashboardData() {
     const lideresLD = directorioCompleto.lideres.filter(l => l.Rol === 'LD');
     console.log(`[MainModule] ✅ ${lideresLD.length} LDs cargados desde Google Sheets`);
     
-    // 2. Obtener estadísticas frescas (después de limpiar caché)
-    const stats = getEstadisticasRapidas();
-    if (!stats.success) {
-      throw new Error('Error obteniendo estadísticas: ' + stats.error);
+    // 2. ✅ CORRECCIÓN: Leer directamente de _ResumenDashboard (como getDashboardData)
+    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const resumenSheet = ss.getSheetByName('_ResumenDashboard');
+    
+    if (!resumenSheet) {
+      throw new Error('Hoja _ResumenDashboard no encontrada');
     }
     
+    const metricasValues = resumenSheet.getRange('B1:B10').getValues();
+    const metricas = {
+      totalRecibiendoCelulas: metricasValues[0][0] || 0,
+      activosRecibiendoCelula: metricasValues[1][0] || 0,
+      alerta2_3Semanas: metricasValues[2][0] || 0,
+      criticoMas1Mes: metricasValues[3][0] || 0,
+      lideresInactivos: metricasValues[4][0] || 0,
+      totalLideres: metricasValues[5][0] || 0,
+      totalCelulas: metricasValues[6][0] || 0,
+      totalIngresos: metricasValues[7][0] || 0
+    };
+    
+    console.log('[MainModule] ✅ Datos leídos directamente de _ResumenDashboard:', metricas);
+    
     // 3. ✅ CORRECCIÓN: Crear análisis con estructura alineada con frontend
-    const { fila1, fila2, calculadas } = transformarMetricasParaFrontend(stats.data);
+    const { fila1, fila2, calculadas } = transformarMetricasParaFrontend(metricas);
 
     const analisis = {
       // ✅ ESTRUCTURA QUE ESPERA EL FRONTEND
