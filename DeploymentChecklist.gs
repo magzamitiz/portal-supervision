@@ -4,6 +4,103 @@
  */
 
 /**
+ * Valida optimizaciones del sistema
+ * @returns {Object} Resultado de la validación
+ */
+function validateOptimizations() {
+  console.log('🔍 Validando optimizaciones del sistema...');
+  
+  const validation = {
+    timestamp: new Date().toISOString(),
+    checks: [],
+    summary: {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      warnings: 0
+    },
+    valid: true
+  };
+  
+  try {
+    // Check 1: getEstadisticasRapidas funciona
+    const stats = getEstadisticasRapidas();
+    validation.checks.push({
+      name: 'getEstadisticasRapidas',
+      status: stats.success ? 'PASS' : 'FAIL',
+      message: stats.success ? 'Funciona correctamente' : 'Error en estadísticas'
+    });
+    
+    // Check 2: getDashboardData funciona
+    const dashboard = getDashboardData();
+    validation.checks.push({
+      name: 'getDashboardData',
+      status: dashboard.success ? 'PASS' : 'FAIL',
+      message: dashboard.success ? 'Funciona correctamente' : 'Error en dashboard'
+    });
+    
+    // Check 3: getDashboardDataConsolidated funciona
+    const consolidated = getDashboardDataConsolidated();
+    validation.checks.push({
+      name: 'getDashboardDataConsolidated',
+      status: consolidated.success ? 'PASS' : 'FAIL',
+      message: consolidated.success ? 'Funciona correctamente' : 'Error en consolidado'
+    });
+    
+    // Calcular resumen
+    validation.summary.total = validation.checks.length;
+    validation.checks.forEach(check => {
+      if (check.status === 'PASS') validation.summary.passed++;
+      else if (check.status === 'FAIL') validation.summary.failed++;
+      else validation.summary.warnings++;
+    });
+    
+    validation.valid = validation.summary.failed === 0;
+    
+  } catch (error) {
+    validation.checks.push({
+      name: 'Error General',
+      status: 'FAIL',
+      message: `Error crítico: ${error.toString()}`
+    });
+    validation.valid = false;
+  }
+  
+  return validation;
+}
+
+/**
+ * Validación rápida de optimizaciones
+ * @returns {Object} Resultado de la validación rápida
+ */
+function validateOptimizationsQuick() {
+  console.log('⚡ Validación rápida de optimizaciones...');
+  
+  const startTime = Date.now();
+  
+  try {
+    // Test rápido de getEstadisticasRapidas
+    const stats = getEstadisticasRapidas();
+    const loadTime = Date.now() - startTime;
+    
+    return {
+      valid: stats.success,
+      loadTime: loadTime,
+      message: stats.success ? 'Validación exitosa' : 'Error en validación',
+      timestamp: new Date().toISOString()
+    };
+    
+  } catch (error) {
+    return {
+      valid: false,
+      loadTime: Date.now() - startTime,
+      message: `Error: ${error.toString()}`,
+      timestamp: new Date().toISOString()
+    };
+  }
+}
+
+/**
  * Checklist completo de despliegue
  * @returns {Object} Resultado del checklist
  */

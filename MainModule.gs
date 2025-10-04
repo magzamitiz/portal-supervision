@@ -413,6 +413,11 @@ function getDashboardDataConsolidated() {
       total_ingresos: metricas['Total Ingresos'] || 0
     };
     
+    // ✅ CORRECCIÓN: Inicializar colecciones vacías para evitar undefined
+    batchData.lideres = [];
+    batchData.celulas = [];
+    batchData.ingresos = [];
+    
     const sheetsLoadTime = Date.now() - startTime;
     console.log('[CONSOLIDATED] Datos cargados:', sheetsLoadTime, 'ms');
     
