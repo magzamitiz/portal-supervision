@@ -822,9 +822,9 @@ function actualizarEstadisticas(stats) {
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-500 text-sm">Total Asistencia Células</p>
-                        <p class="text-3xl font-bold text-red-600">${fila1.total_asistentencia_celulas || 0}</p>
+                        <p class="text-3xl font-bold text-blue-600">${fila1.total_asistentencia_celulas || 0}</p>
                     </div>
-                    <i class="fas fa-chart-line text-red-500 text-3xl"></i>
+                    <i class="fas fa-chart-line text-blue-500 text-3xl"></i>
                 </div>
             </div>
         </div>
@@ -846,10 +846,10 @@ function actualizarEstadisticas(stats) {
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-gray-500 text-sm">+1 Mes Sin Célula</p>
-                        <p class="text-3xl font-bold text-indigo-600">${fila2.critico_mas_1_mes || 0}</p>
-                        <p class="text-xs text-indigo-600">${calculadas.porcentaje_critico || 0}% del total</p>
+                        <p class="text-3xl font-bold text-red-600">${fila2.critico_mas_1_mes || 0}</p>
+                        <p class="text-xs text-red-600">${calculadas.porcentaje_critico || 0}% del total</p>
                     </div>
-                    <i class="fas fa-exclamation-circle text-indigo-500 text-3xl"></i>
+                    <i class="fas fa-exclamation-circle text-red-500 text-3xl"></i>
                 </div>
             </div>
             
