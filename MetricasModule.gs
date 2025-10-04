@@ -19,6 +19,38 @@ const METRICAS_CONFIG = {
 // ==================== FUNCIONES PRINCIPALES (USADAS) ====================
 
 /**
+ * ✅ FUNCIÓN REUTILIZABLE: Transforma métricas planas a estructura del frontend
+ * @param {Object} metricas - Métricas en formato plano
+ * @returns {Object} Estructura {fila1, fila2, calculadas} que espera el frontend
+ */
+function transformarMetricasParaFrontend(metricas) {
+  const fila1 = {
+    activos_recibiendo_celula: metricas.activosRecibiendoCelula || 0,
+    lideres_hibernando: metricas.lideresInactivos || 0,
+    total_lideres: metricas.totalLideres || 0,
+    total_asistencia_celulas: metricas.totalRecibiendoCelulas || 0
+  };
+  
+  const fila2 = {
+    alerta_2_3_semanas: metricas.alerta2_3Semanas || 0,
+    critico_mas_1_mes: metricas.criticoMas1Mes || 0,
+    total_celulas: metricas.totalCelulas || 0,
+    total_ingresos: metricas.totalIngresos || 0
+  };
+  
+  const calculadas = {
+    porcentaje_activos: (metricas.totalLideres || 0) > 0 ? 
+      Math.round(((metricas.activosRecibiendoCelula || 0) / (metricas.totalLideres || 1)) * 100) : 0,
+    porcentaje_alerta: (metricas.totalLideres || 0) > 0 ? 
+      Math.round(((metricas.alerta2_3Semanas || 0) / (metricas.totalLideres || 1)) * 100) : 0,
+    porcentaje_critico: (metricas.totalLideres || 0) > 0 ? 
+      Math.round(((metricas.criticoMas1Mes || 0) / (metricas.totalLideres || 1)) * 100) : 0
+  };
+  
+  return { fila1, fila2, calculadas };
+}
+
+/**
  * Calcula métricas principales del sistema
  * @param {Object} datos - Datos del sistema
  * @returns {Object} Métricas principales
@@ -74,9 +106,21 @@ function getEstadisticasRapidas() {
       timestamp: new Date().toISOString()
     };
     
+    // ✅ NORMALIZACIÓN: Transformar a estructura que espera el frontend
+    const { fila1, fila2, calculadas } = transformarMetricasParaFrontend(stats);
+    
     return {
       success: true,
-      data: stats
+      data: {
+        // ✅ ESTRUCTURA QUE ESPERA EL FRONTEND
+        fila1: fila1,
+        fila2: fila2,
+        calculadas: calculadas,
+        
+        // ✅ MANTENER COMPATIBILIDAD CON CÓDIGO EXISTENTE
+        totales: stats,
+        timestamp: stats.timestamp
+      }
     };
     
   } catch (error) {
@@ -108,7 +152,14 @@ function cargarEstadisticasMinimas() {
     return {
       success: true,
       data: {
-        resumen: stats.data,
+        // ✅ ESTRUCTURA NORMALIZADA: Exponer estructura anidada
+        resumen: {
+          fila1: stats.data.fila1,
+          fila2: stats.data.fila2,
+          calculadas: stats.data.calculadas,
+          totales: stats.data.totales, // Mantener compatibilidad
+          timestamp: stats.data.timestamp
+        },
         timestamp: new Date().toISOString()
       }
     };
