@@ -517,28 +517,9 @@ function integrarPerfilesLideres(lideres, estadosMap) {
  * @param {boolean} modoCompleto - Si es true, carga datos completos
  * @returns {Object} Objeto con los datos del LD
  */
-function getDatosLD(idLD, modoCompleto = false) {
+function getDatosLD(idLD, modoCompleto = true) {
   try {
-    // NUEVA OPTIMIZACIÓN: Intentar búsqueda rápida primero
-    if (!modoCompleto) {
-      console.log('[CoreModule] Intentando búsqueda rápida para:', idLD);
-      const rapidResult = buscarLDRapido(idLD);
-      if (rapidResult.success) {
-        console.log('[CoreModule] Búsqueda rápida exitosa');
-        // Adaptar estructura de respuesta al formato esperado
-        return {
-          success: true,
-          resumen: {
-            ld: rapidResult.ld,
-            Total_Celulas: 0,
-            Total_Miembros: 0,
-            Total_Ingresos: 0
-          },
-          tiempo: rapidResult.tiempo
-        };
-      }
-      console.log('[CoreModule] Búsqueda rápida falló, usando método tradicional');
-    }
+    // ❌ ELIMINADO: Rama modoCompleto=false - Nunca se ejecuta (siempre se pasa true)
     
     // Reiniciar timeout para operaciones largas
     resetTimeout();
@@ -548,10 +529,10 @@ function getDatosLD(idLD, modoCompleto = false) {
       return { success: false, error: 'No se proporcionó ID del LD' };
     }
     
-    console.log(`[CoreModule] getDatosLD para: ${idLD}, modoCompleto: ${modoCompleto}`);
+    console.log(`[CoreModule] getDatosLD para: ${idLD} (modo completo)`);
     
     const cache = CacheService.getScriptCache();
-    const cacheKey = `LD_${modoCompleto ? 'FULL' : 'BASIC'}_${idLD}`;
+    const cacheKey = `LD_FULL_${idLD}`;
     
     const cached = cache.get(cacheKey);
     if (cached) {
@@ -559,15 +540,11 @@ function getDatosLD(idLD, modoCompleto = false) {
       return JSON.parse(cached);
     }
     
-    let result;
-    if (modoCompleto) {
-      result = getDatosLDCompleto(idLD);
-    } else {
-      result = getDatosLDBasico(idLD);
-    }
+    // ✅ SIMPLIFICADO: Solo modo completo (siempre se usa)
+    const result = getDatosLDCompleto(idLD);
     
     if (result.success) {
-      const tiempoCache = modoCompleto ? 600 : 300; // 10 min completo, 5 min básico
+      const tiempoCache = 600; // 10 min (solo modo completo)
       cache.put(cacheKey, JSON.stringify(result), tiempoCache);
     }
     
