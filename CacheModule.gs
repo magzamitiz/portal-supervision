@@ -181,24 +181,39 @@ function setCacheData(data, ttl = 1800) {
       console.log(`[Cache] 📊 Fragmentos: ${fragments.length}, Tamaño: ${FRAGMENT_SIZE} bytes cada uno`);
       console.log(`[Cache] 🎯 Backend: ${useFallback ? 'PropertiesService' : 'CacheService'}`);
       
-      // Guardar cada fragmento con índice
-      for (let i = 0; i < fragments.length; i++) {
-        const fragmentKey = `${CACHE_KEY}_${i}`;
-        const fragmentSize = fragments[i].length;
-        console.log(`[Cache] 🔍 DEBUG Fragmento ${i}: Clave="${fragmentKey}", Tamaño=${fragmentSize} bytes`);
-        
-        let success;
-        if (useFallback) {
-          success = FALLBACK_CACHE.put(fragmentKey, fragments[i], ttl);
-        } else {
-          success = cache.put(fragmentKey, fragments[i], ttl);
+      // ✅ CORRECCIÓN DEFINITIVA: Bifurcar lógica según backend
+      if (useFallback) {
+        // ═══════════════════════════════════════════════════
+        // FALLBACK: FALLBACK_CACHE.put SÍ retorna boolean
+        // ═══════════════════════════════════════════════════
+        for (let i = 0; i < fragments.length; i++) {
+          const fragmentKey = `${CACHE_KEY}_${i}`;
+          const fragmentSize = fragments[i].length;
+          console.log(`[Cache] 🔍 DEBUG Fragmento ${i}: Clave="${fragmentKey}", Tamaño=${fragmentSize} bytes`);
+          
+          const success = FALLBACK_CACHE.put(fragmentKey, fragments[i], ttl);
+          if (!success) {  // ✅ Verificación válida para fallback
+            console.error(`[Cache] ❌ Error guardando fragmento ${i} en fallback`);
+            clearCache();
+            return false;
+          }
         }
-        
-        if (!success) {
-          console.error(`[Cache] ❌ Error guardando fragmento ${i}`);
-          console.error(`[Cache] 🔍 DEBUG: Clave="${fragmentKey}", Tamaño=${fragmentSize} bytes, TTL=${ttl}`);
-          console.error('[Cache] 🔍 Posibles causas: fragmento muy grande, clave inválida, TTL inválido');
-          // Limpiar fragmentos parciales
+      } else {
+        // ═══════════════════════════════════════════════════
+        // CACHESERVICE: cache.put NO retorna boolean útil
+        // ═══════════════════════════════════════════════════
+        try {
+          for (let i = 0; i < fragments.length; i++) {
+            const fragmentKey = `${CACHE_KEY}_${i}`;
+            const fragmentSize = fragments[i].length;
+            console.log(`[Cache] 🔍 DEBUG Fragmento ${i}: Clave="${fragmentKey}", Tamaño=${fragmentSize} bytes`);
+            
+            // ✅ No verificar retorno, solo capturar excepciones
+            cache.put(fragmentKey, fragments[i], ttl);
+            console.log(`[Cache] ✅ Fragmento ${i + 1}/${fragments.length} guardado`);
+          }
+        } catch (fragmentError) {
+          console.error('[Cache] ❌ Error guardando fragmentos:', fragmentError);
           clearCache();
           return false;
         }
@@ -213,11 +228,22 @@ function setCacheData(data, ttl = 1800) {
         fragmentSize: FRAGMENT_SIZE      // Info adicional útil
       };
       
-      // Guardar metadata
+      // ✅ CORRECCIÓN: Guardar metadata con lógica bifurcada
       if (useFallback) {
-        FALLBACK_CACHE.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+        const metaSuccess = FALLBACK_CACHE.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+        if (!metaSuccess) {
+          console.error('[Cache] ❌ Error guardando metadata en fallback');
+          clearCache();
+          return false;
+        }
       } else {
-        cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+        try {
+          cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+        } catch (metaError) {
+          console.error('[Cache] ❌ Error guardando metadata:', metaError);
+          clearCache();
+          return false;
+        }
       }
       console.log(`[Cache] ✅ Fragmentado exitoso: ${fragments.length} fragmentos (${sizeKB}KB total)`);
       
@@ -228,18 +254,29 @@ function setCacheData(data, ttl = 1800) {
       console.log('[Cache] 💾 Guardando datos sin fragmentar...');
       console.log(`[Cache] 🔍 DEBUG: Clave=${CACHE_KEY}, TTL=${ttl}, Tamaño=${sizeBytes} bytes`);
       
-      let success;
+      // ✅ CORRECCIÓN DEFINITIVA: Bifurcar lógica según backend
       if (useFallback) {
-        success = FALLBACK_CACHE.put(CACHE_KEY, jsonString, ttl);
+        // ═══════════════════════════════════════════════════
+        // FALLBACK: FALLBACK_CACHE.put SÍ retorna boolean
+        // ═══════════════════════════════════════════════════
+        const success = FALLBACK_CACHE.put(CACHE_KEY, jsonString, ttl);
+        if (!success) {  // ✅ Verificación válida para fallback
+          console.error('[Cache] ❌ Error guardando datos simples en fallback');
+          return false;
+        }
       } else {
-        success = cache.put(CACHE_KEY, jsonString, ttl);
-      }
-      
-      if (!success) {
-        console.error('[Cache] ❌ Error guardando datos simples');
-        console.error(`[Cache] 🔍 DEBUG: Clave="${CACHE_KEY}", TTL=${ttl}, Tamaño=${sizeBytes} bytes`);
-        console.error('[Cache] 🔍 Posibles causas: datos muy grandes, clave inválida, TTL inválido');
-        return false;
+        // ═══════════════════════════════════════════════════
+        // CACHESERVICE: cache.put NO retorna boolean útil
+        // ═══════════════════════════════════════════════════
+        try {
+          // ✅ No verificar retorno, solo capturar excepciones
+          cache.put(CACHE_KEY, jsonString, ttl);
+        } catch (putError) {
+          console.error('[Cache] ❌ Error guardando datos simples:', putError);
+          console.error(`[Cache] 🔍 DEBUG: Clave="${CACHE_KEY}", TTL=${ttl}, Tamaño=${sizeBytes} bytes`);
+          console.error('[Cache] 🔍 Posibles causas: datos muy grandes, clave inválida, TTL inválido');
+          return false;
+        }
       }
       
       // ✅ CORRECCIÓN: Metadata consistente incluso para datos simples
@@ -251,11 +288,20 @@ function setCacheData(data, ttl = 1800) {
         fragmentSize: 0          // 0 = no hay fragmentación
       };
       
-      // Guardar metadata
+      // ✅ CORRECCIÓN: Guardar metadata con lógica bifurcada
       if (useFallback) {
-        FALLBACK_CACHE.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+        const metaSuccess = FALLBACK_CACHE.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+        if (!metaSuccess) {
+          console.error('[Cache] ❌ Error guardando metadata en fallback');
+          return false;
+        }
       } else {
-        cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+        try {
+          cache.put('DASHBOARD_DATA_META', JSON.stringify(metadata), ttl);
+        } catch (metaError) {
+          console.error('[Cache] ❌ Error guardando metadata:', metaError);
+          return false;
+        }
       }
       console.log(`[Cache] ✅ Guardado directo exitoso (${sizeKB}KB)`);
       

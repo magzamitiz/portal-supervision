@@ -868,6 +868,33 @@ function testCacheCorregido() {
     resultados.exito = false;
   }
   
+  // Test 5: Verificar que CacheService funciona sin fallback
+  console.log('\n🔍 TEST 5: CacheService sin fallback');
+  try {
+    // Limpiar caché y forzar detección
+    clearCache();
+    
+    // Verificar que FALLBACK_CACHE no está activo
+    const fallbackActivo = FALLBACK_CACHE.enabled;
+    console.log(`Fallback activo: ${fallbackActivo ? '❌' : '✅'}`);
+    
+    // Intentar guardar datos pequeños
+    const datosTest = { test: 'CacheService test', timestamp: Date.now() };
+    const guardado = setCacheData(datosTest);
+    console.log(`Guardado con CacheService: ${guardado ? '✅' : '❌'}`);
+    
+    // Verificar que se guardó correctamente
+    const recuperado = getCacheData();
+    const coincide = recuperado && recuperado.test === datosTest.test;
+    console.log(`Recuperado con CacheService: ${coincide ? '✅' : '❌'}`);
+    
+    resultados.tests.cacheservice_sin_fallback = !fallbackActivo && guardado && coincide;
+  } catch (error) {
+    console.error('❌ Error:', error);
+    resultados.tests.cacheservice_sin_fallback = false;
+    resultados.exito = false;
+  }
+  
   // Resumen final
   console.log('\n' + '='.repeat(60));
   console.log('📊 RESUMEN DE TESTS');
@@ -879,6 +906,279 @@ function testCacheCorregido() {
   });
   
   console.log('\n' + (resultados.exito ? '✅ TODOS LOS TESTS PASARON' : '❌ ALGUNOS TESTS FALLARON'));
+  
+  return resultados;
+}
+
+/**
+ * Test específico para verificar que CacheService.put() funciona correctamente
+ * después de la corrección del problema de detección de retorno void
+ */
+function testCacheServiceCorregido() {
+  console.log('🔧 TEST ESPECÍFICO: CacheService.put() corregido');
+  console.log('='.repeat(60));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: {},
+    exito: true
+  };
+  
+  try {
+    // Limpiar caché completamente
+    clearCache();
+    
+    // Test 1: Verificar que FALLBACK_CACHE no está activo
+    console.log('\n📝 TEST 1: Verificar que CacheService está activo');
+    const fallbackActivo = FALLBACK_CACHE.enabled;
+    console.log(`FALLBACK_CACHE.enabled: ${fallbackActivo}`);
+    console.log(`CacheService activo: ${!fallbackActivo ? '✅' : '❌'}`);
+    resultados.tests.cacheservice_activo = !fallbackActivo;
+    
+    // Test 2: Datos pequeños con CacheService
+    console.log('\n📝 TEST 2: Datos pequeños con CacheService');
+    const datosSmall = { 
+      test: 'CacheService test', 
+      timestamp: Date.now(),
+      size: 'small'
+    };
+    
+    const guardado = setCacheData(datosSmall);
+    console.log(`setCacheData() retornó: ${guardado}`);
+    console.log(`Guardado exitoso: ${guardado ? '✅' : '❌'}`);
+    resultados.tests.datos_pequenos = guardado;
+    
+    // Test 3: Verificar que se puede recuperar
+    console.log('\n📝 TEST 3: Recuperación de datos');
+    const recuperado = getCacheData();
+    const coincide = recuperado && recuperado.test === datosSmall.test;
+    console.log(`getCacheData() retornó: ${recuperado ? 'datos' : 'null'}`);
+    console.log(`Datos coinciden: ${coincide ? '✅' : '❌'}`);
+    resultados.tests.recuperacion = coincide;
+    
+    // Test 4: Datos grandes con fragmentación
+    console.log('\n📝 TEST 4: Datos grandes con fragmentación');
+    clearCache(); // Limpiar antes
+    
+    const datosLarge = { 
+      test: 'x'.repeat(80000), // 80KB
+      timestamp: Date.now(),
+      size: 'large'
+    };
+    
+    const guardadoLarge = setCacheData(datosLarge);
+    console.log(`setCacheData() para datos grandes: ${guardadoLarge}`);
+    console.log(`Fragmentación exitosa: ${guardadoLarge ? '✅' : '❌'}`);
+    resultados.tests.fragmentacion = guardadoLarge;
+    
+    // Test 5: Verificar metadata
+    console.log('\n📝 TEST 5: Verificar metadata');
+    const cache = CacheService.getScriptCache();
+    const metadataStr = cache.get('DASHBOARD_DATA_META');
+    
+    if (metadataStr) {
+      const metadata = JSON.parse(metadataStr);
+      console.log(`Metadata encontrada: ${JSON.stringify(metadata, null, 2)}`);
+      console.log(`Tiene fragments: ${metadata.fragments ? '✅' : '❌'}`);
+      console.log(`Tiene size: ${metadata.size ? '✅' : '❌'}`);
+      resultados.tests.metadata = metadata.fragments && metadata.size;
+    } else {
+      console.log('❌ No se encontró metadata');
+      resultados.tests.metadata = false;
+    }
+    
+    // Resumen final
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 RESUMEN DE TESTS');
+    console.log('='.repeat(60));
+    
+    Object.keys(resultados.tests).forEach(test => {
+      const resultado = resultados.tests[test];
+      console.log(`${test}: ${resultado ? '✅ PASS' : '❌ FAIL'}`);
+    });
+    
+    const todosPasan = Object.values(resultados.tests).every(test => test === true);
+    console.log('\n' + (todosPasan ? '✅ TODOS LOS TESTS PASARON' : '❌ ALGUNOS TESTS FALLARON'));
+    
+    resultados.exito = todosPasan;
+    
+  } catch (error) {
+    console.error('❌ Error crítico en test:', error);
+    resultados.exito = false;
+  }
+  
+  return resultados;
+}
+
+/**
+ * Test específico para verificar corrección del problema CacheService.put()
+ * Basado en el análisis detallado del problema raíz
+ */
+function testCorreccionCacheServicePut() {
+  console.log('🧪 TEST: Corrección de CacheService.put()');
+  console.log('='.repeat(60));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: {},
+    exito: true
+  };
+  
+  // ══════════════════════════════════════════════════════════
+  // TEST 1: Verificar que CacheService NO usa fallback
+  // ══════════════════════════════════════════════════════════
+  console.log('\n📋 TEST 1: CacheService debe ser detectado como funcional');
+  
+  try {
+    // Forzar limpieza
+    clearCache();
+    
+    // Guardar datos con CacheService (si está disponible)
+    const testData = { test: 'cacheservice', data: 'x'.repeat(10000) };
+    const guardado = setCacheData(testData, 60);
+    
+    if (!guardado) {
+      console.error('❌ setCacheData retornó false');
+      resultados.tests.cacheservice_disponible = false;
+      resultados.exito = false;
+    } else {
+      // Verificar que se usó CacheService y NO fallback
+      const cache = CacheService.getScriptCache();
+      const metadata = cache.get('DASHBOARD_DATA_META');
+      
+      if (metadata) {
+        console.log('✅ Metadata encontrada en CacheService');
+        console.log('✅ Sistema usó CacheService correctamente');
+        resultados.tests.cacheservice_disponible = true;
+      } else {
+        console.warn('⚠️ Metadata no encontrada - posible uso de fallback');
+        resultados.tests.cacheservice_disponible = false;
+        resultados.exito = false;
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error en TEST 1:', error);
+    resultados.tests.cacheservice_disponible = false;
+    resultados.exito = false;
+  }
+  
+  // ══════════════════════════════════════════════════════════
+  // TEST 2: Verificar recuperación de datos
+  // ══════════════════════════════════════════════════════════
+  console.log('\n📋 TEST 2: getCacheData debe recuperar datos guardados');
+  
+  try {
+    const recuperado = getCacheData();
+    const coincide = recuperado && recuperado.test === 'cacheservice';
+    
+    if (coincide) {
+      console.log('✅ Datos recuperados correctamente');
+      resultados.tests.recuperacion = true;
+    } else {
+      console.error('❌ Datos NO recuperados o no coinciden');
+      resultados.tests.recuperacion = false;
+      resultados.exito = false;
+    }
+  } catch (error) {
+    console.error('❌ Error en TEST 2:', error);
+    resultados.tests.recuperacion = false;
+    resultados.exito = false;
+  }
+  
+  // ══════════════════════════════════════════════════════════
+  // TEST 3: Verificar fragmentación con CacheService
+  // ══════════════════════════════════════════════════════════
+  console.log('\n📋 TEST 3: Fragmentación debe funcionar con CacheService');
+  
+  try {
+    clearCache();
+    
+    const testDataLarge = { test: 'large', data: 'y'.repeat(80000) };
+    const guardadoLarge = setCacheData(testDataLarge, 60);
+    
+    if (!guardadoLarge) {
+      console.error('❌ setCacheData (large) retornó false');
+      resultados.tests.fragmentacion = false;
+      resultados.exito = false;
+    } else {
+      const recuperadoLarge = getCacheData();
+      const coincideLarge = recuperadoLarge && recuperadoLarge.test === 'large';
+      
+      if (coincideLarge) {
+        console.log('✅ Datos fragmentados guardados y recuperados correctamente');
+        resultados.tests.fragmentacion = true;
+      } else {
+        console.error('❌ Datos fragmentados NO recuperados');
+        resultados.tests.fragmentacion = false;
+        resultados.exito = false;
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error en TEST 3:', error);
+    resultados.tests.fragmentacion = false;
+    resultados.exito = false;
+  }
+  
+  // ══════════════════════════════════════════════════════════
+  // TEST 4: Verificar metadata consistente
+  // ══════════════════════════════════════════════════════════
+  console.log('\n📋 TEST 4: Metadata debe existir tras guardado');
+  
+  try {
+    const cache = CacheService.getScriptCache();
+    const metadata = cache.get('DASHBOARD_DATA_META');
+    
+    if (metadata) {
+      const meta = JSON.parse(metadata);
+      const valida = meta.fragments > 0 && 
+                     meta.size > 0 && 
+                     meta.timestamp > 0;
+      
+      if (valida) {
+        console.log('✅ Metadata válida y completa');
+        console.log(`   fragments: ${meta.fragments}`);
+        console.log(`   size: ${meta.size} bytes`);
+        resultados.tests.metadata = true;
+      } else {
+        console.error('❌ Metadata incompleta');
+        resultados.tests.metadata = false;
+        resultados.exito = false;
+      }
+    } else {
+      console.error('❌ Metadata no existe');
+      resultados.tests.metadata = false;
+      resultados.exito = false;
+    }
+  } catch (error) {
+    console.error('❌ Error en TEST 4:', error);
+    resultados.tests.metadata = false;
+    resultados.exito = false;
+  }
+  
+  // ══════════════════════════════════════════════════════════
+  // RESUMEN
+  // ══════════════════════════════════════════════════════════
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 RESUMEN DE TESTS');
+  console.log('='.repeat(60));
+  
+  const total = Object.keys(resultados.tests).length;
+  const exitosos = Object.values(resultados.tests).filter(v => v).length;
+  
+  console.log(`Total: ${total}`);
+  console.log(`Exitosos: ${exitosos} ✅`);
+  console.log(`Fallidos: ${total - exitosos} ${total - exitosos > 0 ? '❌' : ''}`);
+  
+  if (resultados.exito) {
+    console.log('\n🎉 ¡TODOS LOS TESTS PASARON!');
+    console.log('✅ La corrección de CacheService.put() funciona correctamente');
+  } else {
+    console.log('\n⚠️ ALGUNOS TESTS FALLARON');
+    console.log('Revisar logs anteriores para detalles');
+  }
+  
+  // Limpieza final
+  clearCache();
   
   return resultados;
 }
