@@ -530,7 +530,6 @@ function getDatosLD(idLD, modoCompleto = false) {
           success: true,
           resumen: {
             ld: rapidResult.ld,
-            Total_LCF: 0, // Se calculará si es necesario
             Total_Celulas: 0,
             Total_Miembros: 0,
             Total_Ingresos: 0
@@ -781,19 +780,17 @@ function getDatosLDCompleto(idLD) {
     success: true,
     resumen: {
       ld: ld,
-      Total_LCF: lcfBajoLD.length, // Total de TODA la red
+      Total_LCF: lcfBajoLD.length, // Restaurado para la tarjeta del dashboard
       Total_Celulas: totalCelulas,
       Total_Miembros: totalMiembros,
       Total_Ingresos: totalIngresos,
       Ingresos_Asignados: totalIngresosAsignados,
       Ingresos_En_Celula: totalIngresosEnCelula,
       Tasa_Asignacion: totalIngresos > 0 ? ((totalIngresosAsignados / totalIngresos) * 100).toFixed(1) : 0,
-      Tasa_Integracion: totalIngresos > 0 ? ((totalIngresosEnCelula / totalIngresos) * 100).toFixed(1) : 0,
       metricas: {
         total_almas: totalIngresos,
         almas_en_celula: totalIngresosEnCelula,
         almas_sin_celula: totalIngresos - totalIngresosEnCelula,
-        tasa_integracion: totalIngresos > 0 ? ((totalIngresosEnCelula / totalIngresos) * 100).toFixed(1) : 0
       }
     },
     lcf_directos: lcfDirectosSinSupervision, // ✅ Solo LCF directos al LD (sin LM/SG)

@@ -226,10 +226,8 @@ function getDashboardData(forceReload = false) {
     const criticoMas1Mes = metricasValues[3][0] || 0;
     const lideresInactivos = metricasValues[4][0] || 0;
     const totalLideres = metricasValues[5][0] || 0;      // B6: Total LD
-    const totalLCF = metricasValues[6][0] || 0;          // B7: Total LCF
-    const totalCelulas = metricasValues[7][0] || 0;      // B8: Total Células
-    const totalIngresos = metricasValues[8][0] || 0;     // B9: Total Ingresos
-    const tasaIntegracion = metricasValues[9][0] || 0;   // B10: Tasa Integración
+    const totalCelulas = metricasValues[6][0] || 0;      // B7: Total Células
+    const totalIngresos = metricasValues[7][0] || 0;     // B8: Total Ingresos
     
     // ✅ SOLUCIÓN: Construir respuesta usando SOLO datos precalculados
     const result = {
@@ -250,8 +248,6 @@ function getDashboardData(forceReload = false) {
           alerta2_3Semanas: alerta2_3Semanas,               // ✅ Desde _ResumenDashboard
           criticoMas1Mes: criticoMas1Mes,                   // ✅ Desde _ResumenDashboard
           lideresInactivos: lideresInactivos,               // ✅ Desde _ResumenDashboard
-          tasaIntegracion: tasaIntegracion,                 // ✅ Desde _ResumenDashboard
-          promedioLCFporLD: totalLideres > 0 ? (totalLCF / totalLideres).toFixed(1) : 0
         },
         alertas: [
           {
@@ -291,12 +287,10 @@ function getDashboardData(forceReload = false) {
 function createEmptyAnalysis() {
   return {
     lideres: {
-      total_LD: 0, total_LCF: 0,
+      total_LD: 0,
       LD_activos: 0, LD_alertas: 0, LD_inactivos: 0,
-      LCF_activos: 0, LCF_alertas: 0, LCF_inactivos: 0,
-      LCF_sin_LD: [],
       por_congregacion: {},
-      tasa_actividad_LD: 0, tasa_actividad_LCF: 0
+      tasa_actividad_LD: 0
     },
     celulas: {
       total_celulas: 0, celulas_activas: 0, celulas_vacias: 0, celulas_en_riesgo: 0,
@@ -307,11 +301,11 @@ function createEmptyAnalysis() {
       total_historico: 0, ingresos_hoy: 0, ingresos_semana: 0, ingresos_mes: 0,
       asignados: 0, pendientes_asignacion: 0, aceptaron_jesus: 0, desean_visita: 0,
       en_celula: 0, sin_celula: 0,
-      por_fuente: {}, por_LCF: {}, por_LD: {},
-      tasa_asignacion: 0, tasa_integracion_celula: 0
+      por_fuente: {}, por_LD: {},
+      tasa_asignacion: 0
     },
     metricas: {
-      cobertura_liderazgo: 0, promedio_lcf_por_ld: 0, promedio_almas_por_lcf: 0,
+      cobertura_liderazgo: 0, promedio_almas_por_ld: 0,
       tasa_ocupacion_celulas: 0, celulas_necesitan_atencion: 0, potencial_multiplicacion: 0,
       velocidad_asignacion_promedio: 0, almas_sin_celula: 0
     },

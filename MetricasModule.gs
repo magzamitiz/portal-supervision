@@ -104,10 +104,8 @@ function calcularMetricasLideres(lideres) {
     return {
       total_lideres: totalLideres,
       total_LD: ldCount,
-      total_LCF: lcfCount,
       total_LM: lmCount,
       total_SG: sgCount,
-      promedio_lcf_por_ld: ldCount > 0 ? (lcfCount / ldCount).toFixed(1) : 0,
       tasa_actividad: totalLideres > 0 ? ((activos / totalLideres) * 100).toFixed(1) : 0,
       tasa_inactividad: totalLideres > 0 ? ((inactivos / totalLideres) * 100).toFixed(1) : 0,
       carga_lcf_ld: ldCount > 0 ? evaluarCargaLCF(ldCount, lcfCount) : 'Sin datos'
@@ -206,7 +204,6 @@ function calcularMetricasIngresos(ingresos) {
       aceptaron_jesus: aceptaronJesus,
       desean_visita: deseanVisita,
       tasa_asignacion: totalIngresos > 0 ? ((asignados / totalIngresos) * 100).toFixed(1) : 0,
-      tasa_integracion: totalIngresos > 0 ? ((enCelula / totalIngresos) * 100).toFixed(1) : 0,
       tasa_aceptacion_jesus: totalIngresos > 0 ? ((aceptaronJesus / totalIngresos) * 100).toFixed(1) : 0,
       tasa_desean_visita: totalIngresos > 0 ? ((deseanVisita / totalIngresos) * 100).toFixed(1) : 0
     };
@@ -315,10 +312,7 @@ function evaluarSaludGeneral(metricasLideres, metricasCelulas, metricasIngresos)
     if (tasaOcupacion >= 80) indicadores.push('Células ocupadas');
     else if (tasaOcupacion < 50) indicadores.push('Células vacías');
     
-    // Indicador de integración de ingresos
-    const tasaIntegracion = parseFloat(metricasIngresos.tasa_integracion || 0);
-    if (tasaIntegracion >= 60) indicadores.push('Buena integración');
-    else if (tasaIntegracion < 30) indicadores.push('Baja integración');
+    // Indicadores de ingresos (sin tasa de integración)
     
     // Determinar salud general
     const indicadoresPositivos = indicadores.filter(i => 
@@ -603,7 +597,6 @@ function calcularMetricasLCF(idLCF) {
         en_celula: enCelula,
         tasa_bienvenida: totalAlmas > 0 ? ((bienvenidasCompletadas / totalAlmas) * 100).toFixed(1) : 0,
         tasa_visita: totalAlmas > 0 ? ((visitasCompletadas / totalAlmas) * 100).toFixed(1) : 0,
-        tasa_integracion: totalAlmas > 0 ? ((enCelula / totalAlmas) * 100).toFixed(1) : 0,
         promedio_dias_sin_seguimiento: totalAlmas > 0 ? (diasSinSeguimiento / totalAlmas).toFixed(1) : 0
       }
     };

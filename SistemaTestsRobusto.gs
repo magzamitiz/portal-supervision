@@ -1547,7 +1547,6 @@ function testMetricasCorregidas() {
       console.log(`  Total Líderes: ${metricas.total_lideres}`);
       console.log(`  Total Células: ${metricas.total_celulas}`);
       console.log(`  Total Ingresos: ${metricas.total_ingresos}`);
-      console.log(`  Tasa Integración: ${metricas.tasa_integracion}%`);
       
       const metricasGeneralesValidas = metricas.total_lideres > 0 ||
                                        metricas.total_celulas > 0 ||
@@ -2780,8 +2779,6 @@ function analizarResumenDashboard() {
     <div class="stat-card">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-gray-500 text-sm">Tasa Integración</p>
-                <p class="text-3xl font-bold text-indigo-600">\${metricas.tasa_integracion || 0}%</p>
             </div>
             <i class="fas fa-percentage text-indigo-500 text-3xl"></i>
         </div>
