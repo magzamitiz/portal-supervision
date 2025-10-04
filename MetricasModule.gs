@@ -94,17 +94,34 @@ function getEstadisticasRapidas() {
     
     const metricasValues = resumenSheet.getRange('B1:B10').getValues();
     
+    // ✅ DEBUG: Verificar valores leídos
+    console.log('[MetricasModule] Valores leídos de _ResumenDashboard:');
+    console.log('B1 (totalRecibiendoCelulas):', metricasValues[0][0]);
+    console.log('B2 (activosRecibiendoCelula):', metricasValues[1][0]);
+    console.log('B3 (alerta2_3Semanas):', metricasValues[2][0]);
+    console.log('B4 (criticoMas1Mes):', metricasValues[3][0]);
+    console.log('B5 (lideresInactivos):', metricasValues[4][0]);
+    console.log('B6 (totalLideres):', metricasValues[5][0]);
+    console.log('B7 (totalCelulas):', metricasValues[6][0]);
+    console.log('B8 (totalIngresos):', metricasValues[7][0]);
+    
+    // ✅ USAR DATOS REALES DE LA HOJA (confirmados por diagnóstico)
     const stats = {
-      totalRecibiendoCelulas: metricasValues[0][0] || 0, // Total Recibiendo Células (B1)
-      activosRecibiendoCelula: metricasValues[1][0] || 0, // Activos recibiendo célula (B2)
-      alerta2_3Semanas: metricasValues[2][0] || 0, // 2 a 3 semanas sin recibir célula (B3)
-      criticoMas1Mes: metricasValues[3][0] || 0, // Más de 1 mes sin recibir célula (B4)
-      lideresInactivos: metricasValues[4][0] || 0, // Líderes hibernando (B5)
-      totalLideres: metricasValues[5][0] || 0, // Total Líderes (B6)
-      totalCelulas: metricasValues[6][0] || 0, // Total Células (B7)
-      totalIngresos: metricasValues[7][0] || 0, // Total Ingresos (B8)
+      totalRecibiendoCelulas: metricasValues[0][0] || 0, // 87
+      activosRecibiendoCelula: metricasValues[1][0] || 0, // 58
+      alerta2_3Semanas: metricasValues[2][0] || 0, // 17
+      criticoMas1Mes: metricasValues[3][0] || 0, // 11
+      lideresInactivos: metricasValues[4][0] || 0, // 16
+      totalLideres: metricasValues[5][0] || 0, // 68
+      totalCelulas: metricasValues[6][0] || 0, // 46
+      totalIngresos: metricasValues[7][0] || 0, // 1784
       timestamp: new Date().toISOString()
     };
+    
+    console.log('[MetricasModule] ✅ Usando datos reales de _ResumenDashboard');
+    
+    // ✅ DEBUG: Verificar stats construidos
+    console.log('[MetricasModule] Stats construidos:', stats);
     
     // ✅ NORMALIZACIÓN: Transformar a estructura que espera el frontend
     const { fila1, fila2, calculadas } = transformarMetricasParaFrontend(stats);
@@ -359,3 +376,61 @@ function testRendimientoGeneral() {
 }
 
 console.log('📊 MetricasModule cargado - Módulo optimizado con solo funciones utilizadas');
+
+/**
+ * 🔍 FUNCIÓN DE DIAGNÓSTICO: Verificar estado de _ResumenDashboard
+ * @returns {Object} Diagnóstico completo de la hoja
+ */
+function diagnosticarResumenDashboard() {
+  try {
+    console.log('🔍 DIAGNÓSTICO: Verificando _ResumenDashboard...');
+    
+    const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
+    const resumenSheet = ss.getSheetByName('_ResumenDashboard');
+    
+    if (!resumenSheet) {
+      console.error('❌ Hoja _ResumenDashboard no encontrada');
+      return { error: 'Hoja no encontrada' };
+    }
+    
+    console.log('✅ Hoja _ResumenDashboard encontrada');
+    
+    // Verificar rango completo A1:B10
+    const rangoCompleto = resumenSheet.getRange('A1:B10').getValues();
+    console.log('📊 Contenido completo A1:B10:');
+    rangoCompleto.forEach((row, index) => {
+      console.log(`Fila ${index + 1}: A=${row[0]}, B=${row[1]}`);
+    });
+    
+    // Verificar solo columna B
+    const metricasValues = resumenSheet.getRange('B1:B10').getValues();
+    console.log('📊 Solo columna B1:B10:');
+    metricasValues.forEach((row, index) => {
+      console.log(`B${index + 1}: ${row[0]} (tipo: ${typeof row[0]})`);
+    });
+    
+    // Verificar si hay fórmulas
+    const formulas = resumenSheet.getRange('B1:B10').getFormulas();
+    console.log('📊 Fórmulas en B1:B10:');
+    formulas.forEach((row, index) => {
+      if (row[0]) {
+        console.log(`B${index + 1} fórmula: ${row[0]}`);
+      }
+    });
+    
+    return {
+      success: true,
+      hojaExiste: true,
+      valores: metricasValues,
+      formulas: formulas,
+      rangoCompleto: rangoCompleto
+    };
+    
+  } catch (error) {
+    console.error('❌ Error en diagnóstico:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
