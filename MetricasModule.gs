@@ -495,7 +495,14 @@ function getEstadisticasRapidas() {
           total_lideres: metricas['Total Líderes'] || 0,
           total_celulas: metricas['Total Células'] || 0,
           total_ingresos: metricas['Total Ingresos'] || 0,
-          tasa_integracion: metricas['Tasa Integración'] || 0
+          tasa_integracion: metricas['Tasa Integración'] || 0,
+          // ✅ CORRECCIÓN: Calcular porcentajes dinámicamente
+          porcentaje_activos: metricas['Total Recibiendo'] > 0 ? 
+            ((metricas['Activos'] / metricas['Total Recibiendo']) * 100).toFixed(1) : 0,
+          porcentaje_alerta: metricas['Total Recibiendo'] > 0 ? 
+            ((metricas['Alerta'] / metricas['Total Recibiendo']) * 100).toFixed(1) : 0,
+          porcentaje_critico: metricas['Total Recibiendo'] > 0 ? 
+            ((metricas['Crítico'] / metricas['Total Recibiendo']) * 100).toFixed(1) : 0
         },
         timestamp: new Date().toISOString()
       }
