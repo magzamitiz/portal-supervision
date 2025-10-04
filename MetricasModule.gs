@@ -378,13 +378,14 @@ function testRendimientoGeneral() {
 console.log('📊 MetricasModule cargado - Módulo optimizado con solo funciones utilizadas');
 
 /**
- * 🔍 FUNCIÓN DE DIAGNÓSTICO: Verificar estado de _ResumenDashboard
- * @returns {Object} Diagnóstico completo de la hoja
+ * 🔍 FUNCIÓN DE DIAGNÓSTICO REAL: Verificar toda la cadena de datos
+ * @returns {Object} Diagnóstico completo de la cadena
  */
-function diagnosticarResumenDashboard() {
+function diagnosticarCadenaCompleta() {
   try {
-    console.log('🔍 DIAGNÓSTICO: Verificando _ResumenDashboard...');
+    console.log('🔍 DIAGNÓSTICO COMPLETO: Verificando toda la cadena de datos...');
     
+    // 1. Verificar _ResumenDashboard
     const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
     const resumenSheet = ss.getSheetByName('_ResumenDashboard');
     
@@ -393,41 +394,78 @@ function diagnosticarResumenDashboard() {
       return { error: 'Hoja no encontrada' };
     }
     
-    console.log('✅ Hoja _ResumenDashboard encontrada');
-    
-    // Verificar rango completo A1:B10
-    const rangoCompleto = resumenSheet.getRange('A1:B10').getValues();
-    console.log('📊 Contenido completo A1:B10:');
-    rangoCompleto.forEach((row, index) => {
-      console.log(`Fila ${index + 1}: A=${row[0]}, B=${row[1]}`);
-    });
-    
-    // Verificar solo columna B
     const metricasValues = resumenSheet.getRange('B1:B10').getValues();
-    console.log('📊 Solo columna B1:B10:');
-    metricasValues.forEach((row, index) => {
-      console.log(`B${index + 1}: ${row[0]} (tipo: ${typeof row[0]})`);
-    });
+    console.log('📊 Datos de _ResumenDashboard:', metricasValues);
     
-    // Verificar si hay fórmulas
-    const formulas = resumenSheet.getRange('B1:B10').getFormulas();
-    console.log('📊 Fórmulas en B1:B10:');
-    formulas.forEach((row, index) => {
-      if (row[0]) {
-        console.log(`B${index + 1} fórmula: ${row[0]}`);
+    // 2. Simular getEstadisticasRapidas()
+    const stats = {
+      totalRecibiendoCelulas: metricasValues[0][0] || 0,
+      activosRecibiendoCelula: metricasValues[1][0] || 0,
+      alerta2_3Semanas: metricasValues[2][0] || 0,
+      criticoMas1Mes: metricasValues[3][0] || 0,
+      lideresInactivos: metricasValues[4][0] || 0,
+      totalLideres: metricasValues[5][0] || 0,
+      totalCelulas: metricasValues[6][0] || 0,
+      totalIngresos: metricasValues[7][0] || 0,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('📊 Stats construidos:', stats);
+    
+    // 3. Simular transformarMetricasParaFrontend()
+    const fila1 = {
+      activos_recibiendo_celula: stats.activosRecibiendoCelula || 0,
+      lideres_hibernando: stats.lideresInactivos || 0,
+      total_lideres: stats.totalLideres || 0,
+      total_asistencia_celulas: stats.totalRecibiendoCelulas || 0
+    };
+    
+    const fila2 = {
+      alerta_2_3_semanas: stats.alerta2_3Semanas || 0,
+      critico_mas_1_mes: stats.criticoMas1Mes || 0,
+      total_celulas: stats.totalCelulas || 0,
+      total_ingresos: stats.totalIngresos || 0
+    };
+    
+    const calculadas = {
+      porcentaje_activos: (stats.totalLideres || 0) > 0 ? 
+        Math.round(((stats.activosRecibiendoCelula || 0) / (stats.totalLideres || 1)) * 100) : 0,
+      porcentaje_alerta: (stats.totalLideres || 0) > 0 ? 
+        Math.round(((stats.alerta2_3Semanas || 0) / (stats.totalLideres || 1)) * 100) : 0,
+      porcentaje_critico: (stats.totalLideres || 0) > 0 ? 
+        Math.round(((stats.criticoMas1Mes || 0) / (stats.totalLideres || 1)) * 100) : 0
+    };
+    
+    console.log('📊 Fila1 (para frontend):', fila1);
+    console.log('📊 Fila2 (para frontend):', fila2);
+    console.log('📊 Calculadas (para frontend):', calculadas);
+    
+    // 4. Simular respuesta final
+    const respuestaFinal = {
+      success: true,
+      data: {
+        fila1: fila1,
+        fila2: fila2,
+        calculadas: calculadas,
+        totales: stats,
+        timestamp: stats.timestamp
       }
-    });
+    };
+    
+    console.log('📊 Respuesta final completa:', respuestaFinal);
     
     return {
       success: true,
-      hojaExiste: true,
-      valores: metricasValues,
-      formulas: formulas,
-      rangoCompleto: rangoCompleto
+      datosOriginales: metricasValues,
+      stats: stats,
+      fila1: fila1,
+      fila2: fila2,
+      calculadas: calculadas,
+      respuestaFinal: respuestaFinal
     };
     
   } catch (error) {
-    console.error('❌ Error en diagnóstico:', error);
+    console.error('❌ Error en diagnóstico completo:', error);
     return {
       success: false,
       error: error.toString()
