@@ -179,105 +179,259 @@ function reiniciarAplicacion() {
  * @param {boolean} forceReload - Si true, ignora caché y recarga datos
  * @returns {Object} Datos completos del dashboard
  */
+/**
+ * ✅ SOLUCIÓN: getDashboardData con datos completos
+ * Restaura la carga de todas las colecciones que el frontend necesita
+ */
 function getDashboardData(forceReload = false) {
-  // 🚀 IMPLEMENTACIÓN OPTIMIZADA - Usar hojas precalculadas existentes
   const startTime = Date.now();
-  console.log(`[MainModule] 🚀 getDashboardData OPTIMIZADO - Usando hojas existentes...`);
+  console.log('[MainModule] getDashboardData - Cargando datos completos...');
   
   try {
-    // Verificar caché primero
-    const cache = CacheService.getScriptCache();
-    const cachedData = cache.get('DASHBOARD_OPTIMIZED_EXISTENTES_V1');
-    
-    if (cachedData && !forceReload) {
-      const cacheTime = Date.now() - startTime;
-      console.log(`[MainModule] ✅ Cache HIT - ${cacheTime}ms`);
-      return JSON.parse(cachedData);
+    // 1. Verificar caché primero (si no es forceReload)
+    if (!forceReload) {
+      const cache = CacheService.getScriptCache();
+      const cachedData = cache.get('DASHBOARD_DATA_COMPLETO_V2');
+      
+      if (cachedData) {
+        const cacheTime = Date.now() - startTime;
+        console.log(`[MainModule] ✅ Datos desde caché - ${cacheTime}ms`);
+        return JSON.parse(cachedData);
+      }
     }
     
-    // Solo abrir el spreadsheet una vez
+    // 2. Abrir spreadsheet una sola vez para eficiencia
     const ss = SpreadsheetApp.openById(CONFIG.SHEETS.DIRECTORIO);
     
-    // ✅ SOLUCIÓN: Solo leer de _ResumenDashboard - UNA SOLA LECTURA
+    // 3. Leer _ResumenDashboard para métricas rápidas
     const resumenSheet = ss.getSheetByName('_ResumenDashboard');
-    
     if (!resumenSheet) {
       throw new Error('Hoja _ResumenDashboard no encontrada');
     }
     
-    // ✅ SOLUCIÓN: Leer rango extendido para obtener TODOS los datos necesarios
-    // Estructura esperada de _ResumenDashboard:
-    // B1: Total Recibiendo Células
-    // B2: Activos Recibiendo Célula
-    // B3: Alerta 2-3 Semanas  
-    // B4: Crítico Más 1 Mes
-    // B5: Líderes Inactivos
-    // B6: Total Líderes (LD)
-    // B7: Total LCF
-    // B8: Total Células
-    // B9: Total Ingresos
-    // B10: Tasa Integración
     const metricasValues = resumenSheet.getRange('B1:B10').getValues();
-    
-    // ✅ SOLUCIÓN: Usar solo datos precalculados de _ResumenDashboard
     const totalRecibiendoCelulas = metricasValues[0][0] || 0;
     const activosRecibiendoCelula = metricasValues[1][0] || 0;
     const alerta2_3Semanas = metricasValues[2][0] || 0;
     const criticoMas1Mes = metricasValues[3][0] || 0;
     const lideresInactivos = metricasValues[4][0] || 0;
-    const totalLideres = metricasValues[5][0] || 0;      // B6: Total LD
-    const totalCelulas = metricasValues[6][0] || 0;      // B7: Total Células
-    const totalIngresos = metricasValues[7][0] || 0;     // B8: Total Ingresos
+    const totalLideres = metricasValues[5][0] || 0;
+    const totalCelulas = metricasValues[6][0] || 0;
+    const totalIngresos = metricasValues[7][0] || 0;
     
-    // ✅ SOLUCIÓN: Construir respuesta usando SOLO datos precalculados
+    // 4. ✅ CARGA COMPLETA: Leer las hojas de datos detallados
+    console.log('[MainModule] Cargando hojas de datos detallados...');
+    
+    // Leer Directorio de Líderes
+    const lideresSheet = ss.getSheetByName(CONFIG.TABS.LIDERES);
+    const lideresData = lideresSheet ? lideresSheet.getDataRange().getValues() : [];
+    
+    // Leer Directorio de Células
+    const celulasSheet = ss.getSheetByName(CONFIG.TABS.CELULAS);
+    const celulasData = celulasSheet ? celulasSheet.getDataRange().getValues() : [];
+    
+    // Leer Ingresos
+    const ingresosSheet = ss.getSheetByName(CONFIG.TABS.INGRESOS);
+    const ingresosData = ingresosSheet ? ingresosSheet.getDataRange().getValues() : [];
+    
+    // 5. ✅ PROCESAR: Usar funciones simplificadas para datos directos
+    const lideresCompletos = procesarLideresDirectos(lideresData);
+    const celulasCompletas = procesarCelulasDirectas(celulasData);
+    const ingresosCompletos = procesarIngresosDirectos(ingresosData);
+    
+    // 6. ✅ ESTRUCTURA COMPLETA que espera el frontend
     const result = {
       success: true,
       data: {
+        // Métricas resumidas (de _ResumenDashboard)
         actividad: {
-          totalLideres: totalLideres,                    // ✅ Desde _ResumenDashboard
-          lideresActivos: totalLideres - lideresInactivos, // ✅ Calculado desde precalculados
-          totalCelulas: totalCelulas,                    // ✅ Desde _ResumenDashboard
-          celulasActivas: totalCelulas,                  // ✅ Asumir todas activas
-          totalAlmas: totalIngresos,                     // ✅ Desde _ResumenDashboard
-          almasEnCelulas: totalRecibiendoCelulas,        // ✅ Desde _ResumenDashboard
-          nuevasEsteMes: 0 // Se puede calcular si es necesario
+          totalLideres: lideresCompletos.length,
+          lideresActivos: lideresCompletos.filter(l => l.Estado_Actividad !== 'Inactivo').length,
+          totalCelulas: celulasCompletas.length,
+          celulasActivas: celulasCompletas.length, // Asumir todas activas por ahora
+          totalAlmas: ingresosCompletos.length,
+          almasEnCelulas: ingresosCompletos.filter(i => i.En_Celula).length,
+          nuevasEsteMes: 0
         },
         metricas: {
-          totalRecibiendoCelulas: totalRecibiendoCelulas,    // ✅ Desde _ResumenDashboard
-          activosRecibiendoCelula: activosRecibiendoCelula,  // ✅ Desde _ResumenDashboard
-          alerta2_3Semanas: alerta2_3Semanas,               // ✅ Desde _ResumenDashboard
-          criticoMas1Mes: criticoMas1Mes,                   // ✅ Desde _ResumenDashboard
-          lideresInactivos: lideresInactivos,               // ✅ Desde _ResumenDashboard
+          totalRecibiendoCelulas: totalRecibiendoCelulas,
+          activosRecibiendoCelula: activosRecibiendoCelula,
+          alerta2_3Semanas: alerta2_3Semanas,
+          criticoMas1Mes: criticoMas1Mes,
+          lideresInactivos: lideresInactivos
         },
-        alertas: [
-          {
-            tipo: 'Sistema',
-            mensaje: 'Sistema funcionando con datos precalculados',
-            prioridad: 'Baja',
-            fecha: new Date().toISOString()
-          }
-        ],
+        
+        // ✅ DATOS COMPLETOS que necesita la UI
+        lideres: {
+          lista: lideresCompletos,
+          total: lideresCompletos.length,
+          activos: lideresCompletos.filter(l => l.Estado_Actividad !== 'Inactivo').length
+        },
+        celulas: {
+          lista: celulasCompletas,
+          total: celulasCompletas.length
+        },
+        ingresos: {
+          lista: ingresosCompletos,
+          total: ingresosCompletos.length,
+          enCelula: ingresosCompletos.filter(i => i.En_Celula).length
+        },
+        
+        // Metadatos
         timestamp: new Date().toISOString(),
-        modo_carga: 'OPTIMIZADA (hojas existentes)'
+        modo_carga: 'COMPLETO (métricas + datos detallados)',
+        tiempo_carga: Date.now() - startTime
       }
     };
     
-    // Caché por 30 minutos
-    cache.put('DASHBOARD_OPTIMIZED_EXISTENTES_V1', JSON.stringify(result), 1800);
+    // 7. Guardar en caché por 30 minutos
+    const cache = CacheService.getScriptCache();
+    cache.put('DASHBOARD_DATA_COMPLETO_V2', JSON.stringify(result), 1800);
     
     const totalTime = Date.now() - startTime;
-    console.log(`[MainModule] ✅ Completado en ${totalTime}ms`);
+    console.log(`[MainModule] ✅ Datos completos cargados en ${totalTime}ms`);
     
     return result;
-
+    
   } catch (error) {
     console.error('[MainModule] Error crítico en getDashboardData:', error);
     return {
       success: false,
-      error: 'Error al obtener datos del dashboard. Detalle: ' + error.toString(),
-      data: null
+      error: 'Error al obtener datos del dashboard',
+      detalle: error.toString(),
+      timestamp: new Date().toISOString()
     };
   }
+}
+
+
+/**
+ * ✅ FUNCIONES SIMPLIFICADAS: Procesadores de datos directos
+ * Estas funciones procesan arrays de datos sin intentar abrir spreadsheets
+ */
+
+function procesarLideresDirectos(rawData) {
+  if (!rawData || rawData.length < 2) return [];
+  
+  const headers = rawData[0].map(h => h.toString().trim());
+  const lideres = [];
+  
+  // Mapeo flexible de columnas
+  const colMap = {
+    id: findColumnIndexSimple(headers, ['ID_Lider', 'ID Líder', 'ID']),
+    nombre: findColumnIndexSimple(headers, ['Nombre_Lider', 'Nombre Líder', 'Nombre']),
+    rol: findColumnIndexSimple(headers, ['Rol', 'Tipo']),
+    supervisor: findColumnIndexSimple(headers, ['ID_Lider_Directo', 'Supervisor']),
+    estado: findColumnIndexSimple(headers, ['Estado_Actividad', 'Estado'])
+  };
+  
+  // Procesar filas
+  for (let i = 1; i < rawData.length; i++) {
+    const row = rawData[i];
+    if (!row[colMap.id]) continue;
+    
+    lideres.push({
+      ID_Lider: String(row[colMap.id]).trim(),
+      Nombre_Lider: String(row[colMap.nombre] || 'Sin Nombre').trim(),
+      Rol: String(row[colMap.rol] || '').trim(),
+      ID_Lider_Directo: String(row[colMap.supervisor] || '').trim(),
+      Estado_Actividad: String(row[colMap.estado] || 'Activo').trim()
+    });
+  }
+  
+  return lideres;
+}
+
+function procesarCelulasDirectas(rawData) {
+  if (!rawData || rawData.length < 2) return [];
+  
+  const headers = rawData[0].map(h => h.toString().trim());
+  const celulasMap = new Map();
+  
+  const colMap = {
+    idCelula: findColumnIndexSimple(headers, ['ID Célula', 'ID_Celula', 'ID']),
+    nombreCelula: findColumnIndexSimple(headers, ['Nombre Célula', 'Nombre']),
+    idLCF: findColumnIndexSimple(headers, ['ID LCF', 'ID_LCF', 'Responsable']),
+    nombreLCF: findColumnIndexSimple(headers, ['Nombre LCF']),
+    idMiembro: findColumnIndexSimple(headers, ['ID Miembro', 'ID_Miembro']),
+    nombreMiembro: findColumnIndexSimple(headers, ['Nombre Miembro'])
+  };
+  
+  for (let i = 1; i < rawData.length; i++) {
+    const row = rawData[i];
+    const idCelula = String(row[colMap.idCelula] || '').trim();
+    
+    if (!idCelula) continue;
+    
+    if (!celulasMap.has(idCelula)) {
+      celulasMap.set(idCelula, {
+        ID_Celula: idCelula,
+        Nombre_Celula: String(row[colMap.nombreCelula] || '').trim(),
+        ID_LCF_Responsable: String(row[colMap.idLCF] || '').trim(),
+        Nombre_LCF_Responsable: String(row[colMap.nombreLCF] || '').trim(),
+        Miembros: [],
+        Total_Miembros: 0
+      });
+    }
+    
+    const idMiembro = String(row[colMap.idMiembro] || '').trim();
+    if (idMiembro) {
+      const celula = celulasMap.get(idCelula);
+      celula.Miembros.push({
+        ID_Miembro: idMiembro,
+        Nombre_Miembro: String(row[colMap.nombreMiembro] || '').trim()
+      });
+      celula.Total_Miembros = celula.Miembros.length;
+    }
+  }
+  
+  return Array.from(celulasMap.values());
+}
+
+function procesarIngresosDirectos(rawData) {
+  if (!rawData || rawData.length < 2) return [];
+  
+  const headers = rawData[0].map(h => h.toString().trim());
+  const ingresos = [];
+  
+  const colMap = {
+    idAlma: findColumnIndexSimple(headers, ['ID Alma', 'ID_Alma', 'ID']),
+    nombre: findColumnIndexSimple(headers, ['Nombre', 'Nombre Alma']),
+    idLCF: findColumnIndexSimple(headers, ['ID LCF', 'ID_LCF_Asignado']),
+    nombreLCF: findColumnIndexSimple(headers, ['Nombre LCF']),
+    enCelula: findColumnIndexSimple(headers, ['En Célula', 'En_Celula', 'Célula']),
+    fechaIngreso: findColumnIndexSimple(headers, ['Fecha Ingreso', 'Fecha'])
+  };
+  
+  for (let i = 1; i < rawData.length; i++) {
+    const row = rawData[i];
+    if (!row[colMap.idAlma]) continue;
+    
+    ingresos.push({
+      ID_Alma: String(row[colMap.idAlma]).trim(),
+      Nombre: String(row[colMap.nombre] || 'Sin Nombre').trim(),
+      ID_LCF_Asignado: String(row[colMap.idLCF] || '').trim(),
+      Nombre_LCF: String(row[colMap.nombreLCF] || '').trim(),
+      En_Celula: row[colMap.enCelula] === 'Sí' || row[colMap.enCelula] === true,
+      Fecha_Ingreso: row[colMap.fechaIngreso] || ''
+    });
+  }
+  
+  return ingresos;
+}
+
+/**
+ * Encuentra índice de columna con nombres alternativos (versión simplificada)
+ */
+function findColumnIndexSimple(headers, possibleNames) {
+  for (let name of possibleNames) {
+    const index = headers.findIndex(h => 
+      h.toLowerCase().includes(name.toLowerCase()) ||
+      name.toLowerCase().includes(h.toLowerCase())
+    );
+    if (index !== -1) return index;
+  }
+  return -1;
 }
 
 /**

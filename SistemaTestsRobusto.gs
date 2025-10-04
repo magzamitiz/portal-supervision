@@ -3207,4 +3207,139 @@ function probar8MetricasDashboard() {
   return resultados;
 }
 
+/**
+ * ✅ NUEVA FUNCIÓN: Test de getDashboardData con datos completos
+ */
+function testGetDashboardDataCompleto() {
+  console.log('🧪 PRUEBA: getDashboardData con datos completos');
+  console.log('='.repeat(60));
+  
+  const resultados = {
+    timestamp: new Date().toISOString(),
+    tests: {},
+    exito: true
+  };
+  
+  try {
+    // Limpiar caché para forzar recarga
+    clearCache();
+    
+    // Obtener datos completos
+    const dashboardData = getDashboardData(true); // forceReload
+    
+    if (dashboardData.success && dashboardData.data) {
+      const data = dashboardData.data;
+      
+      console.log('📊 Verificando estructura de datos completos:');
+      console.log('  lideres:', data.lideres ? '✅' : '❌');
+      console.log('  celulas:', data.celulas ? '✅' : '❌');
+      console.log('  ingresos:', data.ingresos ? '✅' : '❌');
+      console.log('  actividad:', data.actividad ? '✅' : '❌');
+      console.log('  metricas:', data.metricas ? '✅' : '❌');
+      
+      // Test 1: Verificar que lideres.lista existe
+      const lideresListaExiste = data.lideres && Array.isArray(data.lideres.lista);
+      console.log(`\n✅ Test 1 - lideres.lista existe: ${lideresListaExiste ? 'PASS' : 'FAIL'}`);
+      resultados.tests.lideres_lista_existe = lideresListaExiste;
+      
+      if (lideresListaExiste) {
+        console.log(`  Total líderes: ${data.lideres.lista.length}`);
+        console.log(`  Líderes activos: ${data.lideres.activos || 0}`);
+      }
+      
+      // Test 2: Verificar que celulas.lista existe
+      const celulasListaExiste = data.celulas && Array.isArray(data.celulas.lista);
+      console.log(`\n✅ Test 2 - celulas.lista existe: ${celulasListaExiste ? 'PASS' : 'FAIL'}`);
+      resultados.tests.celulas_lista_existe = celulasListaExiste;
+      
+      if (celulasListaExiste) {
+        console.log(`  Total células: ${data.celulas.lista.length}`);
+      }
+      
+      // Test 3: Verificar que ingresos.lista existe
+      const ingresosListaExiste = data.ingresos && Array.isArray(data.ingresos.lista);
+      console.log(`\n✅ Test 3 - ingresos.lista existe: ${ingresosListaExiste ? 'PASS' : 'FAIL'}`);
+      resultados.tests.ingresos_lista_existe = ingresosListaExiste;
+      
+      if (ingresosListaExiste) {
+        console.log(`  Total ingresos: ${data.ingresos.lista.length}`);
+        console.log(`  En célula: ${data.ingresos.enCelula || 0}`);
+      }
+      
+      // Test 4: Verificar métricas de actividad
+      const actividadExiste = data.actividad && 
+        typeof data.actividad.totalLideres === 'number' &&
+        typeof data.actividad.totalCelulas === 'number' &&
+        typeof data.actividad.totalIngresos === 'number';
+      
+      console.log(`\n✅ Test 4 - Métricas de actividad: ${actividadExiste ? 'PASS' : 'FAIL'}`);
+      resultados.tests.actividad_metricas = actividadExiste;
+      
+      if (actividadExiste) {
+        console.log(`  Total Líderes: ${data.actividad.totalLideres}`);
+        console.log(`  Total Células: ${data.actividad.totalCelulas}`);
+        console.log(`  Total Ingresos: ${data.actividad.totalIngresos}`);
+      }
+      
+      // Test 5: Verificar tiempo de carga
+      const tiempoCarga = data.tiempo_carga || 0;
+      const tiempoAceptable = tiempoCarga < 10000; // Menos de 10 segundos
+      
+      console.log(`\n✅ Test 5 - Tiempo de carga aceptable: ${tiempoAceptable ? 'PASS' : 'FAIL'}`);
+      console.log(`  Tiempo: ${tiempoCarga}ms`);
+      resultados.tests.tiempo_carga_ok = tiempoAceptable;
+      
+      // Test 6: Verificar modo de carga
+      const modoCarga = data.modo_carga || '';
+      const modoCorrecto = modoCarga.includes('COMPLETO');
+      
+      console.log(`\n✅ Test 6 - Modo de carga correcto: ${modoCorrecto ? 'PASS' : 'FAIL'}`);
+      console.log(`  Modo: ${modoCarga}`);
+      resultados.tests.modo_carga_correcto = modoCorrecto;
+      
+      // Calcular éxito general
+      resultados.exito = lideresListaExiste && celulasListaExiste && ingresosListaExiste && 
+                        actividadExiste && tiempoAceptable && modoCorrecto;
+      
+    } else {
+      console.error('❌ Error obteniendo datos del dashboard');
+      console.error('Success:', dashboardData.success);
+      console.error('Error:', dashboardData.error);
+      resultados.tests.dashboard_data_ok = false;
+      resultados.exito = false;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error crítico en test:', error);
+    resultados.exito = false;
+  }
+  
+  // Resumen
+  console.log('\n' + '='.repeat(60));
+  console.log('📊 RESUMEN DE TESTS - getDashboardData COMPLETO');
+  console.log('='.repeat(60));
+  
+  Object.keys(resultados.tests).forEach(test => {
+    const resultado = resultados.tests[test];
+    const icono = resultado ? '✅' : '❌';
+    console.log(`${icono} ${test}: ${resultado ? 'PASS' : 'FAIL'}`);
+  });
+  
+  if (resultados.exito) {
+    console.log('\n🎉 ¡getDashboardData COMPLETO FUNCIONA CORRECTAMENTE!');
+    console.log('✅ Líderes.lista cargada');
+    console.log('✅ Células.lista cargada');
+    console.log('✅ Ingresos.lista cargada');
+    console.log('✅ Métricas de actividad correctas');
+    console.log('✅ Tiempo de carga aceptable');
+    console.log('🔄 El frontend ahora puede mostrar datos detallados');
+  } else {
+    console.log('\n⚠️ ALGUNOS TESTS FALLARON');
+    console.log('💡 Revisar logs anteriores para detalles');
+    console.log('💡 Verificar que las hojas de datos existan');
+  }
+  
+  return resultados;
+}
+
 console.log('🧪 SistemaTestsRobusto cargado - Sistema consolidado de pruebas disponible');
