@@ -121,6 +121,9 @@
                         <p id="dataTimestamp" class="font-semibold">Cargando...</p>
                     </div>
 
+                    <button onclick="irAHome()" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition" title="Volver al inicio del dashboard">
+                        <i class="fas fa-home"></i> Home
+                    </button>
                     <button onclick="recargarDatos()" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition" title="Forzar actualización desde Google Sheets (Ignorar caché)">
                         <i class="fas fa-sync-alt"></i> Actualizar
                     </button>
@@ -876,6 +879,34 @@ function actualizarEstadisticas(stats) {
         // ✅ ALERTAS ELIMINADAS: Sistema de alertas innecesario removido para mejorar rendimiento
 
         /**
+         * Función para volver al home del dashboard
+         */
+        function irAHome() {
+            console.log('🏠 Navegando al home del dashboard');
+            
+            // Ocultar todas las secciones específicas
+            document.getElementById('resumenLD').classList.add('hidden');
+            document.getElementById('panelLCFs').classList.add('hidden');
+            document.getElementById('accionesLD').classList.add('hidden');
+            
+            // Mostrar estadísticas generales
+            document.getElementById('estadisticasGenerales').classList.remove('hidden');
+            
+            // Limpiar selector de LD
+            const ldSelector = document.getElementById('ldSelector');
+            if (ldSelector) {
+                ldSelector.value = '';
+            }
+            
+            // Cerrar cualquier modal abierto
+            if (typeof Swal !== 'undefined') {
+                Swal.close();
+            }
+            
+            console.log('✅ Vista home restaurada');
+        }
+
+        /**
  * Inicia el proceso para ver el resumen de un LCF.
  */
 function verResumenLCF(idLCF, nombreLCF) {
@@ -1114,11 +1145,11 @@ function mostrarResumenLD() {
             </div>
         </div>
         
-        ${resumen.metricas?.alertas_criticas && resumen.metricas.alertas_criticas.length > 0 ? `
+        ${resumen.alertas?.criticas && resumen.alertas.criticas.length > 0 ? `
             <div class="mt-4 bg-red-50 border-l-4 border-red-500 p-3 rounded">
                 <p class="text-sm font-semibold text-red-800">Alertas Críticas:</p>
                 <ul class="text-xs text-red-700 mt-1">
-                    ${resumen.metricas.alertas_criticas.map(a => `<li>• ${a.mensaje}</li>`).join('')}
+                    ${resumen.alertas.criticas.map(a => `<li>• ${a.mensaje}</li>`).join('')}
                 </ul>
             </div>
         ` : ''}

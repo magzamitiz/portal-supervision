@@ -698,43 +698,8 @@ function testEstadisticasEsencial() {
   };
 }
 
-/**
- * Test rápido para verificar nuevas métricas de actividad
- */
-function testNuevasMetricas() {
-  console.log('🧪 TEST: Probando getEstadisticasRapidas()');
-  
-  try {
-    const resultado = getEstadisticasRapidas();
-    console.log('✅ Resultado completo:', JSON.stringify(resultado, null, 2));
-    
-    if (resultado.success) {
-      console.log('✅ SUCCESS: true');
-      console.log('📊 Datos recibidos:', resultado.data);
-      
-      if (resultado.data.actividad) {
-        console.log('✅ Estructura actividad encontrada:', resultado.data.actividad);
-      } else {
-        console.log('❌ No se encontró estructura actividad');
-      }
-      
-      if (resultado.data.metricas) {
-        console.log('✅ Estructura metricas encontrada:', resultado.data.metricas);
-      } else {
-        console.log('❌ No se encontró estructura metricas');
-      }
-    } else {
-      console.log('❌ SUCCESS: false');
-      console.log('❌ Error:', resultado.error);
-    }
-    
-    return resultado;
-    
-  } catch (error) {
-    console.error('❌ ERROR en test:', error);
-    return { success: false, error: error.toString() };
-  }
-}
+// ✅ FUNCIÓN OBSOLETA ELIMINADA: testNuevasMetricas()
+// Reemplazada por probar8MetricasDashboard() en SistemaTestsRobusto.gs
 
 /**
  * Verifica que _ResumenDashboard tiene la estructura correcta para la optimización
